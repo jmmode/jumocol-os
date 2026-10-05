@@ -209,8 +209,8 @@ ${errors}
 
 ## Criterio
 
-- `VALIDADO`: determinismo técnico + fuente estable + cero duplicados + oracle suministrado y coincidente.
-- `VALIDADO_TECNICO`: determinismo técnico + fuente estable + cero duplicados, sin oracle de negocio.
-- `PARCIAL`: falla alguna condición técnica o el oracle suministrado no coincide.
+- \`VALIDADO\`: determinismo técnico + fuente estable + cero duplicados + oracle suministrado y coincidente.
+- \`VALIDADO_TECNICO\`: determinismo técnico + fuente estable + cero duplicados, sin oracle de negocio.
+- \`PARCIAL\`: falla alguna condición técnica o el oracle suministrado no coincide.
 `;
 }
