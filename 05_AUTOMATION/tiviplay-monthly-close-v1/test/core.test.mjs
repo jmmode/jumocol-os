@@ -74,3 +74,16 @@ test("ambiguous business signals are routed to review instead of silently exclud
   assert.equal(result.reviewReasonCounts.POSSIBLE_NO_RENEWAL, 1);
   assert.equal(result.reviewReasonCounts.POSSIBLE_FREE_MONTH, 1);
 });
+
+test("explicit exception text is routed to review", () => {
+  const rows = [
+    ["", "TIVIPLAY"],
+    ["TC","CLIENTE","TELEFONO","CORREO","ESTADO","OBSERVACIONES","PLAN ACTIVO","PANTALLAS","CELULAR","USD","COP","MÉTODO DE PAGO","USUARIO","CONTRASEÑA","PANEL","F.VENCIMIENTO","F.ULTIMO PAGO","F. PRÓXIMO PAGO","T","REFERIDO","DISPOSITIVOS","TIPO_SERVICIO"],
+    ["1","Cliente X","100","x@example.com","Por vencer","EXCEPCIÓN: regularizar origen de confirmación","PLAN 1 MES","1","0","15","0","ZELLE","user-x","pw","P1","2026-10-31","28-09-26","28-10-26","0","","TV","PLAN PRINCIPAL"]
+  ];
+
+  const result = buildMonthlyClose(rows, "2026-10");
+  assert.equal(result.total, 1);
+  assert.equal(result.classificationCounts.REQUIERE_REVISION, 1);
+  assert.equal(result.reviewReasonCounts.EXPLICIT_EXCEPTION, 1);
+});
