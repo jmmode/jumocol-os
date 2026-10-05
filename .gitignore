@@ -1,0 +1,39 @@
+# Secretos y credenciales
+.env
+.env.*
+**/.env
+**/.env.*
+*.pem
+*.key
+credentials*
+secrets*
+**/credentials*
+**/secrets*
+
+# Dependencias y artefactos regenerables
+node_modules/
+.next/
+.pnpm-store/
+dist/
+build/
+out/
+cache/
+.cache/
+coverage/
+logs/
+*.log
+*.tsbuildinfo
+next-env.d.ts
+
+# Datos operativos locales
+**/data/private/
+/ACCESOS_CLAVES.xlsx
+*.xlsx
+*.xls
+*.xlsm
+*.xlsb
+
+# Contenedores fuera del alcance inicial
+/tmp/
+/output/
+/JUMOCOL_NETWORK_INFRAESTRUCTURE/
