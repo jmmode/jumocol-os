@@ -132,3 +132,17 @@ V1 implementa:
 - evidencia auditable.
 
 No habilita escritura en producción.
+
+## Preview operacional privado
+
+La ejecución sobre `BASE GENERAL` genera también, fuera de Git:
+
+- `YYYY-MM__preview.json`
+- `YYYY-MM__preview.csv`
+- `YYYY-MM__exceptions.json`
+
+El preview contiene las filas candidatas para `PAGOS [MES]` con origen `BASE GENERAL!fila`, semana operacional y clasificación inicial `FACTURAR_CANDIDATO`.
+
+`FACTURAR_CANDIDATO` no sustituye todavía las reglas S0-B de mes gratis, desactivado, plan/acuerdo especial o excepción. Es una salida determinística intermedia que permite iterar esas reglas sin escribir en producción.
+
+Las excepciones de calidad de datos se separan en una cola explícita y nunca se corrigen silenciosamente.
