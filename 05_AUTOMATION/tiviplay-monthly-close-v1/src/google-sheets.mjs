@@ -6,7 +6,7 @@ export async function readSheetValues({ spreadsheetId, sheetName, range = "A1:W5
   if (!spreadsheetId) throw new Error("spreadsheetId is required");
   if (!sheetName) throw new Error("sheetName is required");
 
-  const auth = new GoogleAuth({ scopes: [SHEETS_SCOPE] });
+  const auth = buildGoogleAuth();
   const client = await auth.getClient();
   const token = await client.getAccessToken();
 
@@ -28,6 +28,23 @@ export async function readSheetValues({ spreadsheetId, sheetName, range = "A1:W5
 
   const payload = await response.json();
   return payload.values ?? [];
+}
+
+function buildGoogleAuth() {
+  const clientEmail = process.env.GOOGLE_SHEETS_CLIENT_EMAIL;
+  const privateKeyRaw = process.env.GOOGLE_SHEETS_PRIVATE_KEY;
+
+  if (clientEmail && privateKeyRaw) {
+    return new GoogleAuth({
+      credentials: {
+        client_email: clientEmail,
+        private_key: privateKeyRaw.replace(/\\n/g, "\n"),
+      },
+      scopes: [SHEETS_SCOPE],
+    });
+  }
+
+  return new GoogleAuth({ scopes: [SHEETS_SCOPE] });
 }
 
 function quoteSheet(name) {
