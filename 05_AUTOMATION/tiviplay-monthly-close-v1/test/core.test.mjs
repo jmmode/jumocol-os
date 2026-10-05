@@ -39,3 +39,21 @@ test("same input produces same deterministic signature", () => {
   assert.equal(compareRuns(a, b).identical, true);
   assert.equal(a.duplicates.length, 0);
 });
+
+test("monthly close emits structured preview and invalid-date exception", () => {
+  const rows = [
+    ["", "TIVIPLAY"],
+    ["TC","CLIENTE","TELEFONO","CORREO","ESTADO","OBSERVACIONES","PLAN ACTIVO","PANTALLAS","CELULAR","USD","COP","MÉTODO DE PAGO","USUARIO","CONTRASEÑA","PANEL","F.VENCIMIENTO","F.ULTIMO PAGO","F. PRÓXIMO PAGO","T","REFERIDO","DISPOSITIVOS","TIPO_SERVICIO"],
+    ["1","Cliente A","100","a@example.com","Al dia","","PLAN 1 MES","1","0","15","0","ZELLE","user-a","pw","P1","2026-10-31","01-09-26","04-10-26","0","","TV","PLAN PRINCIPAL"],
+    ["1","Cliente B","200","b@example.com","Al dia","","PLAN 1 MES","1","0","15","0","ZELLE","user-b","pw","P2","2026-10-31","01-09-26","04-027","0","","TV","PLAN PRINCIPAL"]
+  ];
+
+  const result = buildMonthlyClose(rows, "2026-10");
+  assert.equal(result.total, 1);
+  assert.equal(result.preview.length, 1);
+  assert.equal(result.preview[0].classification, "FACTURAR_CANDIDATO");
+  assert.equal(result.preview[0].origin, "BASE GENERAL!3");
+  assert.equal(result.exceptions.length, 1);
+  assert.equal(result.exceptions[0].type, "INVALID_NEXT_PAYMENT_DATE");
+  assert.equal(result.exceptions[0].rawValue, "04-027");
+});
