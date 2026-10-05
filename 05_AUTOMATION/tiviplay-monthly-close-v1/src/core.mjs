@@ -77,6 +77,24 @@ function identityKey(row, cols) {
   ].map(canon).join("|");
 }
 
+function classifyCandidate({ status, observations, referredBy }) {
+  const text = canon([status, observations, referredBy].filter(Boolean).join(" | "));
+  const reviewReasons = [];
+
+  if (/NO\s+RENUEV|NO\s+VA\s+RENOVAR|NO\s+RENOVAR/.test(text)) {
+    reviewReasons.push("POSSIBLE_NO_RENEWAL");
+  }
+
+  if (/MES\s+GRATIS|OTORGAR\s+MES\s+GRATIS|PDTE\s+MES\s+GRATIS|PENDIENTE\s+MES\s+GRATIS/.test(text)) {
+    reviewReasons.push("POSSIBLE_FREE_MONTH");
+  }
+
+  return {
+    classification: reviewReasons.length ? "REQUIERE_REVISION" : "FACTURAR_CANDIDATO",
+    reviewReasons,
+  };
+}
+
 export function buildMonthlyClose(rows, targetMonth) {
   const headerRowIndex = findHeaderRow(rows);
   const headers = normalizeHeaders(rows[headerRowIndex] ?? []);
@@ -135,16 +153,22 @@ export function buildMonthlyClose(rows, targetMonth) {
     if (date < start || date > end) continue;
 
     const identity = identityKey(row, cols);
+    const status = valueAt(row, cols.estado);
+    const observations = valueAt(row, cols.observaciones);
+    const referredBy = valueAt(row, cols.referido);
+    const classification = classifyCandidate({ status, observations, referredBy });
+
     selected.push({
       sourceRow: i + 1,
       week: weekBucket(date),
-      classification: "FACTURAR_CANDIDATO",
+      classification: classification.classification,
+      reviewReasons: classification.reviewReasons,
       tc: valueAt(row, cols.tc),
       client: valueAt(row, cols.cliente),
       phone: valueAt(row, cols.telefono),
       email: valueAt(row, cols.correo),
-      status: valueAt(row, cols.estado),
-      observations: valueAt(row, cols.observaciones),
+      status,
+      observations,
       plan: valueAt(row, cols.plan),
       screens: valueAt(row, cols.pantallas),
       mobile: valueAt(row, cols.celular),
@@ -157,7 +181,7 @@ export function buildMonthlyClose(rows, targetMonth) {
       expirationDate: valueAt(row, cols.vencimiento),
       lastPaymentDate: valueAt(row, cols.ultimoPago),
       nextPaymentDate: date,
-      referredBy: valueAt(row, cols.referido),
+      referredBy,
       devices: valueAt(row, cols.dispositivos),
       serviceType: valueAt(row, cols.tipoServicio),
       origin: `BASE GENERAL!${i + 1}`,
@@ -189,10 +213,22 @@ export function buildMonthlyClose(rows, targetMonth) {
 
   const signature = sha256(JSON.stringify(stableRows));
 
+  const classificationCounts = selected.reduce((acc, item) => {
+    acc[item.classification] = (acc[item.classification] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const reviewReasonCounts = selected.flatMap((item) => item.reviewReasons).reduce((acc, reason) => {
+    acc[reason] = (acc[reason] ?? 0) + 1;
+    return acc;
+  }, {});
+
   return {
     targetMonth,
     total: selected.length,
     weeks,
+    classificationCounts,
+    reviewReasonCounts,
     preview: selected.map(({ identity, ...item }) => item),
     duplicates,
     exceptions,
