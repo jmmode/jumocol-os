@@ -6,7 +6,8 @@
   "description": "Deterministic read-only monthly close validator for TiviPlay live Google Sheets data.",
   "scripts": {
     "test": "node --test",
-    "run": "node run.mjs"
+    "run": "node run.mjs",
+    "reconcile-sales": "node reconcile-sales.mjs"
   },
   "dependencies": {
     "google-auth-library": "^9.15.1"
