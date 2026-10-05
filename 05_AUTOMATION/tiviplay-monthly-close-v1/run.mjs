@@ -133,7 +133,30 @@ if (persistSnapshot) {
     }) + "\n",
     "utf8"
   );
-}
+
+  const privateRunDir = path.dirname(snapshotPath);
+  const previewJsonPath = path.join(privateRunDir, `${targetMonth}__preview.json`);
+  const previewCsvPath = path.join(privateRunDir, `${targetMonth}__preview.csv`);
+  const exceptionsPath = path.join(privateRunDir, `${targetMonth}__exceptions.json`);
+
+  await fs.writeFile(
+    previewJsonPath,
+    JSON.stringify({ generatedAt, targetMonth, rows: run1.preview }, null, 2) + "\n",
+    "utf8"
+  );
+  await fs.writeFile(previewCsvPath, toCsv(run1.preview), "utf8");
+  await fs.writeFile(
+    exceptionsPath,
+    JSON.stringify({ generatedAt, targetMonth, exceptions: run1.exceptions }, null, 2) + "\n",
+    "utf8"
+  );
+
+  evidence.privateOutputs = {
+    snapshot: snapshotPath,
+    previewJson: previewJsonPath,
+    previewCsv: previewCsvPath,
+    exceptions: exceptionsPath,
+  };
 
 console.log("\nTIVIPLAY_MONTHLY_CLOSE_V1");
 console.log(`Source: ${sheetName}`);
@@ -147,7 +170,12 @@ console.log(`Exceptions: ${run1.exceptions.length}`);
 console.log(`Oracle: ${oracleProvided ? (oracle.valid ? "MATCH" : "DIFFERENCE") : "NOT PROVIDED"}`);
 console.log(`STATUS: ${status}`);
 console.log(`Evidence: ${mdPath}`);
-if (snapshotPath) console.log(`Private snapshot: ${snapshotPath}`);
+if (snapshotPath) {
+  console.log(`Private snapshot: ${snapshotPath}`);
+  console.log(`Private preview JSON: ${evidence.privateOutputs.previewJson}`);
+  console.log(`Private preview CSV: ${evidence.privateOutputs.previewCsv}`);
+  console.log(`Private exceptions: ${evidence.privateOutputs.exceptions}`);
+}
 
 process.exit(status === "PARCIAL" ? 1 : 0);
 
@@ -162,6 +190,27 @@ function maskId(id) {
 
 function safeFileName(value) {
   return String(value).replace(/[^a-zA-Z0-9._-]+/g, "_");
+}
+
+function csvEscape(value) {
+  const s = String(value ?? "");
+  if (/[",\n\r]/.test(s)) return `"${s.replaceAll('"', '""')}"`;
+  return s;
+}
+
+function toCsv(rows) {
+  if (!rows.length) return "";
+  const headers = [
+    "sourceRow","week","classification","tc","client","phone","email","status",
+    "observations","plan","screens","mobile","usd","cop","paymentMethod","username",
+    "password","panel","expirationDate","lastPaymentDate","nextPaymentDate",
+    "referredBy","devices","serviceType","origin"
+  ];
+  const lines = [headers.join(",")];
+  for (const row of rows) {
+    lines.push(headers.map((key) => csvEscape(row[key])).join(","));
+  }
+  return lines.join("\n") + "\n";
 }
 
 function renderMarkdown(e) {
@@ -198,6 +247,7 @@ function renderMarkdown(e) {
 - Hash lectura 2: \`${e.source.hashAtRead2}\`
 - Duplicados detectados: **${e.run1.duplicates.length}**
 - Excepciones de fecha: **${e.run1.exceptions.length}**
+- Preview privado generado: **${e.run1.preview.length} registros**
 
 ## Oracle
 
