@@ -86,9 +86,23 @@ export function buildMonthlyClose(rows, targetMonth) {
     cliente: findColumn(headers, ["CLIENTE"]),
     telefono: findColumn(headers, ["TELEFONO"]),
     correo: findColumn(headers, ["CORREO"]),
+    estado: findColumn(headers, ["ESTADO"]),
+    observaciones: findColumn(headers, ["OBSERVACIONES"]),
+    plan: findColumn(headers, ["PLAN ACTIVO", "PLAN"]),
+    pantallas: findColumn(headers, ["PANTALLAS"]),
+    celular: findColumn(headers, ["CELULAR"]),
+    usd: findColumn(headers, ["USD"]),
+    cop: findColumn(headers, ["COP"]),
+    metodoPago: findColumn(headers, ["MÉTODO DE PAGO", "METODO DE PAGO", "MÉTODO", "METODO"]),
     usuario: findColumn(headers, ["USUARIO"]),
+    contrasena: findColumn(headers, ["CONTRASEÑA", "CONTRASENA"]),
     panel: findColumn(headers, ["PANEL"]),
+    vencimiento: findColumn(headers, ["F.VENCIMIENTO"]),
+    ultimoPago: findColumn(headers, ["F.ULTIMO PAGO", "F. ÚLTIMO PAGO"]),
     proximoPago: findColumn(headers, ["F. PRÓXIMO PAGO", "F.PRÓXIMO PAGO"]),
+    referido: findColumn(headers, ["REFERIDO"]),
+    dispositivos: findColumn(headers, ["DISPOSITIVOS", "DISPOSITIVO"]),
+    tipoServicio: findColumn(headers, ["TIPO_SERVICIO", "TIPO SERVICIO"]),
   };
 
   if (cols.tc == null || cols.proximoPago == null) {
@@ -108,18 +122,46 @@ export function buildMonthlyClose(rows, targetMonth) {
 
     if (!date) {
       if (rawDate) {
-        exceptions.push({ row: i + 1, type: "INVALID_NEXT_PAYMENT_DATE" });
+        exceptions.push({
+          sourceRow: i + 1,
+          type: "INVALID_NEXT_PAYMENT_DATE",
+          rawValue: rawDate,
+          action: "REQUIERE_CORRECCION",
+        });
       }
       continue;
     }
 
     if (date < start || date > end) continue;
 
+    const identity = identityKey(row, cols);
     selected.push({
       sourceRow: i + 1,
+      week: weekBucket(date),
+      classification: "FACTURAR_CANDIDATO",
+      tc: valueAt(row, cols.tc),
       client: valueAt(row, cols.cliente),
+      phone: valueAt(row, cols.telefono),
+      email: valueAt(row, cols.correo),
+      status: valueAt(row, cols.estado),
+      observations: valueAt(row, cols.observaciones),
+      plan: valueAt(row, cols.plan),
+      screens: valueAt(row, cols.pantallas),
+      mobile: valueAt(row, cols.celular),
+      usd: valueAt(row, cols.usd),
+      cop: valueAt(row, cols.cop),
+      paymentMethod: valueAt(row, cols.metodoPago),
+      username: valueAt(row, cols.usuario),
+      password: valueAt(row, cols.contrasena),
+      panel: valueAt(row, cols.panel),
+      expirationDate: valueAt(row, cols.vencimiento),
+      lastPaymentDate: valueAt(row, cols.ultimoPago),
       nextPaymentDate: date,
-      identity: identityKey(row, cols),
+      referredBy: valueAt(row, cols.referido),
+      devices: valueAt(row, cols.dispositivos),
+      serviceType: valueAt(row, cols.tipoServicio),
+      origin: `BASE GENERAL!${i + 1}`,
+      identity,
     });
   }
 
@@ -135,7 +177,7 @@ export function buildMonthlyClose(rows, targetMonth) {
     .map(([identity, sourceRows]) => ({ identityHash: sha256(identity), sourceRows }));
 
   const weeks = [0, 0, 0, 0, 0];
-  selected.forEach((item) => weeks[weekBucket(item.nextPaymentDate) - 1]++);
+  selected.forEach((item) => weeks[item.week - 1]++);
 
   const stableRows = selected
     .map((item) => ({
@@ -151,6 +193,7 @@ export function buildMonthlyClose(rows, targetMonth) {
     targetMonth,
     total: selected.length,
     weeks,
+    preview: selected.map(({ identity, ...item }) => item),
     duplicates,
     exceptions,
     signature,
