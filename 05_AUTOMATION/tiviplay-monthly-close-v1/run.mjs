@@ -157,6 +157,7 @@ if (persistSnapshot) {
     previewCsv: previewCsvPath,
     exceptions: exceptionsPath,
   };
+}
 
 console.log("\nTIVIPLAY_MONTHLY_CLOSE_V1");
 console.log(`Source: ${sheetName}`);
