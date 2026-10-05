@@ -168,6 +168,8 @@ console.log(`Repeatable: ${repeatability.identical ? "YES" : "NO"}`);
 console.log(`Source stable during run: ${sourceStableDuringRun ? "YES" : "NO"}`);
 console.log(`Duplicates: ${run1.duplicates.length}`);
 console.log(`Exceptions: ${run1.exceptions.length}`);
+console.log(`Classifications: ${JSON.stringify(run1.classificationCounts)}`);
+console.log(`Review reasons: ${JSON.stringify(run1.reviewReasonCounts)}`);
 console.log(`Oracle: ${oracleProvided ? (oracle.valid ? "MATCH" : "DIFFERENCE") : "NOT PROVIDED"}`);
 console.log(`STATUS: ${status}`);
 console.log(`Evidence: ${mdPath}`);
@@ -202,14 +204,14 @@ function csvEscape(value) {
 function toCsv(rows) {
   if (!rows.length) return "";
   const headers = [
-    "sourceRow","week","classification","tc","client","phone","email","status",
+    "sourceRow","week","classification","reviewReasons","tc","client","phone","email","status",
     "observations","plan","screens","mobile","usd","cop","paymentMethod","username",
     "password","panel","expirationDate","lastPaymentDate","nextPaymentDate",
     "referredBy","devices","serviceType","origin"
   ];
   const lines = [headers.join(",")];
   for (const row of rows) {
-    lines.push(headers.map((key) => csvEscape(row[key])).join(","));
+    lines.push(headers.map((key) => csvEscape(Array.isArray(row[key]) ? row[key].join("|") : row[key])).join(","));
   }
   return lines.join("\n") + "\n";
 }
@@ -249,6 +251,8 @@ function renderMarkdown(e) {
 - Duplicados detectados: **${e.run1.duplicates.length}**
 - Excepciones de fecha: **${e.run1.exceptions.length}**
 - Preview privado generado: **${e.run1.preview.length} registros**
+- Clasificaciones: \`${JSON.stringify(e.run1.classificationCounts)}\`
+- Motivos de revisión: \`${JSON.stringify(e.run1.reviewReasonCounts)}\`
 
 ## Oracle
 
