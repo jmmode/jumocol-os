@@ -1,0 +1,17 @@
+{
+  "name": "tiviplay-monthly-close-v1",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic read-only monthly close validator for TiviPlay live Google Sheets data.",
+  "scripts": {
+    "test": "node --test",
+    "run": "node run.mjs"
+  },
+  "dependencies": {
+    "google-auth-library": "^9.15.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
