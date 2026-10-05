@@ -89,6 +89,10 @@ function classifyCandidate({ status, observations, referredBy }) {
     reviewReasons.push("POSSIBLE_FREE_MONTH");
   }
 
+  if (/EXCEPCI[ÓO]N/.test(text)) {
+    reviewReasons.push("EXPLICIT_EXCEPTION");
+  }
+
   return {
     classification: reviewReasons.length ? "REQUIERE_REVISION" : "FACTURAR_CANDIDATO",
     reviewReasons,
