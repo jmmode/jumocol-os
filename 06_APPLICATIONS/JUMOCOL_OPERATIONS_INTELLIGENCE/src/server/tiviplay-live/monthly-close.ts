@@ -3,6 +3,8 @@ import "server-only";
 import crypto from "node:crypto";
 import { GoogleAuth } from "google-auth-library";
 
+import { getGoogleSheetsLeadConfig } from "@/server/leads/google-sheets/config";
+
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 
 type ReviewReason =
@@ -262,19 +264,14 @@ function buildReadModel(rows: unknown[][], targetMonth: string) {
 }
 
 function getGoogleAuth() {
-  const clientEmail = process.env.GOOGLE_SHEETS_CLIENT_EMAIL;
-  const privateKeyRaw = process.env.GOOGLE_SHEETS_PRIVATE_KEY;
-
-  if (!clientEmail || !privateKeyRaw) {
-    throw new Error(
-      "Missing GOOGLE_SHEETS_CLIENT_EMAIL / GOOGLE_SHEETS_PRIVATE_KEY",
-    );
-  }
+  // Reuse the same normalized Google Sheets credentials already proven by
+  // the commercial leads integration. TiviPlay only overrides the workbook.
+  const sharedGoogleConfig = getGoogleSheetsLeadConfig();
 
   return new GoogleAuth({
     credentials: {
-      client_email: clientEmail,
-      private_key: privateKeyRaw.replace(/\\n/g, "\n"),
+      client_email: sharedGoogleConfig.clientEmail,
+      private_key: sharedGoogleConfig.privateKey,
     },
     scopes: [SHEETS_SCOPE],
   });
