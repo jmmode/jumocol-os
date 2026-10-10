@@ -67,6 +67,22 @@ NO VALIDADO AÚN:
 - acciones sobre excepciones;
 - write model.
 
+## Alcance temporal operativo
+
+**Regla canónica:** el Runtime Operativo TiviPlay procesa por defecto únicamente información desde **2026-06-01** en adelante.
+
+Aplicación:
+- junio 2026 → presente = ventana operacional activa;
+- enero–mayo 2026 = excluido del flujo operativo diario;
+- periodos anteriores = solo consulta histórica explícita;
+- esta regla debe aplicarse en motor/API antes de construir KPIs gerenciales y operativos para evitar ruido, sobrecarga y mezcla de reglas históricas.
+
+Identificador de regla:
+
+`TIVIPLAY_RUNTIME_DATE_SCOPE_V1`
+
+Estado: **VALIDADO COMO DECISIÓN DE ALCANCE**.
+
 ## Brecha de navegación
 
 La ruta Runtime existe y funciona, pero todavía no está enlazada desde la pantalla principal de `/operaciones/tiviplay`.
@@ -84,13 +100,14 @@ Siguiente ajuste de UX:
 Objetivo: convertir el Runtime de visor técnico en estación operacional útil para Dirección y equipo.
 
 Prioridad:
-1. navegación visible desde Operaciones → TiviPlay;
-2. definir indicadores vivos realmente útiles;
-3. separar vista gerencial y vista operacional;
-4. mostrar cumplimiento, recaudo, meta del día, pendientes, conciliaciones y excepciones;
-5. mantener cada indicador ligado a fuente viva, regla y evidencia;
-6. no escribir en producción hasta validar gates.
+1. aplicar `TIVIPLAY_RUNTIME_DATE_SCOPE_V1` en motor/API;
+2. navegación visible desde Operaciones → TiviPlay;
+3. definir indicadores vivos realmente útiles;
+4. separar vista gerencial y vista operacional;
+5. mostrar cumplimiento, recaudo, meta del día, pendientes, conciliaciones y excepciones;
+6. mantener cada indicador ligado a fuente viva, regla y evidencia;
+7. no escribir en producción hasta validar gates.
 
 ## NEXT ACTION
 
-Agregar acceso visible a Runtime desde `/operaciones/tiviplay` y luego redefinir el contrato de datos del dashboard con indicadores gerenciales y operativos alimentados desde las fuentes vivas.
+Aplicar el corte temporal desde 2026-06-01 en motor/API, agregar acceso visible a Runtime desde `/operaciones/tiviplay` y luego redefinir el contrato de datos del dashboard con indicadores gerenciales y operativos alimentados desde las fuentes vivas.
