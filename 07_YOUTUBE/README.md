@@ -33,9 +33,11 @@ Razones:
 2. **Nivel inferior (500 suscriptores):** membresías, Super Thanks, Super Chat — sin anuncios.
 3. **Plataformas adyacentes:** TikTok, Instagram Reels, X — mismo contenido, distribución múltiple. YouTube no es el único canal.
 
-### 1.4 Canal
+---
 
-- **Canal:** Evidencia Lab. Correo dueño: julian.evidencia@gmail.com. Creado 2026-10-17. Avatar: negro con EVIDENCIA en blanco.
+## 1.4 Canal
+
+- **Canal:** Evidencia Lab. Correo dueño: julianevidencia@gmail.com. Creado 2026-10-17. Avatar: negro con EVIDENCIA en blanco.
 - **Music relax** (julianmontealegre7@gmail.com): excluido. 2 suscriptores, 9 horas calificadas, 0 subidas en 90 días, 0 vistas de Shorts, 0 infracciones. No califica para ningún umbral.
 - Umbral aplicable: solicitante nuevo. Meta de calificación: antes del 31/01/2027.
 - Conexión Analytics API: OAuth con la cuenta dueña primaria del canal nuevo.
