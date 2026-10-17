@@ -33,6 +33,7 @@ Registra decisiones sobre estructura, responsabilidades, governance, contexto, r
 | DEC-2026-08-27-009 | 2026-08-27 | Consolidar `/tecnologia-ia` como Command Center técnico y persistir `JUM-OI-TECH-001` sin implementar agentes, Write Model ni deployment público. | Vigente | `DEC-2026-08-27-009_TECHNOLOGY_AI_COMMAND_CENTER.md` |
 | DEC-2026-09-02-010 | 2026-09-02 | Formalizar la nomenclatura de la intranet, la continuidad septiembre-diciembre de 2026, TiviPlay como primer laboratorio, las fuentes oficiales iniciales y los limites de automatizacion con revision humana. | Vigente | `DEC-2026-09-02-010_OPERATIONAL_CONTINUITY_SEP_DEC_2026.md` |
 | DEC-2026-09-02-011 | 2026-09-02 | Autorizar la estructura documental de los seis componentes de TiviPlay y las rutas read-only `/operaciones/tiviplay` y `/operaciones/tiviplay/contexto`, sin implementar los cinco componentes futuros. | Vigente | `DEC-2026-09-02-011_TIVIPLAY_DOCUMENTAL_COMMAND_CENTER.md` |
+| DEC-2026-10-17-012 | 2026-10-17 | Crear canal nuevo de YouTube para monetización con YCS; Music relax excluido; GitHub como fuente canónica; README de 07_YOUTUBE sincronizado con árbol real. | Vigente | `DEC-2026-10-17-012_YOUTUBE_NEW_CHANNEL.md` |
 
 ## Riesgos
 

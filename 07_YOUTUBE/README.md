@@ -4,6 +4,7 @@
 **Fecha de inicio:** 2026-10-17
 **Estado:** ACTIVO
 **Objetivo:** Generar contenido de YouTube con agentes de IA para alcanzar monetización (1.000 suscriptores + 4.000 horas de watch time, o 10M vistas de Shorts en 90 días) antes del 31 de enero de 2027, cuando los umbrales se duplican para solicitantes nuevos.
+**Gobierno:** DEC-2026-10-17-012
 
 ---
 
@@ -32,7 +33,14 @@ Razones:
 2. **Nivel inferior (500 suscriptores):** membresías, Super Thanks, Super Chat — sin anuncios.
 3. **Plataformas adyacentes:** TikTok, Instagram Reels, X — mismo contenido, distribución múltiple. YouTube no es el único canal.
 
-### 1.4 Principio de arquitectura (heredado de JUMOCOL OS)
+### 1.4 Canal
+
+- **Canal nuevo** (nombre provisional, pendiente de validación con telemetría). Ver DEC-2026-10-17-012.
+- **Music relax** (julianmontealegre7@gmail.com): excluido. 2 suscriptores, 9 horas calificadas, 0 subidas en 90 días, 0 vistas de Shorts, 0 infracciones. No califica para ningún umbral.
+- Umbral aplicable: solicitante nuevo. Meta de calificación: antes del 31/01/2027.
+- Conexión Analytics API: OAuth con la cuenta dueña primaria del canal nuevo.
+
+### 1.5 Principio de arquitectura (heredado de JUMOCOL OS)
 
 > El modelo razona. El documento conserva. El agente ejecuta. El código calcula. La evidencia valida. El humano decide excepciones.
 
@@ -46,29 +54,34 @@ Principio rector: **usar la inteligencia mínima necesaria para cada tarea** (ec
 
 ---
 
-## 2. ESTRUCTURA DEL SISTEMA
+## 2. ESTRUCTURA REAL DEL SISTEMA
 
 ```
 07_YOUTUBE/
-├── README.md                          ← este archivo (canónico)
-├── 01_NICHO_Y_ESTRATEGIA.md           ← decisión de nicho, validación de tendencias
-├── 02_CALENDARIO_30_DIAS.md           ← temas concretos Shorts + primer largo
-├── 03_AGENT_EXECUTION_PACKAGE.md      ← paquete ejecutable para agentes
-├── 04_SCRIPTS_Y_PROMPTS.md            ← prompts de generación de guiones
-├── 05_METRICAS_Y_KPIs.md              ← suscriptores, horas, vistas, tokens consumidos
-├── 06_DISTRIBUCION_MULTICANAL.md      ← TikTok, Reels, X como canales adyacentes
-└── 07_EVIDENCIA/                      ← capturas, reportes, validaciones
+├── README.md                              ← este archivo (canónico, sincronizado 2026-10-17)
+├── 01_AGENT_EXECUTION_PACKAGE.md         ← paquete ejecutable v1.0 (telemetría primero)
+├── 02_CALENDARIO_30_DIAS.md              ← 6 largos + 24 Shorts, sin referencia a Pereira
+└── 02_PROMPTS_Y_SCRIPTS/
+│   ├── README.md                          ← índice + presupuesto de tokens
+│   ├── PROMPT_LARGO_V1.md                ← guion 12–20 min, ~11.800 tokens/ciclo
+│   ├── PROMPT_SHORT_V1.md               ← 4 hooks por categoría
+│   └── PROMPT_DIFF_V1.md                 ← diff de prompt desde telemetría
+└── 06_ORQUESTADOR/
+    ├── README.md
+    ├── ORQUESTADOR_V1.md                 ← 8 funciones, 7 estados, loops diario/semanal
+    └── orquestador.py                    ← implementación con dataclasses tipadas
 ```
+
+GitHub (`jmmode/jumocol-os`) es la **única fuente canónica**. Las carpetas de Drive bajo 07_YOUTUBE_CONTENT_SYSTEM son espejo humano de solo lectura.
 
 ---
 
-## 3. AGENT EXECUTION PACKAGE (borrador)
+## 3. AGENT EXECUTION PACKAGE (v1.0)
 
 ### 3.1 Fuentes canónicas
 
-- Drive: carpeta 05_CONTENIDO (JUMOCOL SYSTEM OS) — logos, sprints, videos, directorio.
-- Drive: carpeta 07_YOUTUBE_CONTENT_SYSTEM (nueva, 2026-10-17).
-- GitHub: jmmode/jumocol-os — decisiones de gobierno, TCRL, automatizaciones.
+- GitHub: jmmode/jumocol-os — 07_YOUTUBE/, 00_GOVERNANCE/DECISIONS/, 02_RUNTIME/ (checkpoint TiviPlay 2026-10-09).
+- Drive: 07_YOUTUBE_CONTENT_SYSTEM (espejo).
 - Memoria personal: proyectos, empresas, avances, Life OS.
 
 ### 3.2 Reglas de negocio
@@ -76,27 +89,33 @@ Principio rector: **usar la inteligencia mínima necesaria para cada tarea** (ec
 1. Todo Short debe derivar de una fuente real del ecosistema (TiviPlay, agentes, Shopify, Life OS).
 2. Todo largo semanal debe tener estructura: gancho (0–15s), problema, solución con datos, CTA.
 3. Voz sintética: español neutro, tono directo, sin relleno.
-4. No publicar sin revisión humana de Julián en las primeras 2 semanas (fase de calibración).
+4. Fase de calibración (primeras 2 semanas): revisión humana de Julián en cada publicación. Después, umbrales automáticos (Short >10k vistas/48h → 3 variantes; <1k → archivo con razón; caída >40% vs baseline → flag humano).
 5. Medir tokens consumidos por pieza generada; optimizar prompts para reducir costo.
+6. El PROMPT DIFF V1 versiona cada cambio de prompt con número en la razón.
 
 ### 3.3 Secuencia de ejecución
 
-1. Agente lee 01_NICHO_Y_ESTRATEGIA.md y 02_CALENDARIO_30_DIAS.md.
-2. Agente genera guion (Nivel 2) usando 04_SCRIPTS_Y_PROMPTS.md.
-3. Código valida formato, longitud, keywords (Nivel 1).
+1. Agente lee 02_CALENDARIO_30_DIAS.md y 02_PROMPTS_Y_SCRIPTS/.
+2. Agente genera guion (Nivel 2) usando PROMPT_LARGO_V1 o PROMPT_SHORT_V1.
+3. Código valida formato, longitud, keywords (Nivel 1) — orquestador.py.
 4. Agente produce evidencia (Nivel 2).
 5. Escalamiento a Nivel 3 solo si hay ambigüedad.
-6. Julián aprueba (Nivel 4) durante fase de calibración.
-7. Publicación + registro en 05_METRICAS_Y_KPIs.md.
+6. Julián aprueba (Nivel 4) durante fase de calibración; después, umbrales automáticos.
+7. Publicación + pull de métricas (YouTube Analytics API, paso 6 del orquestador) + registro.
+8. PROMPT DIFF V1 propone diff si la telemetría lo justifica.
 
 ### 3.4 Definition of Done
 
 - Guion generado desde fuente canónica, sin datos inventados.
 - Validado por código (formato, longitud, keywords).
 - Evidencia producida.
-- Aprobado por Julián (fase de calibración).
+- Aprobado por Julián (fase de calibración) o por umbral automático.
 - Registrado en métricas con consumo de tokens.
 - Listo para publicación en YouTube + TikTok + Reels + X.
+
+### 3.5 Criterio de autonomía
+
+20 publicaciones con diff de prompt aplicada y mejora medible → el sistema se considera solo.
 
 ---
 
@@ -104,21 +123,21 @@ Principio rector: **usar la inteligencia mínima necesaria para cada tarea** (ec
 
 - 1.000 suscriptores.
 - 4.000 horas de watch time (ruta larga) O 10M vistas de Shorts en 90 días.
-- Consumo de tokens por pieza < umbral definido en 05_METRICAS_Y_KPIs.md.
+- Consumo de tokens por pieza < umbral definido en 02_PROMPTS_Y_SCRIPTS/README.md (~11.800 tokens/ciclo, ~71.000/mes con 6 ciclos).
 - Intervención humana < 30 min/día en fase de calibración, < 10 min/día en fase estable.
 
 ---
 
 ## 5. PRÓXIMOS PASOS
 
-1. Completar 01_NICHO_Y_ESTRATEGIA.md con validación de tendencias actual (octubre 2026).
-2. Completar 02_CALENDARIO_30_DIAS.md con temas concretos.
-3. Implementar 04_SCRIPTS_Y_PROMPTS.md con prompts optimizados para tokens.
-4. Crear automatización diaria: revisión de métricas de YouTube + generación de 1 Short.
-5. Evaluar stack de orquestación (LangGraph / Pydantic AI / OpenAI Agents SDK) según criterios de 14 del documento Q4.
+1. Crear el canal nuevo en YouTube con nombre provisional.
+2. Conectar YouTube Analytics API (OAuth, cuenta dueña) como paso 6 del orquestador.
+3. Conectar la función 2 del orquestador al LLM real.
+4. Correr el demo de orquestador.py para confirmar aserciones.
+5. Publicar el primer Short de calibración y medir.
 
 ---
 
 **Estado:** CONTINUAR
-**Siguiente fase:** Nichos validados + calendario 30 días + prompts de guion
+**Siguiente fase:** Canal creado + Analytics API conectada + primer Short publicado
 **Horizonte:** 17 octubre 2026 → 31 enero 2027
