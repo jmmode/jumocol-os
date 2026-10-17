@@ -35,10 +35,11 @@ Razones:
 
 ### 1.4 Canal
 
-- **Canal nuevo** (nombre provisional, pendiente de validación con telemetría). Ver DEC-2026-10-17-012.
+- **Canal:** Evidencia Lab. Correo dueño: julian.evidencia@gmail.com. Creado 2026-10-17. Avatar: negro con EVIDENCIA en blanco.
 - **Music relax** (julianmontealegre7@gmail.com): excluido. 2 suscriptores, 9 horas calificadas, 0 subidas en 90 días, 0 vistas de Shorts, 0 infracciones. No califica para ningún umbral.
 - Umbral aplicable: solicitante nuevo. Meta de calificación: antes del 31/01/2027.
 - Conexión Analytics API: OAuth con la cuenta dueña primaria del canal nuevo.
+- Nota de gobierno: el nombre "Evidencia" solo fue rechazado por YouTube; "Evidencia Lab" se aceptó. El sufijo no cambia el posicionamiento.
 
 ### 1.5 Principio de arquitectura (heredado de JUMOCOL OS)
 
@@ -59,7 +60,7 @@ Principio rector: **usar la inteligencia mínima necesaria para cada tarea** (ec
 ```
 07_YOUTUBE/
 ├── README.md                              ← este archivo (canónico, sincronizado 2026-10-17)
-├── 01_AGENT_EXECUTION_PACKAGE.md         ← paquete ejecutable v1.0 (telemetría primero)
+├── 01_AGENT_EXECUTION_PACKAGE.md         ← paquete ejecutable v2.0 (telemetría primero)
 ├── 02_CALENDARIO_30_DIAS.md              ← 6 largos + 24 Shorts, sin referencia a Pereira
 └── 02_PROMPTS_Y_SCRIPTS/
 │   ├── README.md                          ← índice + presupuesto de tokens
@@ -76,7 +77,7 @@ GitHub (`jmmode/jumocol-os`) es la **única fuente canónica**. Las carpetas de 
 
 ---
 
-## 3. AGENT EXECUTION PACKAGE (v1.0)
+## 3. AGENT EXECUTION PACKAGE (v2.0)
 
 ### 3.1 Fuentes canónicas
 
@@ -130,7 +131,7 @@ GitHub (`jmmode/jumocol-os`) es la **única fuente canónica**. Las carpetas de 
 
 ## 5. PRÓXIMOS PASOS
 
-1. Crear el canal nuevo en YouTube con nombre provisional.
+1. ✅ Canal creado: Evidencia Lab (2026-10-17).
 2. Conectar YouTube Analytics API (OAuth, cuenta dueña) como paso 6 del orquestador.
 3. Conectar la función 2 del orquestador al LLM real.
 4. Correr el demo de orquestador.py para confirmar aserciones.
@@ -139,5 +140,5 @@ GitHub (`jmmode/jumocol-os`) es la **única fuente canónica**. Las carpetas de 
 ---
 
 **Estado:** CONTINUAR
-**Siguiente fase:** Canal creado + Analytics API conectada + primer Short publicado
+**Siguiente fase:** Analytics API conectada + primer Short publicado
 **Horizonte:** 17 octubre 2026 → 31 enero 2027
