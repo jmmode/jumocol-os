@@ -60,7 +60,7 @@
 |-----|------|------|-----------------|--------|
 | Sáb 7 | Short | "Cómo uso IA para negociar mejor (caso real)" | Experiencia de negocio | Aplicación directa |
 | Dom 8 | Short | "El error que casi me cuesta el canal de YouTube" | Lección de calibración | Transparencia |
-| Lun 9 | Short | "De Pereira a Miami: por qué mudé mi operación" | Relocalización | Contexto de vida |
+| Lun 9 | Short | "Operar desde Colombia con clientes en EE.UU.: la ventaja que nadie explota" | Jumo Call / Jumocoll LLC | Modelo de negocio real |
 | Mar 10 | Largo #5 | "Construyendo el sistema que genera este video: meta-contenido" | El propio YCS | Contenido sobre el proceso |
 | Mié 11 | Short | "Tokens: el nuevo petróleo. Quién lo controla, gana." | Economía de IA | Visión macro |
 | Jue 12 | Short | "Cómo elijo qué automatizar primero en un negocio" | Metodología | Framework |
@@ -97,3 +97,4 @@
 **Estado:** LISTO PARA EJECUCIÓN
 **Dependencia:** 04_SCRIPTS_Y_PROMPTS.md para generación de guiones
 **Siguiente:** Implementar prompts + automatización diaria
+**Corrección aplicada:** 2026-10-17 — eliminada toda referencia a mudanza/relocalización a Pereira (no aplica). Reemplazada por contenido de operación Colombia–EE.UU.
