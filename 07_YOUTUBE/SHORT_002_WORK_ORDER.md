@@ -3,13 +3,25 @@
 **Fecha:** 2026-10-18  
 **Estado:** Listo para ejecución  
 **Canal:** Evidencia Lab  
-**Objetivo del ciclo:** Mapear el proceso para automatizarlo en el Short #3 (código determinístico).
+**Objetivo del ciclo:** Mapear el proceso con múltiples agentes para automatizarlo en el Short #3.
+
+---
+
+## Enfoque de producción (3 fases)
+
+| Short | Método | Propósito |
+|-------|--------|----------|
+| **#1** | Manual (metodología Elon Musk) | Prototipo. Validar mensaje, formato y flujo. |
+| **#2** | Multi-agente (Grok + Celeste + Claude + OpenClaw) | Mapear y documentar el proceso completo usando todas las herramientas e integraciones disponibles. |
+| **#3** | Automatización determinística (Python + n8n + OpenClaw) | Mínima intervención humana. El proceso ya está mapeado. |
+
+Este Work Order corresponde a la **fase 2**.
 
 ---
 
 ## Tarea
 
-Generar el Short #2 con la misma estructura del primero, reduciendo intervención humana.
+Generar el Short #2 con la misma estructura del primero, reduciendo intervención humana y documentando cada paso.
 
 ## Guion (listo)
 
@@ -41,16 +53,17 @@ Si quieres ver cómo se construye, síguenos.
 
 ## Instrucciones para agentes
 
-1. Leer este archivo.
+1. Leer este archivo y el contrato de producción (`SHORT_PRODUCTION_CONTRACT.md`).
 2. Ejecutar solo la fila que te corresponde.
 3. Dejar el entregable en la carpeta `07_YOUTUBE/assets/short_002/` o reportar el enlace.
-4. No pedir confirmación al humano si el paso está definido.
+4. Documentar cualquier fricción o paso manual residual.
+5. No pedir confirmación al humano si el paso está definido.
 
 ## Criterio de éxito
 
 - Short publicado en las 3 plataformas.
 - Tiempo de intervención humana < 15 minutos.
-- Proceso documentado para convertirlo en código en el Short #3.
+- Proceso completamente mapeado y documentado para convertirlo en código en el Short #3.
 
 ## Siguiente
 
