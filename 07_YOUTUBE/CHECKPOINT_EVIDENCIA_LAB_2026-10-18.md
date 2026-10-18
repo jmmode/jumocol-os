@@ -7,12 +7,18 @@
 
 ---
 
+## Enlaces oficiales
+
+- **YouTube:** https://www.youtube.com/@EVIDENCIALAB  
+- **TikTok:** https://www.tiktok.com/@evidencia_lab  
+- **X:** https://x.com/evidencia_lab  
+
+---
+
 ## Hecho
 
 - Canal de YouTube **Evidencia Lab** creado (cuenta julian.evidencia@gmail.com).
-- Cuentas creadas y activas:
-  - TikTok: `@evidencia_lab`
-  - X: `@evidencia_lab`
+- Cuentas creadas y activas en TikTok y X.
 - Primer Short publicado en las 3 plataformas:
   - Título: **Cómo reducimos la intervención humana a 15 minutos**
   - Mensaje: Fuente → Código → Evidencia. 3 procesos, menos de 15 min de intervención humana por semana.
