@@ -1,42 +1,44 @@
-# Short #2 — Entregable de Claude (pasos 2, 3 y 4)
+# Short #2 — Montaje (Claude)
 
-**Work Order:** `07_YOUTUBE/SHORT_002_WORK_ORDER.md`
-**Título:** Cómo pasamos de 4 horas a 12 minutos por ciclo
-**Formato:** vertical 1080x1920, 30 fps, ~16 s
+**Fuentes:** `SHORT_PRODUCTION_CONTRACT.md`, `SHORT_002_WORK_ORDER.md`, `CHECKPOINT_SHORT_002_2026-10-18.md`, `ASSET_DELIVERY_STATUS.md`
+**Estado:** pipeline listo y probado; **`SHORT_002_FINAL.mp4` pendiente de los 3 insumos oficiales.**
 
-## Estado por paso
+## Insumos que faltan (carpeta `source/`)
 
-| Paso | Estado | Nota |
-|------|--------|------|
-| 2. Voz | Script listo, audio pendiente | Desde la nube no hay acceso a ElevenLabs (sin API key, salida de red bloqueada). `scripts/voz_elevenlabs.py` lo genera en un comando. |
-| 3. Visuales | Hecho | 5 tarjetas en `cards/`. La plantilla del Short #1 no está en el repo, así que se reconstruyó con el formato del canal (Fuente → Código → Evidencia). |
-| 4. Montaje | Hecho y probado | `scripts/montar.py` reemplaza a Clipchamp: mismo resultado, sin clics y repetible (base para el Short #3). |
+| Archivo | Origen | Cómo obtenerlo |
+|---|---|---|
+| `voz.mp3` | ElevenLabs, generación `JXhmveCwg80lfS8KCR7T` (~15,09 s, voz `TsKSGPuG26FpNj0JzQBq`) | Exportar desde la interfaz, o `ELEVENLABS_API_KEY=... python scripts/recuperar_voz.py`. No generar otra toma. |
+| `EVIDENCIA.png` | [Drive](https://drive.google.com/file/d/1s-qPjVHQYNUFUX9zUoWp3cdmIgB_3LuJ/view) | Descargar sin modificar. |
+| `mixkit-pressing-a-secret-code-2845.wav` | [Drive](https://drive.google.com/file/d/1SSzIzkXpc3GMH3c7_ak14JBd5GZULq5d/view) | Descargar sin modificar. |
 
-`short_002_preview_sin_voz.mp4` es el montaje con duraciones estimadas, para revisar los visuales.
+La sesión de Claude en la nube no puede llegar a ElevenLabs ni a Drive (red restringida), por eso no los descargó.
 
-## Cómo terminarlo (≈3 min de intervención humana)
+## Generar el final
 
-Requisitos: Python 3, `ffmpeg` en el PATH. Desde esta carpeta:
-
-```powershell
-$env:ELEVENLABS_API_KEY = "<tu clave>"
-$env:ELEVENLABS_VOICE_ID = "<id de la voz del Short #1>"
-python scripts/voz_elevenlabs.py   # -> voz.mp3 + timings.json
-python scripts/montar.py           # -> short_002_final.mp4
+```
+python scripts/montar.py          # exige los 3 insumos -> SHORT_002_FINAL.mp4 + qa/QA_REPORT.md
+python scripts/montar.py --preview  # sin insumos -> SHORT_002_PREVIEW.mp4 con marcadores
 ```
 
-`timings.json` trae el inicio y fin de cada frase según ElevenLabs, así cada tarjeta cambia exactamente cuando cambia la frase. Si generas el audio a mano en la web de ElevenLabs, guarda el archivo como `voz.mp3` aquí y corre solo `montar.py`: las tarjetas se reparten en proporción a las palabras.
+Requisitos: Python 3 con Pillow, `ffmpeg`/`ffprobe` en el PATH, fuente Inter instalada (para subtítulos).
 
-Para cambiar textos o estilo: editar `scripts/render_cards.py` y correr `python scripts/render_cards.py` (requiere Pillow).
+## Qué hace `montar.py`
+
+1. Detecta las 4 pausas más largas de `voz.mp3` y corta las escenas ahí: sincronía con la duración real, sin tiempos fijos.
+2. Une las 5 escenas de `cards/` con transiciones de 0,25 s.
+3. Quema subtítulos centrados (blanco cálido, ≤5 palabras por línea) sobre la zona de interfaz de Shorts.
+4. Cierra con `EVIDENCIA.png` original centrado sobre negro (escalado sin deformar) y la firma Mixkit al terminar la voz.
+5. Exporta 1080×1920, 30 fps, H.264 + AAC 48 kHz, y escribe `qa/QA_REPORT.md` con medidas ffprobe, hashes de insumos y fotogramas.
 
 ## Archivos
 
-- `guion.json` — fuente única del guion: un segmento de voz por tarjeta.
-- `cards/01_hook.png` … `05_cta.png` — visuales.
-- `scripts/render_cards.py` — genera las tarjetas.
-- `scripts/voz_elevenlabs.py` — paso 2 (voz + marcas de tiempo).
-- `scripts/montar.py` — paso 4 (tarjetas + voz → mp4, con transiciones de 0,25 s).
+- `guion.json` — guion del Work Order, un segmento por escena (texto sin cambios; "Fuente → Código → Evidencia" se lee como "Fuente, código, evidencia").
+- `cards/` — escenas en negro #000000 y blanco cálido #F6F4F1; cian solo en el diagrama y el código. Regenerar con `python scripts/render_cards.py`.
+- `scripts/montar.py`, `scripts/render_cards.py`, `scripts/recuperar_voz.py`.
+- `SHORT_002_PREVIEW.mp4` + `qa/` — borrador sin insumos oficiales. No publicar.
 
-## Notas para el Short #3 (flujo determinístico)
+## Pendientes fuera de este pipeline
 
-El ciclo completo ya es `guion.json → render_cards.py → voz_elevenlabs.py → montar.py`. Lo que queda manual es la clave de ElevenLabs y la publicación (paso 5). Para automatizarlo: guardar la clave como secreto en n8n, ejecutar los tres scripts en un nodo Execute Command y publicar con las APIs de YouTube Data v3, TikTok Content Posting y X.
+- Coherencia con el Short #1: Claude no pudo ver las capturas (están en Drive). Revisar `qa/` contra ellas.
+- La cifra "4 horas → 12 minutos" necesita fuente o marcarse como ejemplo (ver `SHORT_002_CONNECTORS_READINESS_2026-10-18.md`, sección 7).
+- Publicación: fuera del alcance de Claude.
