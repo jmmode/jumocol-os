@@ -61,27 +61,23 @@ Este documento es checkpoint operacional, no aprobación de publicación ni prue
 
 ---
 
-## 7. Avance de Claude — montaje V2 (actualizado 2026-10-18, 09:00 UTC)
+## 7. Avance de Claude — montaje V2 (actualizado 2026-10-18, 09:15 UTC)
 
 **Responsable:** Claude (orden de producción audiovisual V2)
-**Entregable:** [PR #1](https://github.com/jmmode/jumocol-os/pull/1) (borrador), rama `claude/short-002-assets`, carpeta `07_YOUTUBE/assets/short_002/`. **No fusionado a main.**
-**Estado:** PIPELINE V2 LISTO Y PROBADO — `SHORT_002_FINAL.mp4` **NO GENERADO**. Logo y firma ya integrados; **solo falta `voz.mp3`**.
+**Entregable:** [`SHORT_002_FINAL.mp4`](https://github.com/jmmode/jumocol-os/blob/claude/short-002-assets/07_YOUTUBE/assets/short_002/SHORT_002_FINAL.mp4) en [PR #1](https://github.com/jmmode/jumocol-os/pull/1), rama `claude/short-002-assets`. **No fusionado a main. No publicado.**
+**Estado:** MP4 FINAL GENERADO Y VALIDADO TÉCNICAMENTE — quedan 3 validaciones humanas antes de publicar.
 
 | Actividad | Estado | Evidencia |
 |---|---|---|
-| Timeline de 32 s con 6 escenas animadas (Problema, Medición, Transformación, Evidencia, CTA, Cierre) | COMPLETADO | `scripts/escenas.py`, `qa/escena_*.png` |
-| Voz oficial colocada por frases en su escena, sin cambiar velocidad ni tono | COMPLETADO y probado con voz sintética de 15,09 s: 4 pausas detectadas, frases en 0,3 / 5,4 / 13,3 / 17,4 / 23,4 s | `scripts/montar.py`, silencedetect sobre el MP4 de prueba |
-| Firma Mixkit 0,3 s después de la última frase, sin solaparla; pico de audio medido | COMPLETADO en prueba (firma en 28,3 s; pico −26,8 dBFS con insumos sintéticos) | `qa/QA_REPORT.md` |
-| QA automático de los 13 puntos de la orden V2 | COMPLETADO | `qa/QA_REPORT.md` |
-| `SHORT_002_PREVIEW.mp4` (32,00 s, 1080×1920, 30 fps; sin voz, logo ni firma) | COMPLETADO, **no publicable** | `SHORT_002_PREVIEW.mp4` |
-| `EVIDENCIA.png` y `mixkit-pressing-a-secret-code-2845.wav` | COMPLETADO: extraídos del ZIP subido por Dirección (commit d0b1b12) a `source/`; logo 2000×2000 sha e0a08c130fc41824, firma 1,02 s sha f30754a75ef15021; cierre del preview verificado y pico −1,0 dBFS | `qa/escena_6_cierre_30.00s.png` |
-| Recuperar `voz.mp3` | **BLOQUEADO** | Red de Claude rechaza ElevenLabs y Drive; Celeste confirmó en el PR que sus conectores no pueden subir binarios |
-| Continuidad con Short #1 (QA 11) | **NO VALIDADO** | Capturas en Drive, inaccesibles para Claude |
-| Afirmación «4 horas → 12 minutos» (QA 13) | **RIESGO EDITORIAL** | No hay medición que la respalde en el repositorio |
-| `SHORT_002_FINAL.mp4` | **PENDIENTE** | — |
+| Insumos oficiales en `source/` | COMPLETADO: logo y firma del ZIP de Dirección; voz subida como `New tts node.mp3` (15,12 s ≈ 15,09 s de la toma `JXhmveCwg80lfS8KCR7T`), renombrada a `voz.mp3` | `qa/QA_REPORT.md` (hashes) |
+| Cortes de la voz por frase | COMPLETADO: 4 pausas entre frases fijadas en `source/cortes.json` (silencedetect + conteo de sílabas) | `source/cortes.json` |
+| `SHORT_002_FINAL.mp4` | COMPLETADO: 32,00 s, 1080×1920, 30 fps, H.264 + AAC 48 kHz, 3,6 MB | ffprobe en `qa/QA_REPORT.md` |
+| Voz en timeline sin alterar velocidad ni tono | COMPLETADO: frases en 0,37 / 5,40 / 13,30 / 17,40 / 23,44 s (silencedetect sobre el MP4) | `qa/QA_REPORT.md` |
+| Firma Mixkit tras la última palabra, sin clipping | COMPLETADO: entra 28,31 s, última palabra termina 25,35 s; pico −1,0 dBFS | `qa/QA_REPORT.md` |
+| QA automático: duración, resolución, fps, reproducción, logo, firma, centrado (≤4 px), zona segura, paleta, subtítulos, congelamientos | OK | `qa/QA_REPORT.md`, `qa/escena_*.png` |
+| Escucha final (pronunciación, pausas) — QA 5 | **PENDIENTE (humano)** | — |
+| Continuidad con Short #1 — QA 11 | **PENDIENTE (humano)**: capturas en Drive, inaccesibles para Claude | — |
+| Afirmación «4 horas → 12 minutos» — QA 13 | **RIESGO EDITORIAL**: no hay medición en el repositorio | — |
+| Publicación | FUERA DE ALCANCE de Claude | — |
 
-**QA del preview (medido):** 1 duración 32,00 s OK · 2 resolución OK · 3 30 fps OK · 4 reproducible OK · 8 títulos centrados OK (≤4 px) · 9 zona segura OK · 12 sin congelamientos OK · 5, 6, 7, 10 PENDIENTES por insumos · 11 PENDIENTE manual · 13 RIESGO.
-
-**Única intervención que desbloquea el final:** subir a mano `voz.mp3` (toma `JXhmveCwg80lfS8KCR7T`) a `07_YOUTUBE/assets/short_002/source/` en la rama `claude/short-002-assets` (GitHub → Add file → Upload files) con ese nombre exacto (un ZIP también sirve). Después, `python scripts/montar.py` genera `SHORT_002_FINAL.mp4` y su QA; Claude lo ejecuta y actualiza este checkpoint.
-
-**Otras intervenciones manuales pendientes:** comparar capturas con el Short #1; respaldar o reformular «4 horas → 12 minutos»; escuchar el MP4 final; publicación (fuera de alcance de Claude).
+**Antes de publicar:** escuchar el MP4, compararlo con el Short #1 y respaldar o reformular «4 horas → 12 minutos». Duplicados idénticos de logo, WAV y ZIP en la raíz de `assets/short_002/` se retiraron; los originales quedan en `source/`.
