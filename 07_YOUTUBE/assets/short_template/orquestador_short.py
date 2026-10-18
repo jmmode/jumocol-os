@@ -128,7 +128,7 @@ def render_visuales(guion: str, numero_clave: str, output_dir: Path) -> Path:
     """
     Genera video base 1080x1920 con FFmpeg.
     Fondo negro, texto blanco centrado, acento cian en el número clave.
-    Escenas secuenciales de ~6 s cada una.
+    Escenas: 4 de contenido + 1 de logo EVIDENCIA al final.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     video_path = output_dir / "visuales.mp4"
@@ -137,13 +137,12 @@ def render_visuales(guion: str, numero_clave: str, output_dir: Path) -> Path:
     while len(lineas) < 4:
         lineas.append("")
 
-    # Escapa caracteres especiales para drawtext
     def esc(t: str) -> str:
         return t.replace("'", "\'").replace(":", "\:").replace("%", "\%")
 
-    # Duración total ~24 s (4 escenas x 6 s)
+    # 30 s totales: 0-6, 6-12, 12-18, 18-24, 24-30 (logo)
     filter_complex = (
-        f"color=c=black:s=1080x1920:d=24[base];"
+        f"color=c=black:s=1080x1920:d=30[base];"
         f"[base]drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
         f"text='{esc(lineas[0])}':fontcolor=white:fontsize=72:x=(w-text_w)/2:y=h/4:enable='between(t,0,6)',"
         f"drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
@@ -151,7 +150,11 @@ def render_visuales(guion: str, numero_clave: str, output_dir: Path) -> Path:
         f"drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
         f"text='{esc(numero_clave)}':fontcolor=0x00D4FF:fontsize=96:x=(w-text_w)/2:y=h/2:enable='between(t,12,18)',"
         f"drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
-        f"text='{esc(lineas[3])}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=h/2+150:enable='between(t,18,24)'"
+        f"text='{esc(lineas[3])}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=h/2+150:enable='between(t,18,24)',"
+        f"drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
+        f"text='EVIDENCIA':fontcolor=0x00D4FF:fontsize=84:x=(w-text_w)/2:y=h/2-40:enable='between(t,24,30)',"
+        f"drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:"
+        f"text='LAB':fontcolor=white:fontsize=36:x=(w-text_w)/2:y=h/2+50:enable='between(t,24,30)'"
         f"[v]"
     )
 
@@ -162,7 +165,7 @@ def render_visuales(guion: str, numero_clave: str, output_dir: Path) -> Path:
         "-map", "[v]", "-map", "0:a",
         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", "30",
         "-c:a", "aac", "-shortest",
-        "-t", "24",
+        "-t", "30",
         str(video_path),
     ]
     subprocess.run(cmd, check=True, capture_output=True)
