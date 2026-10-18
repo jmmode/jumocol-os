@@ -1,40 +1,62 @@
-# QA técnico — SHORT_002_PREVIEW.mp4
+# QA_REPORT — SHORT_002_PREVIEW.mp4
 
-Generado por `scripts/montar.py`. Medido con ffprobe sobre el archivo exportado.
+Generado por `scripts/montar.py`. Valores medidos sobre el MP4 exportado (ffprobe, ffmpeg, Pillow).
 
-| Requisito | Medido | Resultado |
-|---|---|---|
-| Resolución 1080×1920 | 1080×1920 | OK |
-| 30 fps | 30 fps | OK |
-| Pista de audio | aac 48000 Hz, 2 canales | OK |
-| Duración | 17.87 s | OK |
-| Sincronía escenas/subtítulos | estimación por palabras (sin audio) | REVISAR |
+> **PREVIEW, no entregable.** Faltan en `source/`: voz.mp3, EVIDENCIA.png, mixkit-pressing-a-secret-code-2845.wav.
 
-## Insumos
+| # | Requisito | Medido | Resultado |
+|---|---|---|---|
+| 1 | Duración 30–34 s | 32.00 s | OK |
+| 2 | Resolución 1080×1920 | 1080×1920 | OK |
+| 3 | 30 fps | 30 fps | OK |
+| 4 | Audio y video reproducibles | h264 + aac 48000 Hz; decodificación sin errores | OK |
+| 5 | Voz original ElevenLabs | FALTA voz.mp3 (preview con voz estimada) | PENDIENTE |
+| 6 | Efecto de cierre oficial | FALTA mixkit WAV | PENDIENTE |
+| 7 | Logotipo original | FALTA EVIDENCIA.png (marcador rojo) | PENDIENTE |
+| 8 | Títulos centrados | desvío máx. 4 px entre márgenes | OK |
+| 9 | Zona segura y legibilidad | contenido entre x 60–1020, y 200–1500 | OK |
+| 10 | Subtítulos sincronizados | estimación por caracteres (preview sin voz) | PENDIENTE |
+| 11 | Continuidad con Short #1 | capturas del Short #1 en Drive, no accesibles para Claude | PENDIENTE (manual) |
+| 12 | Sin silencios vacíos ni congelamientos | imagen quieta máx. 0.00 s (t=0.0); pausa máx. entre frases 4.83 s cubierta por animación | OK |
+| 13 | Afirmación «4 horas → 12 minutos» | sin fuente de medición en el repositorio | RIESGO EDITORIAL |
+
+Pico de audio: -91.0 dBFS (sin clipping)
+
+Paleta (fracción de píxeles saturados fuera de cian): problema 0.00%, medicion 0.00%, transformacion 0.00%, evidencia 0.02%, cta 0.00% → OK
+
+## Recursos utilizados
 
 | Archivo | Estado | SHA-256 (16) |
 |---|---|---|
-| `voz.mp3` | **FALTA** | - |
-| `EVIDENCIA.png` | **FALTA** | - |
-| `mixkit-pressing-a-secret-code-2845.wav` | **FALTA** | - |
+| `source/voz.mp3` | **FALTA** | - |
+| `source/EVIDENCIA.png` | **FALTA** | - |
+| `source/mixkit-pressing-a-secret-code-2845.wav` | **FALTA** | - |
 
-## Segmentos
+## Timeline
 
-| # | Inicio | Fin |
+| Escena | Inicio | Voz en timeline |
 |---|---|---|
-| 1 | 0.00 s | 4.62 s |
-| 2 | 4.62 s | 8.46 s |
-| 3 | 8.46 s | 9.62 s |
-| 4 | 9.62 s | 13.08 s |
-| 5 | 13.08 s | 15.77 s |
+| problema | 0.00 s | 0.30–3.90 s |
+| medicion | 5.00 s | 5.40–8.47 s |
+| transformacion | 11.00 s | 13.30–14.66 s |
+| evidencia | 17.00 s | 17.40–20.42 s |
+| cta | 23.00 s | 23.40–25.64 s |
+| cierre | 28.00 s | firma 28.30 s |
 
-## Fotogramas para revisión visual
+## Capturas
 
-- `qa/frame_01_02.31s.png`
-- `qa/frame_02_06.54s.png`
-- `qa/frame_03_09.04s.png`
-- `qa/frame_04_11.35s.png`
-- `qa/frame_05_14.42s.png`
-- `qa/frame_cierre.png`
+- `qa/escena_1_problema_04.25s.png`
+- `qa/escena_2_medicion_10.10s.png`
+- `qa/escena_3_transformacion_16.10s.png`
+- `qa/escena_4_evidencia_22.10s.png`
+- `qa/escena_5_cta_27.25s.png`
+- `qa/escena_6_cierre_30.00s.png`
 
-Paleta, logo sin alteraciones, legibilidad y coherencia con el Short #1 se validan mirando estos fotogramas y el MP4.
+## Pendientes
+
+- Subir `source/voz.mp3`.
+- Subir `source/EVIDENCIA.png`.
+- Subir `source/mixkit-pressing-a-secret-code-2845.wav`.
+- Comparar capturas con el Short #1 (punto 11).
+- Respaldar «4 horas → 12 minutos» con la medición real o presentarlo como ejemplo antes de publicar (punto 13).
+- Escuchar el MP4 completo: pronunciación, pausas y entrada de la firma (punto 5).
