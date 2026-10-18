@@ -1,17 +1,17 @@
 # Short #2 — Montaje (Claude, orden de producción V2)
 
 **Fuentes:** `SHORT_PRODUCTION_CONTRACT.md`, `SHORT_002_WORK_ORDER.md`, `CHECKPOINT_SHORT_002_2026-10-18.md`, `ASSET_DELIVERY_STATUS.md`, orden de producción V2 (2026-10-18)
-**Estado:** pipeline listo y probado. Logo y firma ya están en `source/` (extraídos del ZIP que subió Dirección). **`SHORT_002_FINAL.mp4` pendiente solo de `voz.mp3`.**
+**Estado:** **`SHORT_002_FINAL.mp4` generado** (32,00 s, 1080×1920, 30 fps) con los 3 insumos oficiales. Pendientes humanos: escucha final, comparación con el Short #1 y respaldo de «4 horas → 12 minutos» (ver `qa/QA_REPORT.md`).
 
 ## Insumos (carpeta `source/`)
 
 | Archivo | Origen | Cómo obtenerlo |
 |---|---|---|
-| `voz.mp3` | ElevenLabs, generación `JXhmveCwg80lfS8KCR7T` (~15,09 s, voz `TsKSGPuG26FpNj0JzQBq`) | **FALTA.** Exportar desde el [flow](https://elevenlabs.io/app/flows/agfb3cHnooatwzVq8p1z), o `ELEVENLABS_API_KEY=... python scripts/recuperar_voz.py`. No generar otra toma. |
+| `voz.mp3` | ElevenLabs, generación `JXhmveCwg80lfS8KCR7T` (~15,09 s, voz `TsKSGPuG26FpNj0JzQBq`) | Presente: subido por Dirección como `New tts node.mp3` (15,12 s, mono 44,1 kHz, sha 8580d9736b3e51cc), renombrado a `voz.mp3`. |
 | `EVIDENCIA.png` | [Drive](https://drive.google.com/file/d/1s-qPjVHQYNUFUX9zUoWp3cdmIgB_3LuJ/view) | Presente (2000×2000 RGBA, sha e0a08c130fc41824). |
 | `mixkit-pressing-a-secret-code-2845.wav` | [Drive](https://drive.google.com/file/d/1SSzIzkXpc3GMH3c7_ak14JBd5GZULq5d/view) | Presente (1,02 s, 44,1 kHz estéreo, sha f30754a75ef15021). |
 
-Ni Claude (red de la nube) ni Celeste (conectores sin descarga binaria) pueden mover `voz.mp3`: hace falta subirlo a mano a `source/` en la rama `claude/short-002-assets` (sirve también dentro de un ZIP).
+`source/cortes.json` fija las 4 pausas entre frases de esta toma. Hace falta porque las pausas entre «Fuente. Código. Evidencia.» son más largas que algunas pausas entre frases; se verificaron por silencedetect y conteo de sílabas (≈6 sílabas/s en todos los tramos). Si se cambia la toma, borrar `cortes.json` o actualizarlo.
 
 ## Generar el final
 
@@ -36,7 +36,7 @@ Requisitos: Python 3 con Pillow, `ffmpeg`/`ffprobe` en el PATH, fuente Inter (o 
 
 - `guion.json` — guion del Work Order, un segmento por escena.
 - `scripts/montar.py`, `scripts/escenas.py`, `scripts/recuperar_voz.py`.
-- `SHORT_002_PREVIEW.mp4` + `qa/` — borrador sin insumos oficiales. No publicar.
+- `SHORT_002_FINAL.mp4` + `qa/` — entregable y su reporte de QA. No publicado.
 
 ## Pendientes fuera de este pipeline
 

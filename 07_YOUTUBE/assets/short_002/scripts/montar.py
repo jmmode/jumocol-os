@@ -27,6 +27,7 @@ import escenas  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "source"
 VOZ = SOURCE / "voz.mp3"
+CORTES = SOURCE / "cortes.json"
 LOGO = SOURCE / "EVIDENCIA.png"
 SFX = SOURCE / "mixkit-pressing-a-secret-code-2845.wav"
 FPS = 30
@@ -71,9 +72,19 @@ def voice_segments(segs, voz):
             d = speech * c / sum(chars)
             out.append((t, t + d, t, t + d))
             t += d + pause
-        return out, "estimación por caracteres (preview sin voz)"
+        return out, {}, "estimación por caracteres (preview sin voz)"
 
     dur = probe_duration(voz)
+    if CORTES.exists():
+        # Cortes verificados para esta toma: las pausas más largas no siempre separan frases
+        # (p. ej. «Fuente. Código. Evidencia.» tiene pausas entre palabras más largas que entre frases)
+        c = json.loads(CORTES.read_text(encoding="utf-8"))
+        gaps = [tuple(g) for g in c["pausas_entre_frases"]]
+        speech = list(zip([0.0] + [g[1] for g in gaps], [g[0] for g in gaps] + [c.get("fin_voz", dur)]))
+        cuts = [0.0] + [(g[0] + g[1]) / 2 for g in gaps] + [dur]
+        marks = {"flujo": c.get("palabras_flujo"), "doce": c.get("inicio_doce")}
+        return [(cuts[i], cuts[i + 1], *speech[i]) for i in range(len(segs))], marks, "cortes verificados de source/cortes.json"
+
     err = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(voz), "-af", "silencedetect=noise=-35dB:d=0.18",
                           "-f", "null", "-"], capture_output=True, text=True).stderr
     sil = list(zip([float(x) for x in re.findall(r"silence_start: ([\d.]+)", err)],
@@ -87,7 +98,7 @@ def voice_segments(segs, voz):
     gaps = sorted(sorted(internal, key=lambda s: s[1] - s[0], reverse=True)[:need])
     speech = list(zip([lead] + [g[1] for g in gaps], [g[0] for g in gaps] + [tail]))
     cuts = [0.0] + [(g[0] + g[1]) / 2 for g in gaps] + [dur]
-    return [(cuts[i], cuts[i + 1], *speech[i]) for i in range(len(segs))], f"pausas reales de voz.mp3 ({len(internal)} silencios)"
+    return [(cuts[i], cuts[i + 1], *speech[i]) for i in range(len(segs))], {}, f"pausas reales de voz.mp3 ({len(internal)} silencios)"
 
 
 def char_frac(text, word_index):
@@ -110,15 +121,22 @@ def plan(segs, vsegs):
     return starts, placed, total
 
 
-def scene_contexts(segs, starts, placed, logo):
+def scene_contexts(segs, vsegs, marks, starts, placed, logo):
     def local(i, word_index):
         v0, v1 = placed[i]
         return v0 - starts[i] + (v1 - v0) * char_frac(segs[i]["voz"], word_index)
+
+    def at_mark(i, t_mp3):
+        # Instante del MP3 llevado al tiempo local de la escena i
+        return placed[i][0] + (t_mp3 - vsegs[i][2]) - starts[i]
+
+    flujo = [at_mark(2, m) for m in marks["flujo"]] if marks.get("flujo") else [local(2, k) for k in range(3)]
+    doce = at_mark(3, marks["doce"]) if marks.get("doce") else local(3, 2)
     return [
         {},
         {"voice_mid": local(1, 5)},                                   # "y lo convertimos en código"
-        {"word_times": [local(2, 0), local(2, 1), local(2, 2)]},      # Fuente, código, evidencia
-        {"count_start": local(3, 2)},                                 # "Doce minutos..."
+        {"word_times": flujo},                                        # Fuente, código, evidencia
+        {"count_start": doce},                                        # "Doce minutos..."
         {"follow_t": local(4, 6)},                                    # "síguenos"
         {"logo": logo},
     ]
@@ -342,13 +360,13 @@ def main():
 
     segs = json.loads((ROOT / "guion.json").read_text(encoding="utf-8"))["segmentos"]
     voz = VOZ if VOZ.exists() else None
-    vsegs, timing_source = voice_segments(segs, voz)
+    vsegs, marks, timing_source = voice_segments(segs, voz)
     starts, placed, total = plan(segs, vsegs)
     logo = Image.open(LOGO).convert("RGBA") if LOGO.exists() else None
     if logo:
         s = min(1000 / logo.width, 1000 / logo.height)
         logo = logo.resize((round(logo.width * s), round(logo.height * s)), Image.LANCZOS)
-    ctxs = scene_contexts(segs, starts, placed, logo)
+    ctxs = scene_contexts(segs, vsegs, marks, starts, placed, logo)
     events = subtitle_events(segs, placed)
 
     build = ROOT / "build"

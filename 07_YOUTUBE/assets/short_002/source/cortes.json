@@ -1,0 +1,8 @@
+{
+  "toma": "JXhmveCwg80lfS8KCR7T",
+  "metodo": "silencedetect -35 dB / 0,07 s sobre voz.mp3 + conteo de sílabas por tramo (≈6 sílabas/s en toda la toma)",
+  "pausas_entre_frases": [[3.645, 3.992], [6.938, 7.213], [9.299, 9.434], [12.626, 12.789]],
+  "palabras_flujo": [7.213, 7.968, 8.711],
+  "inicio_doce": 10.451,
+  "fin_voz": 14.752
+}
