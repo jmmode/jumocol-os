@@ -1,14 +1,20 @@
 """
-orquestador_short.py — Esqueleto para generación determinística de Shorts (Evidencia Lab)
+orquestador_short.py — Generación determinística de Shorts (Evidencia Lab)
 Especificación: 07_YOUTUBE/SHORT_003_AUTOMATION_SPEC.md
 """
 
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None  # type: ignore
 
 
 @dataclass
@@ -31,20 +37,50 @@ def cargar_entrada(path: str | Path) -> ShortInput:
     return ShortInput(**data)
 
 
+def _cliente_llm() -> Any:
+    """Cliente OpenAI-compatible (xAI Grok por defecto)."""
+    if OpenAI is None:
+        raise RuntimeError("Instala openai: pip install openai")
+    api_key = os.getenv("XAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("Define XAI_API_KEY o OPENAI_API_KEY")
+    base_url = os.getenv("LLM_BASE_URL", "https://api.x.ai/v1")
+    return OpenAI(api_key=api_key, base_url=base_url)
+
+
 def generar_guion_corto(entrada: ShortInput) -> str:
     """
     Única llamada LLM del flujo.
     Prompt fijo y acotado. Meta: < 800 tokens totales por Short.
     """
-    # TODO: implementar llamada real (OpenAI / Anthropic / Grok) con prompt:
-    # "Reescribe estas 4 frases en estilo Evidencia Lab, máximo 80 palabras, sin inventar datos."
-    frases_base = [
-        entrada.tema,
-        entrada.claim,
-        f"Resultado: {entrada.numero_clave}",
-        entrada.cta,
-    ]
-    return "\n".join(frases_base)  # placeholder hasta integrar LLM
+    client = _cliente_llm()
+    modelo = os.getenv("LLM_MODEL", "grok-3")
+
+    system = (
+        "Eres el redactor de Evidencia Lab. Estilo: directo, concreto, sin relleno, "
+        "sin inventar datos. Máximo 80 palabras. Usa exactamente la estructura de 4 líneas."
+    )
+    user = (
+        "Reescribe estas 4 frases en estilo Evidencia Lab. "
+        "Mantén el sentido, no añadas información nueva.\n\n"
+        f"1. {entrada.tema}\n"
+        f"2. {entrada.claim}\n"
+        f"3. Resultado: {entrada.numero_clave}\n"
+        f"4. {entrada.cta}\n\n"
+        "Devuelve solo las 4 frases, una por línea."
+    )
+
+    resp = client.chat.completions.create(
+        model=modelo,
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+        max_tokens=200,
+        temperature=0.4,
+    )
+    texto = resp.choices[0].message.content or ""
+    return texto.strip()
 
 
 def generar_voz(texto: str, output_path: Path) -> Path:
