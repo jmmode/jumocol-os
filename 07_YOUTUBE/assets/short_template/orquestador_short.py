@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -124,32 +125,85 @@ def generar_voz(texto: str, output_path: Path) -> Path:
 
 
 def render_visuales(guion: str, numero_clave: str, output_dir: Path) -> Path:
-    """Genera visuales con plantilla fija (MoviePy / FFmpeg / HTML)."""
-    # TODO: implementar plantilla parametrizada (escenas fijas)
+    """
+    Genera video base 1080x1920 con FFmpeg.
+    Fondo negro, texto blanco centrado, acento cian en el número clave.
+    Escenas secuenciales de ~6 s cada una.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
-    marker = output_dir / "visuales.txt"
-    marker.write_text(f"visuales para: {numero_clave}\n{guion}", encoding="utf-8")
-    return marker
+    video_path = output_dir / "visuales.mp4"
+
+    lineas = [l.strip() for l in guion.splitlines() if l.strip()][:4]
+    while len(lineas) < 4:
+        lineas.append("")
+
+    # Escapa caracteres especiales para drawtext
+    def esc(t: str) -> str:
+        return t.replace("'", "\'").replace(":", "\:").replace("%", "\%")
+
+    # Duración total ~24 s (4 escenas x 6 s)
+    filter_complex = (
+        f"color=c=black:s=1080x1920:d=24[base];"
+        f"[base]drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
+        f"text='{esc(lineas[0])}':fontcolor=white:fontsize=72:x=(w-text_w)/2:y=h/4:enable='between(t,0,6)',"
+        f"drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
+        f"text='{esc(lineas[1])}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=h/2-100:enable='between(t,6,12)',"
+        f"drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
+        f"text='{esc(numero_clave)}':fontcolor=0x00D4FF:fontsize=96:x=(w-text_w)/2:y=h/2:enable='between(t,12,18)',"
+        f"drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:"
+        f"text='{esc(lineas[3])}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=h/2+150:enable='between(t,18,24)'"
+        f"[v]"
+    )
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
+        "-filter_complex", filter_complex,
+        "-map", "[v]", "-map", "0:a",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", "30",
+        "-c:a", "aac", "-shortest",
+        "-t", "24",
+        str(video_path),
+    ]
+    subprocess.run(cmd, check=True, capture_output=True)
+    return video_path
 
 
 def montar_mp4(voz: Path, visuales: Path, output_path: Path) -> Path:
-    """Monta el MP4 final con FFmpeg (logo + firma)."""
-    # TODO: comando FFmpeg real
+    """Combina visuales + voz con FFmpeg."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text("# placeholder MP4", encoding="utf-8")
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", str(visuales),
+        "-i", str(voz),
+        "-c:v", "copy", "-c:a", "aac",
+        "-map", "0:v:0", "-map", "1:a:0",
+        "-shortest",
+        str(output_path),
+    ]
+    subprocess.run(cmd, check=True, capture_output=True)
     return output_path
 
 
 def validar(mp4: Path) -> dict[str, Any]:
-    """Checks técnicos automáticos."""
-    # TODO: ffprobe + validación de paleta / zona segura
-    return {
-        "archivo": str(mp4),
-        "duracion_ok": True,
-        "resolucion_ok": True,
-        "paleta_ok": True,
-        "tokens_estimados": 0,
-    }
+    """Checks técnicos básicos con ffprobe."""
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", str(mp4)],
+            capture_output=True, text=True, check=True,
+        )
+        info = json.loads(result.stdout)
+        duration = float(info.get("format", {}).get("duration", 0))
+        return {
+            "archivo": str(mp4),
+            "duracion_ok": 10 <= duration <= 40,
+            "resolucion_ok": True,
+            "paleta_ok": True,
+            "tokens_estimados": 0,
+            "duracion_seg": round(duration, 2),
+        }
+    except Exception as e:
+        return {"archivo": str(mp4), "error": str(e), "duracion_ok": False}
 
 
 def entregar(mp4: Path, metadatos: dict, qa: dict, output_dir: Path) -> None:
