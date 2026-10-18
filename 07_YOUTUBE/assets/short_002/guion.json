@@ -1,0 +1,11 @@
+{
+  "id": "short_002",
+  "titulo": "Cómo pasamos de 4 horas a 12 minutos por ciclo",
+  "segmentos": [
+    {"card": "01_hook", "voz": "La mayoría de los equipos sigue copiando y pegando datos entre hojas."},
+    {"card": "02_medicion", "voz": "Nosotros medimos el tiempo real y lo convertimos en código."},
+    {"card": "03_flujo", "voz": "Fuente, código, evidencia."},
+    {"card": "04_resultado", "voz": "Un proceso. Doce minutos de intervención humana por ciclo."},
+    {"card": "05_cta", "voz": "Si quieres ver cómo se construye, síguenos."}
+  ]
+}
