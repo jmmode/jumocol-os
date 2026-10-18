@@ -27,7 +27,7 @@ Estado: REFERENCIAS MAESTRAS IDENTIFICADAS; integración de binarios en Drive y 
 ## Almacenamiento y trazabilidad
 - Este MD es la especificación técnica canónica; todavía está en rama `docs/ai-entrypoint-multimodel-2026-10-17`, no en main.
 - Drive: `07_YOUTUBE_CONTENT_SYSTEM/` conserva un espejo humano.
-- Los dos audios originales se recibieron como archivos de conversación; la carga de sus binarios maestros a Drive aún NO está verificada.
+- Los dos audios originales se recibieron como archivos de conversación; los dos masters están cargados y verificados mediante listado de Drive el 2026-10-18.
 - No afirmar que ElevenLabs o Clipchamp estén conectados mediante API hasta comprobarlo.
 
 ## Faltantes para V1
@@ -35,3 +35,9 @@ Estado: REFERENCIAS MAESTRAS IDENTIFICADAS; integración de binarios en Drive y 
 - Identificación y autorización de la música de fondo si existe.
 - Mapeo temporal exacto del efecto final comparado con el MP4 del Short #1.
 - Enlaces verificables de los masters en Drive y derechos de uso.
+
+## Masters verificados en Google Drive (2026-10-18)
+Carpeta: https://drive.google.com/drive/folders/1AMX90fL4mnHZIuAqZMlbnVnbJ0Vi5umw
+- [Voz ElevenLabs Linda Gomez MP3](https://drive.google.com/file/d/1lC4yMejZ20rPtA-xtzBwUcpRIkmXT1K7/view) — 310344 bytes.
+- [Efecto cierre Mixkit WAV](https://drive.google.com/file/d/1SSzIzkXpc3GMH3c7_ak14JBd5GZULq5d/view) — 179988 bytes.
+Los archivos fueron subidos sin edición y se verificó su existencia y tamaño en Drive. No se ha verificado aún hash SHA256 remoto.
