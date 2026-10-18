@@ -2,7 +2,7 @@
 
 Generado por `scripts/montar.py`. Valores medidos sobre el MP4 exportado (ffprobe, ffmpeg, Pillow).
 
-> **PREVIEW, no entregable.** Faltan en `source/`: voz.mp3, EVIDENCIA.png, mixkit-pressing-a-secret-code-2845.wav.
+> **PREVIEW, no entregable.** Faltan en `source/`: voz.mp3.
 
 | # | Requisito | Medido | Resultado |
 |---|---|---|---|
@@ -11,8 +11,8 @@ Generado por `scripts/montar.py`. Valores medidos sobre el MP4 exportado (ffprob
 | 3 | 30 fps | 30 fps | OK |
 | 4 | Audio y video reproducibles | h264 + aac 48000 Hz; decodificación sin errores | OK |
 | 5 | Voz original ElevenLabs | FALTA voz.mp3 (preview con voz estimada) | PENDIENTE |
-| 6 | Efecto de cierre oficial | FALTA mixkit WAV | PENDIENTE |
-| 7 | Logotipo original | FALTA EVIDENCIA.png (marcador rojo) | PENDIENTE |
+| 6 | Efecto de cierre oficial | sha f30754a75ef15021, entra en 28.30 s | OK |
+| 7 | Logotipo original | EVIDENCIA.png sha e0a08c130fc41824; solo escala uniforme y opacidad | OK |
 | 8 | Títulos centrados | desvío máx. 4 px entre márgenes | OK |
 | 9 | Zona segura y legibilidad | contenido entre x 60–1020, y 200–1500 | OK |
 | 10 | Subtítulos sincronizados | estimación por caracteres (preview sin voz) | PENDIENTE |
@@ -20,17 +20,17 @@ Generado por `scripts/montar.py`. Valores medidos sobre el MP4 exportado (ffprob
 | 12 | Sin silencios vacíos ni congelamientos | imagen quieta máx. 0.00 s (t=0.0); pausa máx. entre frases 4.83 s cubierta por animación | OK |
 | 13 | Afirmación «4 horas → 12 minutos» | sin fuente de medición en el repositorio | RIESGO EDITORIAL |
 
-Pico de audio: -91.0 dBFS (sin clipping)
+Pico de audio: -1.0 dBFS (sin clipping)
 
-Paleta (fracción de píxeles saturados fuera de cian): problema 0.00%, medicion 0.00%, transformacion 0.00%, evidencia 0.02%, cta 0.00% → OK
+Paleta (fracción de píxeles saturados fuera de cian): problema 0.00%, medicion 0.00%, transformacion 0.00%, evidencia 0.02%, cta 0.00%, cierre 0.00% → OK
 
 ## Recursos utilizados
 
 | Archivo | Estado | SHA-256 (16) |
 |---|---|---|
 | `source/voz.mp3` | **FALTA** | - |
-| `source/EVIDENCIA.png` | **FALTA** | - |
-| `source/mixkit-pressing-a-secret-code-2845.wav` | **FALTA** | - |
+| `source/EVIDENCIA.png` | presente | e0a08c130fc41824 |
+| `source/mixkit-pressing-a-secret-code-2845.wav` | presente | f30754a75ef15021 |
 
 ## Timeline
 
@@ -55,8 +55,6 @@ Paleta (fracción de píxeles saturados fuera de cian): problema 0.00%, medicion
 ## Pendientes
 
 - Subir `source/voz.mp3`.
-- Subir `source/EVIDENCIA.png`.
-- Subir `source/mixkit-pressing-a-secret-code-2845.wav`.
 - Comparar capturas con el Short #1 (punto 11).
 - Respaldar «4 horas → 12 minutos» con la medición real o presentarlo como ejemplo antes de publicar (punto 13).
 - Escuchar el MP4 completo: pronunciación, pausas y entrada de la firma (punto 5).

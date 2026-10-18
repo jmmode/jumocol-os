@@ -346,7 +346,7 @@ def main():
     starts, placed, total = plan(segs, vsegs)
     logo = Image.open(LOGO).convert("RGBA") if LOGO.exists() else None
     if logo:
-        s = min(860 / logo.width, 860 / logo.height)
+        s = min(1000 / logo.width, 1000 / logo.height)
         logo = logo.resize((round(logo.width * s), round(logo.height * s)), Image.LANCZOS)
     ctxs = scene_contexts(segs, starts, placed, logo)
     events = subtitle_events(segs, placed)

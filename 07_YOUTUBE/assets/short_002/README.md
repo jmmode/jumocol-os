@@ -1,17 +1,17 @@
 # Short #2 — Montaje (Claude, orden de producción V2)
 
 **Fuentes:** `SHORT_PRODUCTION_CONTRACT.md`, `SHORT_002_WORK_ORDER.md`, `CHECKPOINT_SHORT_002_2026-10-18.md`, `ASSET_DELIVERY_STATUS.md`, orden de producción V2 (2026-10-18)
-**Estado:** pipeline listo y probado; **`SHORT_002_FINAL.mp4` pendiente de los 3 insumos oficiales.**
+**Estado:** pipeline listo y probado. Logo y firma ya están en `source/` (extraídos del ZIP que subió Dirección). **`SHORT_002_FINAL.mp4` pendiente solo de `voz.mp3`.**
 
-## Insumos que faltan (carpeta `source/`)
+## Insumos (carpeta `source/`)
 
 | Archivo | Origen | Cómo obtenerlo |
 |---|---|---|
-| `voz.mp3` | ElevenLabs, generación `JXhmveCwg80lfS8KCR7T` (~15,09 s, voz `TsKSGPuG26FpNj0JzQBq`) | Exportar desde el [flow](https://elevenlabs.io/app/flows/agfb3cHnooatwzVq8p1z), o `ELEVENLABS_API_KEY=... python scripts/recuperar_voz.py`. No generar otra toma. |
-| `EVIDENCIA.png` | [Drive](https://drive.google.com/file/d/1s-qPjVHQYNUFUX9zUoWp3cdmIgB_3LuJ/view) | Descargar sin modificar. |
-| `mixkit-pressing-a-secret-code-2845.wav` | [Drive](https://drive.google.com/file/d/1SSzIzkXpc3GMH3c7_ak14JBd5GZULq5d/view) | Descargar sin modificar. |
+| `voz.mp3` | ElevenLabs, generación `JXhmveCwg80lfS8KCR7T` (~15,09 s, voz `TsKSGPuG26FpNj0JzQBq`) | **FALTA.** Exportar desde el [flow](https://elevenlabs.io/app/flows/agfb3cHnooatwzVq8p1z), o `ELEVENLABS_API_KEY=... python scripts/recuperar_voz.py`. No generar otra toma. |
+| `EVIDENCIA.png` | [Drive](https://drive.google.com/file/d/1s-qPjVHQYNUFUX9zUoWp3cdmIgB_3LuJ/view) | Presente (2000×2000 RGBA, sha e0a08c130fc41824). |
+| `mixkit-pressing-a-secret-code-2845.wav` | [Drive](https://drive.google.com/file/d/1SSzIzkXpc3GMH3c7_ak14JBd5GZULq5d/view) | Presente (1,02 s, 44,1 kHz estéreo, sha f30754a75ef15021). |
 
-Ni Claude (red de la nube) ni Celeste (conectores sin descarga binaria) pueden moverlos: hace falta subirlos a mano a esta carpeta en la rama `claude/short-002-assets`.
+Ni Claude (red de la nube) ni Celeste (conectores sin descarga binaria) pueden mover `voz.mp3`: hace falta subirlo a mano a `source/` en la rama `claude/short-002-assets` (sirve también dentro de un ZIP).
 
 ## Generar el final
 
