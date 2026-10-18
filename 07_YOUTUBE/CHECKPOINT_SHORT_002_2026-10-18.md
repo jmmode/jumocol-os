@@ -61,29 +61,26 @@ Este documento es checkpoint operacional, no aprobación de publicación ni prue
 
 ---
 
-## 7. Avance de Claude — montaje (actualizado 2026-10-18, 08:00 UTC)
+## 7. Avance de Claude — montaje V2 (actualizado 2026-10-18, 08:45 UTC)
 
-**Responsable:** Claude (ejecución técnica y montaje, asignado por Dirección)
-**Entregable:** [PR #1](https://github.com/jmmode/jumocol-os/pull/1), rama `claude/short-002-assets`, carpeta `07_YOUTUBE/assets/short_002/`. **No fusionado a main.**
-**Estado:** PIPELINE LISTO Y PROBADO — `SHORT_002_FINAL.mp4` **NO GENERADO** (faltan insumos oficiales).
+**Responsable:** Claude (orden de producción audiovisual V2)
+**Entregable:** [PR #1](https://github.com/jmmode/jumocol-os/pull/1) (borrador), rama `claude/short-002-assets`, carpeta `07_YOUTUBE/assets/short_002/`. **No fusionado a main.**
+**Estado:** PIPELINE V2 LISTO Y PROBADO — `SHORT_002_FINAL.mp4` **NO GENERADO** (faltan los 3 insumos oficiales).
 
 | Actividad | Estado | Evidencia |
 |---|---|---|
-| Escenas corregidas a #000000 / #F6F4F1, cian solo en diagrama y código | COMPLETADO | `cards/*.png`, `qa/frame_*.png` |
-| `montar.py`: sincronía por pausas reales de la voz, subtítulos centrados, cierre con `EVIDENCIA.png` + firma Mixkit, 1080×1920/30 fps | COMPLETADO y probado con insumos sintéticos (voz de 15,09 s con 4 pausas: detectó los 5 segmentos; firma suena al terminar la voz) | `scripts/montar.py` |
-| QA automático (ffprobe, hashes de insumos, fotogramas) | COMPLETADO | `qa/QA_REPORT.md` |
-| `SHORT_002_PREVIEW.mp4` con marcadores (sin voz, logo ni firma) | COMPLETADO, **no publicable** | `SHORT_002_PREVIEW.mp4` |
-| `recuperar_voz.py`: descarga la toma existente del historial de ElevenLabs, no genera voz | ESCRITO, **no ejecutado** | `scripts/recuperar_voz.py` |
-| Recuperar `voz.mp3` (generación `JXhmveCwg80lfS8KCR7T`) | **BLOQUEADO** | La red de la sesión rechaza `api.elevenlabs.io`; sin API key |
-| Descargar `EVIDENCIA.png` y `mixkit-pressing-a-secret-code-2845.wav` | **BLOQUEADO** | La red rechaza `drive.google.com` y `drive.usercontent.google.com` |
-| Coherencia con Short #1 | **NO VALIDADO** | Capturas en Drive, inaccesibles para Claude |
+| Timeline de 32 s con 6 escenas animadas (Problema, Medición, Transformación, Evidencia, CTA, Cierre) | COMPLETADO | `scripts/escenas.py`, `qa/escena_*.png` |
+| Voz oficial colocada por frases en su escena, sin cambiar velocidad ni tono | COMPLETADO y probado con voz sintética de 15,09 s: 4 pausas detectadas, frases en 0,3 / 5,4 / 13,3 / 17,4 / 23,4 s | `scripts/montar.py`, silencedetect sobre el MP4 de prueba |
+| Firma Mixkit 0,3 s después de la última frase, sin solaparla; pico de audio medido | COMPLETADO en prueba (firma en 28,3 s; pico −26,8 dBFS con insumos sintéticos) | `qa/QA_REPORT.md` |
+| QA automático de los 13 puntos de la orden V2 | COMPLETADO | `qa/QA_REPORT.md` |
+| `SHORT_002_PREVIEW.mp4` (32,00 s, 1080×1920, 30 fps; sin voz, logo ni firma) | COMPLETADO, **no publicable** | `SHORT_002_PREVIEW.mp4` |
+| Recuperar `voz.mp3`, `EVIDENCIA.png`, `mixkit-pressing-a-secret-code-2845.wav` | **BLOQUEADO** | Red de Claude rechaza ElevenLabs y Drive; Celeste confirmó en el PR que sus conectores no pueden subir binarios |
+| Continuidad con Short #1 (QA 11) | **NO VALIDADO** | Capturas en Drive, inaccesibles para Claude |
+| Afirmación «4 horas → 12 minutos» (QA 13) | **RIESGO EDITORIAL** | No hay medición que la respalde en el repositorio |
 | `SHORT_002_FINAL.mp4` | **PENDIENTE** | — |
 
-**Activos faltantes exactos** (subir a `07_YOUTUBE/assets/short_002/source/` en la rama del PR, con estos nombres):
-1. `voz.mp3` — toma `JXhmveCwg80lfS8KCR7T`. Responsable: Celeste (tiene ElevenLabs conectado).
-2. `EVIDENCIA.png` — original de Drive.
-3. `mixkit-pressing-a-secret-code-2845.wav` — original de Drive.
+**QA del preview (medido):** 1 duración 32,00 s OK · 2 resolución OK · 3 30 fps OK · 4 reproducible OK · 8 títulos centrados OK (≤4 px) · 9 zona segura OK · 12 sin congelamientos OK · 5, 6, 7, 10 PENDIENTES por insumos · 11 PENDIENTE manual · 13 RIESGO.
 
-Con los tres en `source/`, `python scripts/montar.py` produce `SHORT_002_FINAL.mp4` y `qa/QA_REPORT.md` sin más pasos. Claude lo ejecuta en cuanto estén en la rama.
+**Única intervención que desbloquea el final:** subir a mano los 3 archivos a `07_YOUTUBE/assets/short_002/source/` en la rama `claude/short-002-assets` (GitHub → Add file → Upload files) con esos nombres exactos. Después, `python scripts/montar.py` genera `SHORT_002_FINAL.mp4` y su QA; Claude lo ejecuta y actualiza este checkpoint.
 
-**Intervenciones manuales pendientes:** mover los 3 insumos al repo; revisión visual contra el Short #1; respaldo de la cifra "4 horas → 12 minutos"; publicación.
+**Otras intervenciones manuales pendientes:** comparar capturas con el Short #1; respaldar o reformular «4 horas → 12 minutos»; escuchar el MP4 final; publicación (fuera de alcance de Claude).
