@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -84,10 +85,41 @@ def generar_guion_corto(entrada: ShortInput) -> str:
 
 
 def generar_voz(texto: str, output_path: Path) -> Path:
-    """Genera audio con ElevenLabs (voz Linda Gomez)."""
-    # TODO: llamar API ElevenLabs y guardar MP3
+    """
+    Genera audio con ElevenLabs.
+    Voz oficial: Linda Gomez — Energetic and Upbeat
+    Voice ID: TsKSGPuG26FpNj0JzQBq
+    """
+    api_key = os.getenv("ELEVENLABS_API_KEY")
+    if not api_key:
+        raise RuntimeError("Define ELEVENLABS_API_KEY")
+
+    voice_id = os.getenv("ELEVENLABS_VOICE_ID", "TsKSGPuG26FpNj0JzQBq")
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+
+    payload = json.dumps({
+        "text": texto,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.75,
+        },
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        headers={
+            "Accept": "audio/mpeg",
+            "Content-Type": "application/json",
+            "xi-api-key": api_key,
+        },
+        method="POST",
+    )
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(f"# placeholder voz para: {texto[:80]}", encoding="utf-8")
+    with urllib.request.urlopen(req) as resp:
+        output_path.write_bytes(resp.read())
     return output_path
 
 
