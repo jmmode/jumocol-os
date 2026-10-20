@@ -47,7 +47,7 @@ Los roles son **por fase y Work Order**, no permisos permanentes. No presumir co
 | **OpenClaw** | Agente/orquestador de ejecución e integraciones cuando esté configurado; contribuye a revisión y Work Orders según herramientas reales | OpenClaw no debe suponerse un modelo LLM específico ni contar con credenciales/permisos hasta verificarlos |
 | **Otros agentes/modelos** | Roles puntuales definidos en Work Orders aprobados | Mismos gates, evidencia, trazabilidad y controles |
 
-**Terminología canónica:** escribir **OpenClaw**, nunca `OpenCloud`. Distinguir `Grok` (asistente/modelo) de `Groq` (proveedor/plataforma de inferencia cuando aplique); no asumir equivalencia.
+**Terminología canónica:** escribir **OpenClaw**, nunca `nombre anterior`. Distinguir `Grok` (asistente/modelo) de `Groq` (proveedor/plataforma de inferencia cuando aplique); no asumir equivalencia.
 
 ## 3. Fuente de verdad y repositorio obligatorio
 1. **GitHub = fuente canónica del trabajo técnico y del gobierno:** protocolos, AGENTS, contratos, planes versionados, revisiones resumidas, decisiones, Work Orders, backlog, código, pruebas reproducibles, evidencias no sensibles y checkpoints.
