@@ -69,3 +69,16 @@ Jerarquia de trabajo:
 ## Evolucion futura
 
 Estas instrucciones deben revisarse cuando exista evidencia operativa suficiente para formalizar responsables, contratos de salida, rituales de validacion y criterios de automatizacion.
+
+## Protocolo multiagente obligatorio — adoptado 2026-10-19
+
+Para toda iniciativa compartida entre ChatGPT, Claude, Codex, Grok, OpenClaw u otros agentes, seguir [GOV-MA-001](00_GOVERNANCE/PROTOCOLO_COLABORACION_MULTIAGENTE_V1.md).
+
+**Secuencia:** idea → propuesta inicial ChatGPT → revisión independiente de los participantes pertinentes sobre el mismo commit → consolidación ChatGPT → aprobación explícita de Dirección → plan, Work Orders, responsables y cronograma en GitHub → distribución de la versión aprobada a los agentes → ejecución controlada → revisión cruzada → evidencia, checkpoint y NEXT ACTION.
+
+- Ningún agente interpreta una propuesta o consenso como autorización de escritura, gasto o despliegue.
+- Antes de crear código/documentos, auditar si la capacidad ya existe y es reutilizable.
+- El repositorio conserva las instrucciones, decisiones, tareas, código y evidencia saneada; Drive/Sheets y otras fuentes autorizadas conservan datos operativos y secretos fuera de Git.
+- Todos los participantes declaran qué commit leyeron, qué verificaron y sus permisos reales; un agente/orquestador OpenClaw no presupone acceso por su nombre.
+- Las decisiones de negocio sensibles, incluido `Confirmado JM` en TiviPlay, quedan en Dirección.
+- El protocolo rige la colaboración; MER define la reproducibilidad operacional. No duplicar sus documentos.
