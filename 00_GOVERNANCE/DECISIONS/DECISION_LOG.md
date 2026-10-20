@@ -35,7 +35,7 @@ Registra decisiones sobre estructura, responsabilidades, governance, contexto, r
 | DEC-2026-09-02-011 | 2026-09-02 | Autorizar la estructura documental de los seis componentes de TiviPlay y las rutas read-only `/operaciones/tiviplay` y `/operaciones/tiviplay/contexto`, sin implementar los cinco componentes futuros. | Vigente | `DEC-2026-09-02-011_TIVIPLAY_DOCUMENTAL_COMMAND_CENTER.md` |
 | DEC-2026-10-17-012 | 2026-10-17 | Crear canal nuevo de YouTube para monetización con YCS; Music relax excluido; GitHub como fuente canónica; README de 07_YOUTUBE sincronizado con árbol real. | Vigente | `DEC-2026-10-17-012_YOUTUBE_NEW_CHANNEL.md` |
 
-| DEC-2026-10-19-013 | 2026-10-19 | Adoptar GOV-MA-001 como protocolo común para ideas y colaboración IA: ChatGPT propone, modelos revisan independientemente, ChatGPT consolida, Dirección aprueba, GitHub recibe plan/Work Orders/cronograma y evidencia. Se corrige el actor OpenClaw (no OpenCloud). La aprobación del protocolo no aprueba proyectos ni despliegues. | Vigente — estándar documental; ejecución por validar | [PROTOCOLO_COLABORACION_MULTIAGENTE_V1.md](../PROTOCOLO_COLABORACION_MULTIAGENTE_V1.md) |
+| DEC-2026-10-19-013 | 2026-10-19 | Adoptar GOV-MA-001 como protocolo común para ideas y colaboración IA: ChatGPT propone, modelos revisan independientemente, ChatGPT consolida, Dirección aprueba, GitHub recibe plan/Work Orders/cronograma y evidencia. Se corrige el actor OpenClaw (no nombre anterior). La aprobación del protocolo no aprueba proyectos ni despliegues. | Vigente — estándar documental; ejecución por validar | [PROTOCOLO_COLABORACION_MULTIAGENTE_V1.md](../PROTOCOLO_COLABORACION_MULTIAGENTE_V1.md) |
 
 ## Riesgos
 
