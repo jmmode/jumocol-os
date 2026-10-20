@@ -197,3 +197,24 @@ La fuente Google Sheets activa `GESTION_DIA_PAGOS_2026_TIVIPLAY` (spreadsheet ID
 **Pruebas del motor sobre el corte congelado:** NO IMPLEMENTADO en esta sesión.
 **Protocolo de revisión G2:** VALIDADO para alcance de esta ronda (Dirección decidió usar solo Claude y Grok).
 **NEXT_ACTION:** inspeccionar **el Excel real del 30/09** en fuente privada y fijar matriz de tabs final; luego consolidar plan técnico v0.2 y someter Work Orders a aprobación G4. 
+
+
+## 14. Registro de localización del Excel histórico — 19/10/2026, noche
+
+**Solicitud de Dirección:** usar el archivo local `C:\Users\USUARIO\Downloads\GESTION_DIA_PAGOS_TIVIPLAY_CORTE_2026-09-30.xlsx` como referencia del corte 30/09 y hacerlo descubrible para los agentes autorizados.
+
+**Verificación actual:** NO fue posible acceder a la carpeta `C:\Users\USUARIO\Downloads` desde esta sesión; el Excel NO está montado aquí y la búsqueda por nombre exacto en el Drive conectado no devolvió resultados. **No afirmar que fue copiado o que sus pestañas ya fueron inspeccionadas.** Su disponibilidad para los agentes sigue **BLOQUEADO** hasta transferencia verificable.
+
+### Arquitectura de acceso, sin exponer datos operativos
+- **Archivo maestro fuente (local, declarado por Dirección):** `GESTION_DIA_PAGOS_TIVIPLAY_CORTE_2026-09-30.xlsx`.
+- **Destino privado existente recomendado:** Google Drive → `99. ARCHIVO HISTÓRICO Y BACKUPS` → `Backups`, carpeta ID `1_8w-S8JJOugzL2QnsWjzvQDp4GlHwTbQ` — https://drive.google.com/drive/folders/1_8w-S8JJOugzL2QnsWjzvQDp4GlHwTbQ
+- **Motivo de elección:** metadatos Drive consultados indican `shared=false` para `Backups` y su carpeta superior (sujeto a verificación de políticas reales). En contraste, la carpeta general `JUMOCOL_SYSTEM_OS` tiene permiso `anyone/reader`, por lo que NO sirve para custodiar esta fuente con PII, contraseñas técnicas y datos financieros.
+- **Acceso entre agentes:** GitHub publica este manifiesto y un enlace privado verificable al archivo cuando exista. Cada agente requiere conector y permisos propios; **el enlace no habilita acceso universal ni acceso público**.
+- **Repositorio:** conservar únicamente nombre, ubicación lógica/enlace privado, custodio, fecha de corte, SHA-256, pestañas/encabezados verificados, conteos y resultado sanitizado. **Prohibido subir el archivo binario, extractos con clientes, usuarios de panel, contraseñas o datos bancarios a GitHub.**
+- **Operación manual pendiente:** Dirección sube el archivo exacto a `Backups`, manteniendo acceso restringido. Después el coordinador valida metadatos, fecha, integridad/hash y pestañas; registra enlace real y prueba permisos para cada agente que deba leerlo.
+
+### Estado y siguiente acción
+**Referencia local:** IMPLEMENTADO (ruta comunicada por Dirección; existencia física no verificada desde esta sesión).
+**Transferencia a Drive privado:** BLOQUEADO (archivo local inaccesible desde herramientas de esta sesión).
+**Acceso multiactor verificado:** NO IMPLEMENTADO (faltan archivo en Drive y validaciones individuales).
+**NEXT_ACTION:** cargar el Excel exacto en la carpeta privada de Backups, compartir su enlace real en el chat y verificar pestañas y fecha/hora del corte en modo solo lectura. El plan técnico sigue `REQUIERE DECISIÓN`.
