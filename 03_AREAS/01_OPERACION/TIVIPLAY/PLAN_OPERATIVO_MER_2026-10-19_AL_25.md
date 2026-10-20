@@ -268,3 +268,55 @@ La fuente Google Sheets activa `GESTION_DIA_PAGOS_2026_TIVIPLAY` (spreadsheet ID
 - **Criterio temporal input → salida:** REQUIERE DECISIÓN/validación de corte y correcciones.
 - **Motor S0-B contra Excel:** PARCIAL por antecedentes; sin prueba nueva.
 - **NEXT_ACTION:** (1) Restringir permisos del XLSX en Drive; (2) verificar control de acceso; (3) inspeccionar columnas y cortes de `BASE GENERAL` y `PAGOS OCTUBRE 2026 - PRELIMINAR` sin exponer PII; (4) preparar prueba de comparación controlada con motor existente y evidencias sanitizadas; (5) solicitar aprobación G4 para cualquier tarea de código/operación.
+
+
+## 16. MER — Paso inicial lunes 19/10: baseline del corte y brecha gerencial (19/10, noche)
+
+**Modo:** inspección LOCAL DE SOLO LECTURA sobre XLSX original verificado en §15. No se ejecutó el motor Node ni se modificaron Sheets, Drive o producción. No se incorporan filas, clientes ni secretos al repositorio.
+
+### Ensayo de consistencia interna XLSX — REFERENCIA HISTÓRICA
+Archivo protegido por hash SHA-256 registrado en §15: `c71dd4b4353aab8da51cae6d969dac4d6b320367a9d447bd1a5fef7b28ab138f`.
+
+Se leyeron las pestañas **del mismo respaldo** `BASE GENERAL` y `PAGOS OCTUBRE 2026 - PRELIMINAR`. Filtro de selección: `TC=1`, `F. PRÓXIMO PAGO` entre 2026-10-01 y 2026-10-31, sin incluir vencidos anteriores ni filas de totales. El parser normalizó `TC=1.0` exportado como valor numérico y fechas de Excel. Montos nominales, no dinero cobrado.
+
+| Indicador | BASE GENERAL en XLSX | PRELIMINAR en MISMO XLSX | Evaluación |
+|---|---:|---:|---|
+| Registros elegibles | 99 | 99 | Coincide |
+| Semanas 1→5 | 13 / 30 / 27 / 16 / 13 | 13 / 30 / 27 / 16 / 13 | Coincide |
+| USD nominal | 4.090,50 | 4.090,50 | Coincide |
+| COP nominal | 375.730 | 375.730 | Coincide |
+| Casos faltantes, cotejo por `USUARIO + CLIENTE + TELÉFONO/CORREO + PANEL` y fecha/moneda/monto | — | **0** | Coincide |
+| Casos añadidos por el mismo cotejo | — | **0** | Coincide |
+| Identidades compuestas repetidas dentro de universo octubre | 0 | 0 | Coincide |
+
+**Estado: VALIDADO únicamente para CONSISTENCIA INTERNA del mismo backup** (estructura, filtros, moneda y cotejo 99↔99). No es prueba de que el motor `tiviplay-monthly-close-v1` haya regenerado la salida desde una Base General premodificación. No es prueba de conciliación financiera, ni banco ni facturación definitiva. El Excel podría representar un corte POSTERIOR a correcciones: determinar secuencia y hora contra bitácora del cierre.
+
+**Precaución adicional:** `PAGOS SEPTIEMBRE` mantiene valores de meses mezclados y no debe usarse como entrada de facturación octubre sin reglas/segmentos. Fuera de alcance en este primer ensayo.
+
+### Seguridad de la fuente
+Verificación reciente por metadatos Drive: el XLSX tiene permiso de archivo `anyone/reader` pese a residir en carpeta privada. **BLOQUEADO** su distribución directa a modelos hasta que Dirección cambie el archivo a **Restringido** y se verifique el permiso; no colocar URL/ID público en este repositorio. El archivo puede ser leído solo por procesos/personas explícitamente autorizados; el hash no expone el contenido.
+
+### Brecha intranet gerencial — AUDITORÍA DE CÓDIGO, NO PRUEBA DE ACCESO
+Rutas encontradas en GitHub:
+- `06_APPLICATIONS/JUMOCOL_OPERATIONS_INTELLIGENCE/src/app/(intranet)/operaciones/tiviplay/page.tsx`: existe tarjeta `Runtime operativo` que enlaza `/operaciones/tiviplay/runtime`.
+- `06_APPLICATIONS/JUMOCOL_OPERATIONS_INTELLIGENCE/src/app/(intranet)/operaciones/tiviplay/runtime/page.tsx`: UI técnica de universo, facturar candidato, excepciones, semanas, integridad y firmas.
+- No se encontró archivo en ruta esperada `.../operaciones/tiviplay/gerencial/page.tsx` en la rama consultada.
+- Checkpoint `02_RUNTIME/TIVIPLAY_RUNTIME_OPERATIVO_CHECKPOINT_2026-10-09.md`: vertical lectura técnica validada **históricamente**; vista gerencial consolidada, recaudo y conciliación NO validados. El código actual de lectura no constituye KPI financiero aprobado.
+- No se comprobó servidor local, despliegue, login ni permisos de sesión de Dirección. Un problema de entrada real debe diagnosticarse con URL exacta y síntoma reproducible.
+
+**Decisión de diseño propuesta — REQUIERE DECISIÓN:** utilizar la **misma** intranet y motor común; distinguir (1) informe GERENCIAL autorizado, con corte, moneda, cobertura/fuente, tendencia y estados de validación, de (2) agenda OPERATIVA por asesor con mínimo privilegio. No presentar `FACTURAR_CANDIDATO` como facturación cobrada ni exponer clientes si no hay autenticación/RBAC. Primero recuperar acceso y validar controles, luego implementar vista en WO aprobada; prohibido abrir públicamente la ruta API de datos vivos.
+
+### Orden de trabajo, paso siguiente
+1. **Dirección** cambia el permiso del XLSX en Drive a `Restringido`; ChatGPT comprueba en metadatos (gate P0 seguridad).
+2. Confirmar hora de corte y estado pre/postcorrecciones; si es POST, el replay septiembre→octubre se limita a consistencia histórica, mientras se prepara octubre→noviembre con snapshot pretransformación.
+3. Ejecutar pruebas sintéticas del motor existente, **corrigiendo salida JSON sensible o aislándola fuera de Git antes** de permitir lectura de datos reales.
+4. Diagnosticar acceso a la vista gerencial con ruta/URL concreta; establecer en **Work Order** datos/KPIs, auth/RBAC, usuario Dirección y pruebas.
+5. **G2 de esta ronda: SOLO Grok y Claude.** Enviarles este mismo plan actualizado, recibir observaciones acotadas y consolidar G3. Después Dirección aprueba G4/WOs; no asumir autorización de producción.
+
+### Checkpoint
+- Evidencia corte XLSX: **VALIDADO** (existencia, SHA-256, pestañas).
+- Consistencia XLSX `BASE GENERAL` ↔ `PAGOS OCTUBRE PRELIMINAR` para universo octubre: **VALIDADO**, límite **dentro del mismo backup**.
+- Reproducción E2E del motor desde estado anterior a las correcciones: **PARCIAL**, falta entrada temporal canónica y corrida real del motor.
+- Seguridad de compartir XLSX: **BLOQUEADO** hasta revocar `anyone/reader`.
+- Acceso e indicadores de intranet gerencial actual: **REQUIERE DECISIÓN**; código parcial, servidor/sesión no verificados.
+- **NEXT_ACTION:** permiso restringido del archivo + diagnóstico del acceso gerencial; retomar MER prueba técnica en entorno controlado con outputs saneados.
