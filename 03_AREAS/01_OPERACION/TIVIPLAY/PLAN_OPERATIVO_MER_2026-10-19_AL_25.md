@@ -199,7 +199,9 @@ La fuente Google Sheets activa `GESTION_DIA_PAGOS_2026_TIVIPLAY` (spreadsheet ID
 **NEXT_ACTION:** inspeccionar **el Excel real del 30/09** en fuente privada y fijar matriz de tabs final; luego consolidar plan técnico v0.2 y someter Work Orders a aprobación G4. 
 
 
-## 14. Registro de localización del Excel histórico — 19/10/2026, noche
+## 14. Registro inicial de localización del Excel histórico — 19/10/2026, noche
+
+> **Histórico, sustituido parcialmente por el checkpoint §15:** la transferencia que aparecía bloqueada aquí fue verificada posteriormente. Conservar la trazabilidad del hallazgo anterior, pero consultar §15 para el estado vigente.
 
 **Solicitud de Dirección:** usar el archivo local `C:\Users\USUARIO\Downloads\GESTION_DIA_PAGOS_TIVIPLAY_CORTE_2026-09-30.xlsx` como referencia del corte 30/09 y hacerlo descubrible para los agentes autorizados.
 
@@ -218,3 +220,51 @@ La fuente Google Sheets activa `GESTION_DIA_PAGOS_2026_TIVIPLAY` (spreadsheet ID
 **Transferencia a Drive privado:** BLOQUEADO (archivo local inaccesible desde herramientas de esta sesión).
 **Acceso multiactor verificado:** NO IMPLEMENTADO (faltan archivo en Drive y validaciones individuales).
 **NEXT_ACTION:** cargar el Excel exacto en la carpeta privada de Backups, compartir su enlace real en el chat y verificar pestañas y fecha/hora del corte en modo solo lectura. El plan técnico sigue `REQUIERE DECISIÓN`.
+
+
+## 15. Verificación del XLSX cargado en Drive — 19/10/2026, 21:35 (Bogotá), verificación en sesión
+
+**Estado vigente / reemplaza diagnóstico de disponibilidad de §§13–14.**
+**Fuente comprobada:** archivo original **no convertido** `GESTION_DIA_PAGOS_TIVIPLAY_CORTE_2026-09-30.xlsx` localizado mediante listado de carpeta privada en Drive y descarga autenticada para inspección estructural en sesión.
+
+| Campo | Verificación |
+|---|---|
+| Carpeta | `99. ARCHIVO HISTÓRICO Y BACKUPS/Backups` — ID `1_8w-S8JJOugzL2QnsWjzvQDp4GlHwTbQ` |
+| Archivo | `GESTION_DIA_PAGOS_TIVIPLAY_CORTE_2026-09-30.xlsx` |
+| Tamaño | **10.342.332 bytes** |
+| SHA-256 de bytes descargados | `c71dd4b4353aab8da51cae6d969dac4d6b320367a9d447bd1a5fef7b28ab138f` |
+| Contenido estructural | **66 pestañas** (64 visibles + 2 ocultas: `RESP_ORDEN_SEPT_20260924` y `RESP_PAGOS_SEPT_20260924`) |
+| Pestaña `BASE GENERAL` | **PRESENTE**: candidata a entrada histórica congelada; validar si pre/postcorrección |
+| Pestaña `PAGOS OCTUBRE 2026 - PRELIMINAR` | **PRESENTE**: referencia/salida preliminar del cierre; no emplear esta hoja como input para demostrar reconstrucción |
+| Pestaña `PAGOS SEPTIEMBRE` | **PRESENTE**: contexto/excepciones/cartera anterior |
+| Pestaña `PAGOS OCTUBRE 2026` | **AUSENTE DEL XLSX**: existe en la hoja de cálculo VIVA, distinta del backup. No mezclar versiones sin registrar fecha y fuente |
+| `ZELLE (SEPT)`, `PAYPAL (SEPT)`, `TRANSF (SEPT)` | PRESENTES: evidencia de gestión financiera, no sustituyen fuente bancaria independiente |
+| `CONTROL ( SEPT) P1`, `CONTROL (SEPT) P2`, `CONTROL ( SEPT) P3` | PRESENTES: evidencia de gestión técnica de servicio, fase posterior |
+| Carga en Drive | Creado en Drive **2026-10-20 02:39:52Z**. Esta fecha **es de subida**, NO prueba el estado del archivo al 30/09 |
+| Estado de permisos directo sobre el archivo | **RIESGO P0:** `anyone/reader` (cualquiera con el enlace tiene lectura), aun estando en carpeta con permisos `not_shared`. Confirmado por metadatos Drive. |
+
+**Control de seguridad obligatorio y bloqueante:** Dirección debe cambiar acceso general del **archivo específico** a `Restringido`, verificar que la lista de lectores sea solo los usuarios autorizados, y confirmar nueva lectura de metadatos antes de compartir enlace directo entre agentes. **Mientras tanto NO publicar el URL/ID del archivo en GitHub ni pasárselo a modelos adicionales; los enlaces de carpeta ya existentes no confieren automáticamente seguridad al archivo.** Herramientas disponibles en esta sesión no revocan permisos públicos. El Excel y sus datos reales tampoco deben subirse al repositorio.
+
+### Matriz canónica de hojas para la primera corrida MER / S0-B
+| Orden | Fuente exacta | Rol | Condición |
+|---|---|---|---|
+| 1 | XLSX descargado `BASE GENERAL` | INPUT candidato, inmovilizado con hash | Determinar si corresponde al estado de Base antes o después de ajustes del 30/09 |
+| 2 | MISMO XLSX `PAGOS OCTUBRE 2026 - PRELIMINAR` | ORACLE / salida histórica | Verificar referencia de 99 registros, cinco semanas y monedas con lectura controlada |
+| 3 | MISMO XLSX `PAGOS SEPTIEMBRE` | CONTEXTO de exclusiones y movimientos previos | No introducir como facturable octubre sin clasificación S0-B |
+| 4 | GOOGLE SHEETS VIVO `PAGOS OCTUBRE 2026` | Comparación posterior **opcional**, con otro corte temporal | No mezclar con snapshot 30/09 para afirmar replay validado |
+
+**Por defecto, excluir** toda pestaña de otros meses, paneles, bancarias y controles hasta que S0-B requiera una excepción concreta. La primera corrida no incluye auditoría de bancos/paneles.
+
+### Evidencia técnica y límites
+- Se validó la existencia real del archivo y su estructura de hojas a través de ZIP/OOXML (sin volcar filas, clientes, contraseñas ni movimientos al repositorio).
+- **No se ha ejecutado** `npm run run` ni una comparación de registros contra este XLSX en esta sesión.
+- **No se ha demostrado** que `BASE GENERAL` sea anterior a correcciones ni que el motor reproduzca por completo la salida de 99.
+- **No se han modificado** ni el XLSX original en Drive ni las fuentes operativas vivas.
+
+### Checkpoint
+- **Archivo histórico accesible para lectura desde conector autorizado:** VALIDADO (existencia, tamaño y hash).
+- **Inventario estructural de pestañas:** VALIDADO (66; nombre exacto y visibilidad).
+- **Control de privacidad del archivo:** BLOQUEADO (quitar `anyone/reader` antes de distribuirlo).
+- **Criterio temporal input → salida:** REQUIERE DECISIÓN/validación de corte y correcciones.
+- **Motor S0-B contra Excel:** PARCIAL por antecedentes; sin prueba nueva.
+- **NEXT_ACTION:** (1) Restringir permisos del XLSX en Drive; (2) verificar control de acceso; (3) inspeccionar columnas y cortes de `BASE GENERAL` y `PAGOS OCTUBRE 2026 - PRELIMINAR` sin exponer PII; (4) preparar prueba de comparación controlada con motor existente y evidencias sanitizadas; (5) solicitar aprobación G4 para cualquier tarea de código/operación.
