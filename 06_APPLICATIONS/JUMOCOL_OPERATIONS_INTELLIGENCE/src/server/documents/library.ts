@@ -1,8 +1,11 @@
 import "server-only";
+import { createHash } from "node:crypto";
+import path from "node:path";
 import { audit, db, listUsers, type Identity } from "@/server/auth/store";
-import { readCanonicalDocument, type DocumentId } from "./document-repository";
+import { readCanonicalDocument, type CanonicalDocument, type DocumentId } from "./document-repository";
 import { CATALOG_STATUS_LABEL, OPERATIONAL_STANDARD_KEYS, type CatalogStatus } from "./curation";
-import { discoverLifeosDocuments, type DocumentCategory, type Disposition } from "./lifeos-discovery";
+import { discoverLifeosDocuments, type DocumentCategory, type Disposition, type SkippedFile } from "./lifeos-discovery";
+import { slugify } from "./markdown-metadata";
 
 type CatalogItem = {
   id: DocumentId;
@@ -14,14 +17,18 @@ type CatalogItem = {
   catalogStatus: CatalogStatus;
   catalogReason: string;
   proposedCurrent: boolean;
+  /** Original en Google Drive; null cuando no hay correspondencia verificada o el documento es restringido. */
+  driveUrl: string | null;
+  /** Recurso que el visor no puede leer (p. ej. PPTX): se consulta solo en su original de Drive. */
+  linkOnly?: { title: string; relativePath: string };
 };
 const GOVERNANCE = "Documento de gobierno interno de JUMOCOL OS (contexto, contrato o baseline); no es un manual de operador.";
 const STATIC_CATALOG: ReadonlyArray<CatalogItem> = [
-  { id: "tiviplay-operations-guide", category: "Formación inicial", owner: null, origin: "JUMOCOL_SYSTEM_OS", disposition: "vigente", restriction: null, catalogStatus: "PENDIENTE_VALIDACION", catalogReason: "Mini guía del módulo Operaciones elaborada desde el código (13/10/2026). Requiere revisión de Dirección antes de publicarse.", proposedCurrent: true },
-  { id: "tiviplay-context", category: "Formación inicial", owner: null, origin: "JUMOCOL_SYSTEM_OS", disposition: "vigente", restriction: null, catalogStatus: "RESTRINGIDO", catalogReason: GOVERNANCE, proposedCurrent: false },
-  { id: "tiviplay-s0-contract", category: "Cobros y facturación", owner: null, origin: "JUMOCOL_SYSTEM_OS", disposition: "vigente", restriction: null, catalogStatus: "RESTRINGIDO", catalogReason: GOVERNANCE, proposedCurrent: false },
-  { id: "tiviplay-s0-baseline", category: "Back Office", owner: null, origin: "JUMOCOL_SYSTEM_OS", disposition: "vigente", restriction: null, catalogStatus: "RESTRINGIDO", catalogReason: GOVERNANCE, proposedCurrent: false },
-  { id: "tiviplay-cycle-close", category: "Back Office", owner: null, origin: "JUMOCOL_SYSTEM_OS", disposition: "vigente", restriction: null, catalogStatus: "RESTRINGIDO", catalogReason: GOVERNANCE, proposedCurrent: false },
+  { id: "tiviplay-operations-guide", category: "Formación inicial", owner: null, origin: "JUMOCOL_SYSTEM_OS", disposition: "vigente", restriction: null, catalogStatus: "PENDIENTE_VALIDACION", catalogReason: "Mini guía del módulo Operaciones elaborada desde el código (13/10/2026). Requiere revisión de Dirección antes de publicarse.", proposedCurrent: true, driveUrl: null },
+  { id: "tiviplay-context", category: "Formación inicial", owner: null, origin: "JUMOCOL_SYSTEM_OS", disposition: "vigente", restriction: null, catalogStatus: "RESTRINGIDO", catalogReason: GOVERNANCE, proposedCurrent: false, driveUrl: null },
+  { id: "tiviplay-s0-contract", category: "Cobros y facturación", owner: null, origin: "JUMOCOL_SYSTEM_OS", disposition: "vigente", restriction: null, catalogStatus: "RESTRINGIDO", catalogReason: GOVERNANCE, proposedCurrent: false, driveUrl: null },
+  { id: "tiviplay-s0-baseline", category: "Back Office", owner: null, origin: "JUMOCOL_SYSTEM_OS", disposition: "vigente", restriction: null, catalogStatus: "RESTRINGIDO", catalogReason: GOVERNANCE, proposedCurrent: false, driveUrl: null },
+  { id: "tiviplay-cycle-close", category: "Back Office", owner: null, origin: "JUMOCOL_SYSTEM_OS", disposition: "vigente", restriction: null, catalogStatus: "RESTRINGIDO", catalogReason: GOVERNANCE, proposedCurrent: false, driveUrl: null },
 ];
 const CATALOG: CatalogItem[] = [...STATIC_CATALOG];
 // Live view: static canonical documents + read-only LIFE-OS discovery (refreshed at most every 60 s).
@@ -30,10 +37,35 @@ export const DOCUMENT_CATALOG: ReadonlyArray<CatalogItem> = CATALOG;
 function refreshCatalog() {
   const discovered = discoverLifeosDocuments().documents.map((doc): CatalogItem => ({
     id: doc.id, category: doc.category, owner: doc.owner, origin: "LIFE-OS", disposition: doc.disposition, restriction: doc.restriction,
-    catalogStatus: doc.catalogStatus, catalogReason: doc.catalogReason, proposedCurrent: doc.proposedCurrent,
+    catalogStatus: doc.catalogStatus, catalogReason: doc.catalogReason, proposedCurrent: doc.proposedCurrent, driveUrl: doc.driveUrl,
   }));
-  CATALOG.splice(0, CATALOG.length, ...STATIC_CATALOG, ...discovered);
+  const links = discoverLifeosDocuments().skipped.filter(linkEligible).map((file): CatalogItem => ({
+    id: linkId(file.relativePath), category: file.section!, owner: null, origin: "LIFE-OS", disposition: "vigente", restriction: null,
+    catalogStatus: "PENDIENTE_VALIDACION", catalogReason: file.catalogReason ?? "Recurso enlazado a su original de Drive.", proposedCurrent: false,
+    driveUrl: file.driveUrl, linkOnly: { title: path.basename(file.relativePath, path.extname(file.relativePath)), relativePath: file.relativePath },
+  }));
+  CATALOG.splice(0, CATALOG.length, ...STATIC_CATALOG, ...discovered, ...links);
   return CATALOG;
+}
+
+/** Archivo no legible en el visor que sí puede ofrecerse como enlace a su original: curado, con sección y Drive verificado. */
+export function linkEligible(file: SkippedFile) {
+  return !!file.driveUrl && !!file.section && file.catalogStatus === "PENDIENTE_VALIDACION";
+}
+const linkId = (relativePath: string) =>
+  `lo-enlace-${slugify(path.basename(relativePath, path.extname(relativePath))).slice(0, 40) || "recurso"}-${createHash("sha1").update(relativePath).digest("hex").slice(0, 6)}`;
+
+/** Ficha sintética de un recurso solo-enlace. Su "versión" publicable es el par ruta + enlace: si cambia, la publicación se invalida. */
+function linkDocument(item: CatalogItem & { linkOnly: NonNullable<CatalogItem["linkOnly"]> }): CanonicalDocument {
+  const format = path.extname(item.linkOnly.relativePath).slice(1).toUpperCase() || "ARCHIVO";
+  return {
+    id: item.id, title: item.linkOnly.title, identifier: item.id, version: "NO DOCUMENTADO", status: "ENLACE A ORIGINAL",
+    cutoffDate: "NO DOCUMENTADO", module: "Operaciones", submodule: "TiviPlay", owner: null, governingDecision: "WO-TIVI-DOC-001",
+    sourceReference: `Google Drive · LIFE-OS/TIVIPLAY_OPERATION_SYSTEM/${item.linkOnly.relativePath}`,
+    sha256: createHash("sha256").update(`${item.linkOnly.relativePath}\n${item.driveUrl}`).digest("hex").toUpperCase(),
+    markdown: `# ${item.linkOnly.title}\n\nRecurso en formato ${format}. Se consulta en su original de Google Drive con el botón **Abrir original en Drive**.\n`,
+    headings: [],
+  };
 }
 
 type Publication = { sha256: string; approved_by: string; approved_at: string; evidence: string };
@@ -59,7 +91,7 @@ export function readingBlocked(item: Pick<CatalogItem, "restriction">) {
 export async function libraryEntry(id: DocumentId, actor: Identity) {
   const definition = (CATALOG.find(x => x.id === id) ? CATALOG : refreshCatalog()).find(x => x.id === id);
   if (!definition || readingBlocked(definition)) return null;
-  const document = await readCanonicalDocument(id);
+  const document = definition.linkOnly ? linkDocument({ ...definition, linkOnly: definition.linkOnly }) : await readCanonicalDocument(id);
   const approval = db().prepare("SELECT * FROM publications WHERE document_id=?").get(id) as Publication | undefined;
   const blockedReason = publicationBlock(definition, document.status);
   const draft = blockedReason !== null;

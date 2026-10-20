@@ -108,3 +108,43 @@ export const OPERATIONAL_STANDARD = [
   { key: "escalamiento", label: "Cuándo debe escalar una excepción" },
 ] as const;
 export const OPERATIONAL_STANDARD_KEYS: readonly string[] = OPERATIONAL_STANDARD.map(item => item.key);
+
+// Originales en Google Drive (carpeta CAMPAÑA TIVIPLAY 1b2GbuslpQYQPjFQKj60bwgqk7mqJ9dcM), inventario leído el 2026-10-20.
+// Correspondencia por nombre de archivo con la copia LIFE-OS; solo IDs públicos de Drive, nunca contenido. Permisos: los de Google.
+const DRIVE_ORIGINALS: Readonly<Record<string, string>> = {
+  "10_FORMACION_Y_CAPACITACION/Guía de Bienvenida – TIVIPLAY 2025.docx": "https://docs.google.com/document/d/19nsMvhrqKSCAiOiHg1m9B1W-M5TKAHFEPcDLQgL0mFc/view",
+  "10_FORMACION_Y_CAPACITACION/2) PROCESO DE CAPACITACIÓN.docx": "https://docs.google.com/document/d/15N_uyP486GPE40RziJrOVf3z0jJkT-2ZHDJh6Ejgsfw/view",
+  "05_OPERACION_Y_TURNOS/GUIÓN (Información del servicio) Cliente nuevo.docx": "https://drive.google.com/file/d/1iKqZqifZUyZ2VXb1Bnhc0I8NEsCnQHpw/view",
+  "05_OPERACION_Y_TURNOS/TEXTO DE APOYO TIVIPLAY LATINO.docx": "https://drive.google.com/file/d/1uPJzV3ifD3STmdVgAU8sbaVWjh_TUXHp/view",
+  "05_OPERACION_Y_TURNOS/FUNCIONES POR TURNOS TIVIPLAY.pdf": "https://drive.google.com/file/d/1nmcvG2tHSNK1IvNnqtcOJvFWTNF05Tg4/view",
+  "03_VENTAS_Y_FACTURACION/INSTRUCTIVO DE COBRO.docx": "https://drive.google.com/file/d/1ufFwPUAK3AjQXZIiUFrJv_kMXwCPd8gs/view",
+  "03_VENTAS_Y_FACTURACION/PROTOCOLOS DE RETENCION.docx": "https://drive.google.com/file/d/14ZdZ5f8rQlql24z24Lh3Ds4D9aKp0PW-/view",
+  "12_BACK_OFFICE/SERVICIO TÉCNICO.docx": "https://drive.google.com/file/d/1wBiSCZzjPZTFBJNKGOf1sa1-fnpobDeD/view",
+  "12_BACK_OFFICE/LINKS DE DESCARGA.docx": "https://drive.google.com/file/d/1g5qvJREpyEzERpahvy0srvOuvD2T8XNC/view",
+  "10_FORMACION_Y_CAPACITACION/1) INSTALACIÓN CELULAR-TABLET ANDROID (XCIPTV).pptx": "https://drive.google.com/file/d/1l0MWsoPEIZXNh3j9JIbOML3sjIfEAA04/view",
+  "10_FORMACION_Y_CAPACITACION/2) INSTALACIÓN CELULAR-TABLET ANDROID (SMARTERS) (Segunda opción).pptx": "https://drive.google.com/file/d/14JZiI6ug75mPkbNwh4G8TtIe1tdFJo-h/view",
+  "10_FORMACION_Y_CAPACITACION/3) INSTALACIÓN FIRE SCTIK (XCIPTV).pptx": "https://drive.google.com/file/d/1s9xOvq64T4dKgeTEUgsruw-uxKINH1BJ/view",
+  "10_FORMACION_Y_CAPACITACION/4) INSTALACIÓN FIRE SCTIK (SMARTERS) (Segunda opción).pptx": "https://drive.google.com/file/d/1k9madLmlQppXVjXAA9CzKgdsImTYtjlp/view",
+  "10_FORMACION_Y_CAPACITACION/5) INSTALACIÓN IPAD-IPHONE (SMARTERS).pptx": "https://drive.google.com/file/d/15ZVKT0R4DqNlfZxlcioc6KPxyTqZERUH/view",
+  "10_FORMACION_Y_CAPACITACION/6) INSTALACIÓN IPAD-IPHONE (GSE SMART IPTV) (Segunda opción paga).pptx": "https://drive.google.com/file/d/1fNja2bchLKRIdlzOQ9NNqlBpzHef3l5N/view",
+  "10_FORMACION_Y_CAPACITACION/7) INSTALACIÓN TV SAMSUNG  (SMARTERS).pptx": "https://drive.google.com/file/d/1DnL5AO9yqyVGMjULzHREZB9b9NwEK2L1/view",
+  "10_FORMACION_Y_CAPACITACION/8) INSTALACIÓN TV SAMSUNG NET IPTV (Segunda opción paga).pptx": "https://drive.google.com/file/d/1qdESmrGZtg2BCrRBBvyLBzVy8l_nGJ8M/view",
+  "10_FORMACION_Y_CAPACITACION/9) INSTALACIÓN TV  LG (SMARTERS).pptx": "https://drive.google.com/file/d/1Nxz0AKAUBx0V7DFDceqa673o77-PRn2e/view",
+  "10_FORMACION_Y_CAPACITACION/10) INSTALACIÓN TV LG (SMART IPTV).pptx": "https://drive.google.com/file/d/1jZvxp_aAbbuQaCUyS04F8OpPkIyHJ2ig/view",
+  "10_FORMACION_Y_CAPACITACION/11) INSTALACIÓN PC WINDOWS (SMARTERS).pptx": "https://drive.google.com/file/d/12FI537tZIV4N2PD0x1NVvtn5WQ_YZVY4/view",
+  "10_FORMACION_Y_CAPACITACION/12) INSTALACIÓN TV ANDROID-CHROMECAST (XCIPTV).pptx": "https://drive.google.com/file/d/1DcvOVvuSJW-wNqD3XAiMtBIDVuQfASfk/view",
+  "10_FORMACION_Y_CAPACITACION/13) INSTALACIÓN CAJA ANDROID (SMARTERS).pptx": "https://drive.google.com/file/d/13l4KKZgy0T3eahfPXDXhSAuMPcOscrVn/view",
+};
+// Excluidos deliberadamente (restringidos, sin enlace para nadie): CUENTAS AMAZON para (Fire stick), 3)Dispositivos-Mapa (Doc y PDF),
+// INSTALACIONES ESCRITAS, Incentivos OP Diciembre.pdf, Política de Incentivos.
+// Solo en Drive, sin copia LIFE-OS (pendientes de decisión, no publicados): 1) PRESENTACIÓN TIVIPLAY.pptx, Información general del Servicio TIVIPLAY 2024.pdf.
+
+const DRIVE_URL = /^https:\/\/(drive|docs)\.google\.com\/(file|document|presentation|spreadsheets)\/d\/[A-Za-z0-9_-]{20,}\/view$/;
+/** Enlace al original en Google Drive (WO-TIVI-DOC-001). Nunca para documentos restringidos; Google aplica sus propios permisos. */
+export function driveUrlFor(relativePath: string): string | null {
+  const key = relativePath.normalize("NFC");
+  const url = DRIVE_ORIGINALS[key] ?? DRIVE_ORIGINALS[relativePath.normalize("NFD")] ?? null;
+  if (!url || !DRIVE_URL.test(url) || curationFor(relativePath)?.status === "RESTRINGIDO") return null;
+  return url;
+}
+export const DRIVE_ORIGINAL_PATHS: readonly string[] = Object.keys(DRIVE_ORIGINALS);

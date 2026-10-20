@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requirePage } from "@/server/auth/access";
 import { audit, listUsers } from "@/server/auth/store";
 import { CATALOG_STATUS_LABEL, LIBRARY_SECTIONS, type CatalogStatus } from "@/server/documents/curation";
-import { libraryInventory } from "@/server/documents/library";
+import { libraryInventory, linkEligible } from "@/server/documents/library";
 import { discoverLifeosDocuments } from "@/server/documents/lifeos-discovery";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,9 @@ const STATUS_ORDER: Array<CatalogStatus | "VIGENTE_APTO"> = ["VIGENTE_APTO", "PE
 export default async function LibraryInventoryPage() {
   const actor = await requirePage("/administracion/biblioteca");
   listUsers(actor); // Live ADMIN check on the server, not only the route policy.
-  const discovery = discoverLifeosDocuments({ fresh: true });
+  const fullDiscovery = discoverLifeosDocuments({ fresh: true });
+  // Recursos solo-enlace ya figuran como entradas del catálogo: no listarlos dos veces.
+  const discovery = { ...fullDiscovery, skipped: fullDiscovery.skipped.filter(item => !linkEligible(item)) };
   const entries = await libraryInventory(actor);
   const readable = entries.filter(entry => "document" in entry);
   const blocked = entries.filter(entry => !("document" in entry));

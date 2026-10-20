@@ -3,7 +3,7 @@
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
-import { CATALOG_STATUS_LABEL, LIBRARY_SECTIONS, curationFor, type CatalogStatus, type LibrarySection } from "./curation";
+import { CATALOG_STATUS_LABEL, LIBRARY_SECTIONS, curationFor, driveUrlFor, type CatalogStatus, type LibrarySection } from "./curation";
 import { docxToMarkdown } from "./docx-text";
 import { extractMetadata, extractTitle, slugify } from "./markdown-metadata";
 
@@ -57,8 +57,9 @@ export type DiscoveredDocument = {
   catalogReason: string;
   proposedCurrent: boolean;
   curated: boolean;
+  driveUrl: string | null;
 };
-export type SkippedFile = { relativePath: string; reason: string; section: DocumentCategory | null; catalogStatus: CatalogStatus | null; catalogReason: string | null };
+export type SkippedFile = { relativePath: string; reason: string; section: DocumentCategory | null; catalogStatus: CatalogStatus | null; catalogReason: string | null; driveUrl: string | null };
 export type DiscoveryResult = {
   root: string;
   available: boolean;
@@ -75,7 +76,7 @@ export function readSourceMarkdown(physicalPath: string): string {
 }
 const skippedEntry = (relativePath: string, reason: string): SkippedFile => {
   const curation = curationFor(relativePath);
-  return { relativePath, reason, section: curation?.section ?? null, catalogStatus: curation?.status ?? null, catalogReason: curation?.reason ?? null };
+  return { relativePath, reason, section: curation?.section ?? null, catalogStatus: curation?.status ?? null, catalogReason: curation?.reason ?? null, driveUrl: driveUrlFor(relativePath) };
 };
 
 export function lifeosRoot() {
@@ -168,6 +169,7 @@ export function discoverLifeosDocuments(options: { fresh?: boolean } = {}): Disc
           catalogReason: curation?.reason ?? (restriction ? `Detección automática: ${restriction}.` : "Sin curaduría: revisión documental pendiente."),
           proposedCurrent: curation?.proposedCurrent ?? false,
           curated: !!curation,
+          driveUrl: driveUrlFor(relativePath),
         });
       }
     }

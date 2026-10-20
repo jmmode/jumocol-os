@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
 
   outputFileTracingIncludes: {
     "/operaciones/tiviplay/contexto": [
-      "../../../03_AREAS/01_OPERACION/TIVIPLAY/01_CONTEXTO/JUM-OI-OPS-TIVI-001_CONTEXTO_MAESTRO.md",
+      "../../03_AREAS/01_OPERACION/TIVIPLAY/01_CONTEXTO/JUM-OI-OPS-TIVI-001_CONTEXTO_MAESTRO.md",
     ],
   },
 
