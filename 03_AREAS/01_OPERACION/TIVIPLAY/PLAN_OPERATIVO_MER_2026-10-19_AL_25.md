@@ -133,7 +133,7 @@ ChatGPT consolida respuestas sin fusionar contradicciones; Dirección aprueba ex
 **DECISION LOG pendiente:** ratificar MER transversal; aprobar este plan v0.1; resolver fuentes/corte y jerarquía S0/S2/S3; autorizar implementaciones específicas.
 **BACKLOG:** P0 verificación de ingresos, identidad, paridad y fuente; P0 auth y frescura; P1 servicio/soporte; P1 chatbot; P2 integraciones de escritura.
 **EVIDENCIAS:** referencias sanitizadas al contrato S0 y al corte 30/09; no copiar archivos de clientes ni capturas.
-**NEXT ACTION EXACTA — lunes 19/10, primera sesión:** consultar fuentes vivas en modo lectura, reconstruir baseline financiero y matriz S0-A/S0-B; elegir corte y referencia de replay, medir tarea manual, producir backlog y someter gate S2 a Dirección. Sin confirmar pagos ni modificar hojas.
+**NEXT ACTION ACTUALIZADA — sesión de identificación de archivo y hojas:** verificar el Excel congelado que Dirección conserva del 30/09 (nombre, ubicación privada, fecha/hora de exportación, hash y pestañas); distinguir backup posterior a correcciones de posible snapshot anterior; fijar inputs/outputs y prueba de S0-B antes de iniciar comparación. Sin modificar hojas.
 
 ## 11. Handoff y cambio de estado
 Cada agente deja en su entrega: `fecha, fuente/corte, objetivo, outputs, pruebas, estado permitido, diferencias, consumo/tiempo, archivos/commit, decisión pendiente, NEXT_ACTION + owner`. No modificar el estado global por narrativas de éxito.
@@ -151,8 +151,49 @@ Cada agente deja en su entrega: `fecha, fuente/corte, objetivo, outputs, pruebas
 
 **Verificado en repo:** existen `05_AUTOMATION/tiviplay-monthly-close-v1/{run.mjs,src/core.mjs,src/google-sheets.mjs}`, módulo S0-A de conciliación, API `monthly-close` y vista `/operaciones/tiviplay/runtime`. El checkpoint 05/10 certifica repetibilidad de lectura, y el 09/10 la vertical técnica, **no el cierre financiero S0-B**. `run.mjs` serializa previews con campos sensibles en JSON bajo `evidence/`; priorizar aislamiento/saneamiento antes de ejecutar con datos reales dentro de Git.
 
-**Revisiones restantes para consolidación formal:** Codex y OpenClaw, salvo decisión de Dirección de cerrar consulta con revisiones disponibles.
+**Consulta G2 cerrada por Dirección el 19/10/2026:** únicamente Claude y Grok para esta ronda. Codex y OpenClaw no son requisitos de revisión ni deben bloquear la consolidación G3; podrán ejecutar o revisar tareas posteriores solo tras Work Order y aprobación.
 
 **Borrador de consolidación (NO aprobado):** (1) eliminar construcción redundante de CLI o dashboard; (2) P0 proteger salidas de evidencia; (3) ampliar prueba con montos USD/COP y comparación por registro; (4) buscar snapshot de `BASE GENERAL` anterior a 30/09 o preparar captura gobernada para octubre→noviembre; (5) agenda de recaudo privada/local después de permisos y fechas definidas.
 
-**Gate siguiente:** ChatGPT presenta matriz G3 → Dirección ratifica G4 → se actualiza **este mismo archivo** a v0.2 con WOs, cronograma, owners y criterio de validación G5. Hasta entonces no ejecutar writes ni despliegues por este plan.
+**Gate siguiente:** ChatGPT presenta matriz G3 con solo Claude y Grok → Dirección ratifica G4 → se actualiza **este mismo archivo** a v0.2 con WOs, cronograma, owners y criterio de validación G5. Hasta entonces no ejecutar writes ni despliegues por este plan.
+
+## 13. DECISIÓN DE DIRECCIÓN E INVENTARIO DE HOJAS — 19/10/2026
+
+**Decisión G2:** cerrar esta ronda de revisión con **Claude y Grok únicamente**. Las propuestas recibidas pasan a G3 de consolidación. **Codex y OpenClaw** quedan fuera de la revisión obligatoria de esta ronda; no están descartados como ejecutores futuros. Este cierre no autoriza código, conciliaciones o despliegues.
+
+### Hallazgo de fuentes — lectura de metadatos y encabezados, sin modificación
+La fuente Google Sheets activa `GESTION_DIA_PAGOS_2026_TIVIPLAY` (spreadsheet ID `1bOgUMrHoAyAm-aoRhXgylWfbHph7tsvJYz1mIujdi-4`) tiene 84 pestañas al inventario del 19/10. Las siguientes **existen, con nombre literal confirmado** (algunos espacios son parte del nombre):
+
+| Identificador | Archivo → pestaña exacta | Propósito autorizado para análisis | Grupo |
+|---|---|---|---|
+| HG-01 | `GESTION_DIA_PAGOS_2026_TIVIPLAY` → `BASE GENERAL` | Universo de clientes; solo snapshot del **30/09** si se verifica que corresponde al Excel descargado | P0 INPUT CONDICIONADO |
+| HG-02 | `GESTION_DIA_PAGOS_2026_TIVIPLAY` → `PAGOS OCTUBRE 2026 - PRELIMINAR` | Oracle de salida del corte 30/09 (99 registros; semanas 13/30/27/16/13); no convertir lectura de esa salida en validación del algoritmo histórico | P0 REFERENCIA |
+| HG-03 | `GESTION_DIA_PAGOS_2026_TIVIPLAY` → `PAGOS OCTUBRE 2026` | Comparación con hoja operativa del mes; puede haber mutaciones posteriores al corte | P0 COMPARACIÓN |
+| HG-04 | `GESTION_DIA_PAGOS_2026_TIVIPLAY` → `PAGOS SEPTIEMBRE` | Casos vencidos, gestión y trazabilidad del mes anterior | P0 CONTEXTO |
+| HV-01 | `VENTAS 2026 (Tiviplay)` → `VENTAS_SEPTIEMBRE` | Nuevas ventas, reactivaciones y columna `CONFIRMACION`; distinguir valor marcado de ingreso comprobado por JM | P0 PARIDAD S0-A |
+| HF-01 | `GESTION_DIA_PAGOS_2026_TIVIPLAY` → `ZELLE (SEPT)` | Evidencia operacional de pagos; banco independiente aún requerido | P1 AUDITORÍA |
+| HF-02 | idem → `PAYPAL (SEPT)` | Evidencia operacional de pagos y comisiones | P1 AUDITORÍA |
+| HF-03 | idem → `TRANSF (SEPT)` | Evidencia operacional de transferencias, monedas y fechas | P1 AUDITORÍA |
+| HS-01 | idem → `CONTROL ( SEPT) P1` | Servicio / renovación P1 | P1 SERVICIO |
+| HS-02 | idem → `CONTROL (SEPT) P2` | Servicio / renovación P2 | P1 SERVICIO |
+| HS-03 | idem → `CONTROL ( SEPT) P3` | Servicio / renovación P3 | P1 SERVICIO |
+| HA-01 | idem → `AUDITORIA_CICLO_SEPT` | Contexto de excepciones del cierre; no es una entrada transaccional autorizada por sí sola | P1 EVIDENCIA |
+
+**Fuentes nativas constatadas:** `https://docs.google.com/spreadsheets/d/1bOgUMrHoAyAm-aoRhXgylWfbHph7tsvJYz1mIujdi-4/edit`; `https://docs.google.com/spreadsheets/d/1y1yZSxHCz3HhfikgHNvhgKhU7rFCG9U8HH90QeTN6TQ/edit`.
+
+**Distinción fundamental:** las hojas vivas y sus títulos/cabeceras se verificaron, pero **ninguna copia `.xlsx` del 30/09 se ha podido identificar inequívocamente en el contexto local o Drive conectado**. Dirección comunica que dispone del Excel: respetar esa afirmación; para su inspección concreta falta disponer del archivo exacto o de una referencia autenticada a él. Copias `BASE GENERAL (...).xlsx` halladas en Drive fueron modificadas en agosto y **no son prueba del corte 30/09**.
+
+### Protocolo para fijar las hojas DEFINITIVAS del Excel (antes de correr el motor)
+1. Leer archivo `.xlsx` **en privado**: nombre exacto, fecha/hora de exportación/creación, hash SHA-256, origen, pestañas y encabezados sin revelar filas de clientes.
+2. Determinar si `BASE GENERAL` del Excel es **anterior o posterior** a las correcciones del 30/09. Según el reporte del 30/09, el backup descargado fue posterior a correcciones: si éste es ese mismo archivo, **sirve como salida/corte postcorrecciones, no como estado anterior para probar transformación completa**.
+3. Asignar, por pestaña, rol `INPUT`, `ORACLE`, `CONTEXTO`, `EVIDENCIA`, `NO UTILIZAR` y evidencia de disponibilidad. Las equivalencias con pestañas nativas se verifican por nombre y encabezados, no por parecido.
+4. Comparar conteos 99 / 13-30-27-16-13, luego **casos, fechas y montos USD/COP por separado**; no inferir cobros confirmados. Si no existe entrada precorrecciones, documentar limitación y preparar captura previa para octubre→noviembre.
+5. No subir el Excel ni datos de clientes, pagos o contraseñas al repositorio. Publicar solamente nombres de pestañas, hashes, conteos, excepciones sanitizadas, dueño, gatillo y próxima acción.
+6. **No consumir P1 de bancos/paneles** durante la primera corrida de S0-B salvo para documentar dependencias, y no usar `GESTION_GENERAL (TIVIPLAY)` histórica.
+
+### Gate / checkpoint
+**Documentación de selección:** PARCIAL (metadatos y cabeceras de fuente viva identificados; Excel exacto no inspeccionado).
+**Disponibilidad de entrada histórica:** REQUIERE DECISIÓN de selección de artefacto exacto.
+**Pruebas del motor sobre el corte congelado:** NO IMPLEMENTADO en esta sesión.
+**Protocolo de revisión G2:** VALIDADO para alcance de esta ronda (Dirección decidió usar solo Claude y Grok).
+**NEXT_ACTION:** inspeccionar **el Excel real del 30/09** en fuente privada y fijar matriz de tabs final; luego consolidar plan técnico v0.2 y someter Work Orders a aprobación G4. 
