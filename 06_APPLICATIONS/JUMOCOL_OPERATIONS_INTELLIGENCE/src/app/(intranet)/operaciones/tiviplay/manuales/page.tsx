@@ -8,8 +8,10 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
   const actor = await requirePage("/operaciones/tiviplay/manuales");
   const params = await searchParams;
   const all = await libraryInventory(actor);
-  const query = (params.q ?? "").slice(0, 120).toLocaleLowerCase("es");
-  const entries = all.filter(x => (!params.category || x.category === params.category) && ("document" in x ? x.document.title : x.id).toLocaleLowerCase("es").includes(query));
+  // Búsqueda sin distinguir tildes ni mayúsculas: «instalacion» encuentra «INSTALACIÓN».
+  const fold = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es");
+  const query = fold((params.q ?? "").slice(0, 120).trim());
+  const entries = all.filter(x => (!params.category || x.category === params.category) && fold("document" in x ? x.document.title : x.id).includes(query));
   audit(actor.id, "library", "list", "SUCCESS");
   return <div><h1 className="text-3xl font-semibold">Manuales y procesos</h1><TiviplayNavigation />
     <p className="my-5">Documentación autorizada de TiviPlay. Abre el título para leerlo aquí o usa «Abrir original en Drive» cuando esté disponible. La publicación autoriza la lectura y no certifica la validación E2E del proceso.</p>
