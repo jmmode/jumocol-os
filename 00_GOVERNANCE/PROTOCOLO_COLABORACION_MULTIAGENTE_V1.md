@@ -125,7 +125,7 @@ Usar cálculo determinístico antes de IA, agentes para pasos repetitivos y un m
 ## 7. Aplicación inmediata: TiviPlay, semana 19–25 octubre 2026
 Plan: `03_AREAS/01_OPERACION/TIVIPLAY/PLAN_OPERATIVO_MER_2026-10-19_AL_25.md`.
 - **Revisiones recibidas y evaluadas en conversación, pendientes de consolidación formal:** Grok y Claude.
-- **Revisiones pendientes, si Dirección mantiene consulta:** Codex y OpenClaw.
+- **Dirección cerró G2 el 19/10/2026 únicamente con Claude y Grok.** No esperar Codex/OpenClaw para G3; participaciones futuras se asignan por Work Order autorizada.
 - **Hallazgo reiterado:** existe `05_AUTOMATION/tiviplay-monthly-close-v1` y runtime de lectura, por tanto no reescribir su motor.
 - **Riesgos P0:** JSON de evidence contiene preview con posibles credenciales/PII; oracle basado en conteos no prueba reconciliación por registro; dos lógicas de selección pueden divergir; el replay 99 contra la hoja preliminar prueba lectura, no reconstrucción de `BASE GENERAL` anterior.
 - **Siguiente decisión:** consolidar las propuestas y aprobar WO para saneamiento de evidencia, baseline/replay seguro, motor compartido y agenda piloto. `Confirmado JM` sigue siendo aprobación exclusiva de Dirección.
