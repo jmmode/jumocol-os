@@ -10,9 +10,11 @@
 
 > Plantilla del Motor de Manuales V0.1, derivada del manual piloto `TIVIPLAY_MANUAL_GESTION_FINANCIERA_Y_RENOVACION_V0_1` (20/10/2026). Reglas de uso:
 > - Cada hoja, columna y valor permitido debe verificarse en la fuente viva y aparecer en la sección 12.
-> - Lo que la fuente no permite cumplir va a la sección 13 como REQUIERE DECISIÓN.
+> - Lo que la fuente no permite cumplir va a la sección 14 como REQUIERE DECISIÓN.
 > - No copiar datos de clientes, credenciales ni cifras reales; los ejemplos son ficticios.
 > - El campo Estado no debe contener BORRADOR, DRAFT, HISTÓRICO, RESTRINGIDO, CONFIDENCIAL, OBSOLETO ni DEROGADO. La biblioteca bloquea la publicación de documentos con esas palabras en el estado.
+> - **Antes de cada versión nueva, reinspeccione las hojas vivas.** El estado anterior no se asume vigente; anote la fecha de cada inspección en la Fecha de corte.
+> - Operación ≠ auditoría: los cruces contra extractos o exportaciones de sistemas externos van en motores de auditoría aparte, no en el manual operativo.
 
 ## 1. Propósito
 
@@ -56,7 +58,9 @@
 
 ## 8. Cruce entre capas
 
-| Capa A | Capa B | Resultado / acción |
+<Cadena determinística con los campos existentes (hoja → campo → hoja). Condiciones en que es inequívoca. Tabla de casos ambiguos **observados** en las hojas vivas → REQUIERE DECISIÓN. El rol escala; nunca elige.>
+
+| Capa A | Capa B | Estado del caso |
 |---|---|---|
 
 ## 9. Errores frecuentes
@@ -80,12 +84,16 @@
 | Elemento del manual | Fuente verificada |
 |---|---|
 
-## 13. Decisiones pendientes (REQUIERE DECISIÓN)
+## 13. Estado del gate y evidencia E2E real
 
-| ID | Decisión | Por qué bloquea |
+<Estado (IMPLEMENTADO / PARCIAL / … / VALIDADO). Casos reales revisados, citados por hoja y fila, sin datos personales. Si no existe un recorrido real completo, decirlo: nunca fabricar un caso ni completar datos para hacer pasar el gate.>
+
+## 14. Decisiones pendientes y estado de brechas
+
+| ID | Tema | Estado |
 |---|---|---|
 
-## 14. Riesgos detectados
+## 15. Riesgos detectados
 
-| ID | Riesgo | Mitigación propuesta (no aplicada) |
-|---|---|---|
+| ID | Riesgo | Estado | Mitigación propuesta (no aplicada) |
+|---|---|---|---|

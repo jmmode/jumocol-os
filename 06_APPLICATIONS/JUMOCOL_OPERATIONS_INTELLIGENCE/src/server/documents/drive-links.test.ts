@@ -66,4 +66,16 @@ describe("Drive originals", () => {
     expect(entry.draft).toBe(false);
     expect(entry.document.markdown).not.toMatch(/(contrase[nñ]a|password)[ \t]*[:=][ \t]*\S{4,}/i);
   });
+
+  it("documents the approved operational gate as observed in the live sheets, without declaring it validated", async () => {
+    const md = (await libraryEntry("tiviplay-manual-financiero-renovacion", admin))!.document.markdown;
+    expect(md).toMatch(/\*\*Versión:\*\* 0\.2/);
+    for (const section of ["## 2. Gate operacional", "## 7. CAPA DE SERVICIO", "## 8. Cruce entre capas", "## 12. Evidencia", "## 13. Estado del gate operacional y evidencia E2E", "## 14. Decisiones pendientes", "## 15. Riesgos"])
+      expect(md).toContain(section);
+    expect(md).toContain("= HABILITADO PARA ACTUALIZAR BASE GENERAL");
+    expect(md).toMatch(/\| H \| \*\*`F\.VENCIMIENTO`\*\*/);
+    expect(md).toMatch(/\*\*Estado: PARCIAL\.\*\*/);
+    expect(md).not.toMatch(/Estado:\*\* VALIDADO/);
+    expect(md).toContain("Solo Dirección (JM)");
+  });
 });

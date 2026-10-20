@@ -1,83 +1,84 @@
 # Manual operativo — Gestión financiera y renovación de servicio TiviPlay
 
-**Versión:** 0.1
+**Versión:** 0.2
 **Estado:** PROPUESTO — PENDIENTE DE APROBACIÓN DE DIRECCIÓN
-**Fecha de corte:** 2026-10-20
+**Fecha de corte:** 2026-10-20 (segunda inspección, después de los cambios de Dirección en CONTROL)
 **Responsable:** Dirección (Julián)
 **Módulo:** Operaciones
 **Submódulo:** TiviPlay · Pagos y renovación
-**Decisión gobernante:** TIVIPLAY_CONTRATO_OPERATIVO_S0_V0_2 (S0-C, S0-D, S0-E)
+**Decisión gobernante:** TIVIPLAY_CONTRATO_OPERATIVO_S0_V0_2 (S0-C, S0-D, S0-E) + regla de gate operacional aprobada por Dirección el 20/10/2026
 
-> Este manual describe el trabajo del asesor sobre las hojas vivas tal como existen al 20/10/2026, ciclo de octubre. Cada hoja, columna y valor permitido se verificó en la hoja real (ver la sección 12). Donde la hoja no permite cumplir una regla, el manual lo marca como **REQUIERE DECISIÓN** y no inventa un procedimiento. La auditoría bancaria con extractos queda fuera de alcance.
+> Este manual describe el trabajo del asesor sobre las hojas vivas de octubre tal como existen al 20/10/2026. Cada hoja, columna y valor permitido se verificó en la hoja real (sección 12). Donde la hoja no permite cumplir una regla, el manual lo marca como **REQUIERE DECISIÓN** y no inventa un procedimiento.
+>
+> **Operación ≠ auditoría.** Este manual cubre la operación. La conciliación contra extractos bancarios y el cruce con las exportaciones de los paneles son motores de auditoría independientes, fuera de su alcance.
 
 ## 1. Propósito
 
 Que el asesor sepa **qué hacer, dónde hacerlo, qué registrar y cómo saber que terminó** cuando un cliente paga y su servicio debe renovarse.
 
-## 2. Regla de oro del ciclo
+## 2. Gate operacional (regla aprobada)
 
-Para un cliente cuya **F.VENCIMIENTO cae en el mes en curso**, el ciclo solo está completo cuando se cumplen las tres condiciones:
+```text
+CONFIRMADO JM
++ RENOVACIÓN REGISTRADA EN EL CONTROL CORRESPONDIENTE
++ F.VENCIMIENTO VÁLIDA Y POSTERIOR AL PERÍODO RENOVADO
+= HABILITADO PARA ACTUALIZAR BASE GENERAL
+```
 
 | # | Condición | Dónde se ve | Quién la produce |
 |---|---|---|---|
-| 1 | **PAGO CONFIRMADO**: `CONFIRMACION = CONFIRMADO JM` | Hoja del medio de pago (ZELLE / PAYPAL / TRANSF) | Solo Dirección (JM) |
-| 2 | **Renovación registrada**: una fila del mismo `USUARIO` con `CREDITO` ≥ 1 | `CONTROL (OCT) P1`, `P2` o `P3`, según el panel | Asesor |
-| 3 | **F.VENCIMIENTO resultante posterior al mes en curso** | Panel técnico del cliente | Asesor la verifica |
+| 1 | **Gate financiero:** `CONFIRMACION = CONFIRMADO JM` | Hoja del medio de pago (ZELLE / PAYPAL / TRANSF) y `PAGOS OCTUBRE 2026` | **Solo Dirección (JM)** |
+| 2 | **Renovación registrada:** una fila del cliente con `CREDITO` ≥ 1 | `CONTROL (OCT) P1`, `P2` o `P3` | Asesor |
+| 3 | **F.VENCIMIENTO** válida y posterior al período renovado | Columna `F.VENCIMIENTO` (H) de la misma fila de CONTROL | Asesor la registra, leída del panel |
 
-Solo con las tres se habilita la actualización de `BASE GENERAL`, que hace Back Office.
-
-Mantenga siempre separados estos cinco estados. Ninguno implica el siguiente:
-
-1. **Pago reportado:** el cliente envió el comprobante.
-2. **Pago confirmado:** JM verificó el ingreso real.
-3. **Renovación técnica:** se asignó el crédito en el panel.
-4. **Validación de servicio:** la nueva F.VENCIMIENTO es correcta.
-5. **Actualización de Base General:** Back Office la registró.
+Mantenga siempre separados estos estados:
+- **Pago reportado o comprobante recibido ≠ `CONFIRMADO JM`.**
+- **`CONFIRMADO JM` (pago confirmado) ≠ ciclo completado.**
+- **Habilitado para actualizar BASE GENERAL ≠ BASE GENERAL actualizada.** La actualización la hace Back Office (D2) y no forma parte de este manual.
 
 ## 3. Alcance
 
 **Incluye:**
 - Registrar el pago recibido en la hoja de su medio.
 - Seguir el estado financiero en `PAGOS OCTUBRE 2026`.
-- Registrar la renovación en `CONTROL (OCT) P1/P2/P3`.
-- Verificar el servicio.
-- Escalar las excepciones.
+- Registrar la renovación y su `F.VENCIMIENTO` en CONTROL.
+- Determinar si el caso está habilitado, pendiente o en excepción.
 
 **No incluye:**
-- Confirmar pagos: es exclusivo de JM.
-- Conciliar contra extractos bancarios.
-- Editar `BASE GENERAL`: es de Back Office.
+- Confirmar pagos: exclusivo de JM.
+- Editar `BASE GENERAL`.
+- Auditoría bancaria y auditoría de paneles.
 - Altas de clientes nuevos (S0-A).
 
 ## 4. Fuentes que usa el asesor
 
-Todas están en el libro de Google Sheets **`GESTION_DIA_PAGOS_2026_TIVIPLAY`**. Cada mes se crean pestañas nuevas; en octubre son estas:
+Libro de Google Sheets **`GESTION_DIA_PAGOS_2026_TIVIPLAY`**, pestañas del mes en curso:
 
 | Hoja | Para qué | Qué hace el asesor |
 |---|---|---|
-| `PAGOS OCTUBRE 2026` | Cartera del mes: corte de BASE GENERAL del 30/09 y semanas 1 a 5 | Consulta. Solo escribe notas en `OBSERVACIONES` |
+| `PAGOS OCTUBRE 2026` | Cartera del mes: corte de BASE GENERAL del 30/09 | Consulta. Solo escribe en `OBSERVACIONES` |
 | `ZELLE (OCT)` | Pagos por Zelle (USD) | Registra el pago |
 | `PAYPAL (OCT)` | Pagos por PayPal (USD) | Registra el pago |
-| `TRANSF (OCT)` | Transferencias: Bancolombia, Nequi, Davivienda, Western U | Registra el pago |
-| `CONTROL (OCT) P1` | Renovaciones del panel 1 (`colombia77DM`) | Registra la renovación |
-| `CONTROL (OCT) P2` | Renovaciones del panel 2 (`Med3lli454`) | Registra la renovación |
-| `CONTROL (OCT) P3` | Renovaciones del panel 3 (`colombia78DM`) | Registra la renovación |
-| `BASE GENERAL` | Universo operacional consolidado | **No edita.** Solo consulta el nombre exacto del cliente y su panel |
+| `TRANSF (OCT)` | Bancolombia, Nequi, Davivienda, Western U | Registra el pago |
+| `CONTROL (OCT) P1` | Renovaciones del panel `colombia77DM` | Registra la renovación y su F.VENCIMIENTO |
+| `CONTROL (OCT) P2` | Renovaciones del panel `Med3lli454` | Registra la renovación y su F.VENCIMIENTO |
+| `CONTROL (OCT) P3` | Renovaciones del panel `colombia78DM` | Registra la renovación y su F.VENCIMIENTO |
+| `BASE GENERAL` | Universo operacional consolidado | **No edita.** Consulta el nombre exacto del cliente, el `USUARIO` y el `PANEL` |
 
-> Use siempre las pestañas del mes en curso. Las de meses anteriores, como `ZELLE (SEPT)` o `CONTROL (SEPT) P2`, son históricas.
+> Las pestañas de meses anteriores, como `ZELLE (SEPT)` o `CONTROL (SEPT) P2`, son históricas.
 
 ## 5. Prerrequisitos
 
-- Tener acceso de edición al libro `GESTION_DIA_PAGOS_2026_TIVIPLAY`.
-- Que su nombre esté en las listas desplegables de `Asesor` / `ASESOR` de las hojas que va a usar. Hoy no lo está para todos: ver la decisión D3.
-- Tener acceso al panel técnico del cliente para asignar el crédito y verificar la fecha.
-- Tener el comprobante del cliente.
+- Acceso de edición al libro.
+- Su nombre en la lista de asesor de cada hoja que use (sección 6.2 y 7.3). Hoy **Manuela** puede registrar en CONTROL P1/P2/P3 y en ZELLE, pero **no en PAYPAL ni en TRANSF** (D3).
+- Acceso al panel técnico del cliente, para asignar el crédito y leer la nueva fecha de vencimiento.
+- El comprobante del cliente.
 
 ## 6. CAPA FINANCIERA — Registrar un pago recibido
 
 ### 6.1 Elegir la hoja
 
-| Medio del pago | Hoja | Fila de encabezados | Primera fila de datos |
+| Medio | Hoja | Fila de encabezados | Primera fila de datos |
 |---|---|---|---|
 | Zelle | `ZELLE (OCT)` | 3 | 4 |
 | PayPal | `PAYPAL (OCT)` | 2 | 3 |
@@ -85,35 +86,35 @@ Todas están en el libro de Google Sheets **`GESTION_DIA_PAGOS_2026_TIVIPLAY`**.
 
 ### 6.2 Columnas que alimenta el asesor
 
-Escriba **solo** en estas columnas. A partir de `CLIENTE_KEY` todas las columnas son fórmulas. La mayoría tiene la protección "SISTEMA · columnas calculadas · no editar manualmente" (desde `CLIENTE_KEY` en ZELLE; desde la columna siguiente en PAYPAL y TRANSF), pero aunque una columna no esté protegida, no la edite.
+Escriba **solo** en estas columnas. Las siguientes son fórmulas: no las edite aunque no estén protegidas.
 
 **`ZELLE (OCT)`, columnas A a H:**
 
 | Col. | Campo | Qué escribir | Valores permitidos |
 |---|---|---|---|
-| A | `TC` | El mismo TC que el cliente tiene en BASE GENERAL. En la operación observada es `1` | Número |
-| B | `Cliente` | El nombre **exactamente igual** a la columna `CLIENTE` de BASE GENERAL | Texto |
+| A | `TC` | El mismo TC que el cliente tiene en BASE GENERAL. Observado: `1` | Número |
+| B | `Cliente` | El nombre **exactamente igual** a `CLIENTE` de BASE GENERAL | Texto |
 | C | `Monto Recibido` | El valor recibido | Número (USD) |
 | D | `Fecha` | La fecha del pago | Fecha |
-| E | `Asesor` | Su nombre | `Jorge`, `Heidy`, `Julian` |
-| F | `Origen` | El tipo de gestión | `FACTURACIÓN`, `VENTA`, `RECONEXIÓN` |
+| E | `Asesor` | Su nombre | `JORGE`, `HEIDI`, `JULIAN`, `MANUELA` (estricta) |
+| F | `Origen` | El tipo de gestión | `FACTURACIÓN`, `VENTA`, `RECONEXIÓN` (estricta) |
 | G | `Observación` | Notas del caso, sin datos bancarios | Texto libre |
-| H | `CONFIRMACION` | Siempre `PENDIENTE CONFIRMACION` | Ver la sección 6.4 |
+| H | `CONFIRMACION` | `PENDIENTE CONFIRMACION` | Ver la sección 6.4 |
 
 **`PAYPAL (OCT)`, columnas A a M:**
 
 | Col. | Campo | Qué escribir | Valores permitidos |
 |---|---|---|---|
-| A | `TC` | Igual que en Zelle | Número |
+| A | `TC` | Igual que en ZELLE | Número |
 | B | `CLIENTE` | El nombre exacto de BASE GENERAL | Texto |
 | C | `CORREO` | El correo de la factura | Texto |
 | D | `FACTURA ENVIADA` | El valor facturado | Número |
 | E | `COMISION PAYPAL` | La comisión del medio | Número |
 | F | `MONTO RECIBIDO` | El valor neto recibido | Número (USD) |
 | G | `FECHA DE RECIBIDO` | La fecha del pago | Fecha |
-| H | `Link de confirmación` | El enlace de la factura PayPal | URL |
+| H | `Link de confirmación` | El enlace de la factura | URL |
 | I | `FECHA DE CREACION` | La fecha de creación de la factura | Fecha |
-| J | `ASESOR` | Su nombre | `Jorge`, `Julian`, `Heidy` |
+| J | `ASESOR` | Su nombre | `Jorge`, `Julian`, `Heidy` (estricta) |
 | K | `ORIGEN` | El tipo de gestión | `FACTURACIÓN`, `VENTA`, `RECONEXIÓN` |
 | L | `OBSERVACIÓN` | Notas del caso | Texto libre |
 | M | `CONFIRMACION` | `PENDIENTE CONFIRMACION` | Ver la sección 6.4 |
@@ -122,233 +123,268 @@ Escriba **solo** en estas columnas. A partir de `CLIENTE_KEY` todas las columnas
 
 | Col. | Campo | Qué escribir | Valores permitidos |
 |---|---|---|---|
-| A | `TC` | Igual que en Zelle | Número |
+| A | `TC` | Igual que en ZELLE | Número |
 | B | `CLIENTE` | El nombre exacto de BASE GENERAL | Texto |
 | C | `VALOR EN PESOS` | El valor, **solo si pagó en COP** | Número |
 | D | `USD` | El valor, **solo si pagó en USD** | Número |
 | E | `CAD` | El valor, **solo si pagó en CAD** | Número |
 | F | `MEDIO DE PAGO` | El banco o medio | `BANCOLOMBIA`, `NEQUI`, `DAVIVIENDA`, `WESTERN U` |
 | G | `FECHA` | La fecha del pago | Fecha válida |
-| H | `ASESOR` | Su nombre | `Jorge`, `Danna`, `Julian`, `Juan`, `Heidy` |
+| H | `ASESOR` | Su nombre | `Jorge`, `Danna`, `Julian`, `Juan`, `Heidy` (estricta) |
 | I | `ORIGEN` | El tipo de gestión | `FACTURACIÓN`, `VENTA`, `RECONEXIÓN` |
 | J | `OBSERVACIÓN` | Notas del caso | Texto libre |
 | K | `CONFIRMACION` | `PENDIENTE CONFIRMACION` | Ver la sección 6.4 |
 
-> **TRANSF: llene una sola columna de moneda.** La hoja deduce la moneda con este orden: si `USD` tiene valor, toma USD; si no, CAD; si no, COP. Si llena dos columnas, la moneda queda mal.
+> **TRANSF: llene una sola columna de moneda.** La hoja la deduce en este orden: USD, luego CAD, luego COP.
 
 ### 6.3 Por qué el nombre del cliente debe ser exacto
 
-La hoja calcula `CLIENTE_KEY` como el nombre en mayúsculas y sin espacios sobrantes. Luego lo busca en la columna `CLIENTE_KEY` de BASE GENERAL **junto con el mismo `TC`**. El resultado queda en `ESTADO_ENLACE`:
+La hoja calcula `CLIENTE_KEY` (el nombre en mayúsculas y sin espacios sobrantes) y lo busca en `CLIENTE_KEY` de BASE GENERAL **junto con el mismo `TC`**. El resultado queda en `ESTADO_ENLACE` y en `FILA_BASE`:
 
 | `ESTADO_ENLACE` | Significa | Acción |
 |---|---|---|
-| `ENLAZADO` | Encontró exactamente un cliente | Continúe |
-| `SIN BASE` | No encontró el nombre o el TC no coincide | Corrija el nombre o el TC copiándolos de BASE GENERAL. Si sigue igual, escale (E1) |
-| `REQUIERE DECISIÓN` | Hay más de un cliente con ese nombre y TC | No intente resolverlo. Escale (E2) |
+| `ENLAZADO` | Exactamente un cliente. `FILA_BASE` indica su fila en BASE GENERAL | Continúe |
+| `SIN BASE` | No encontró nombre más TC | Copie el nombre y el TC desde BASE GENERAL. Si sigue igual, escale E1 |
+| `REQUIERE DECISIÓN` | Más de un cliente con ese nombre y TC; `FILA_BASE` queda vacía | No lo resuelva. Escale E2 |
 
-**Ejemplo ficticio:**
-
-| TC | Cliente | Monto Recibido | Fecha | Asesor | Origen | Observación | CONFIRMACION |
-|---|---|---|---|---|---|---|---|
-| 1 | Cliente Ejemplo Uno | 25 | 15/10/2026 | Jorge | FACTURACIÓN | Comprobante recibido por WhatsApp | PENDIENTE CONFIRMACION |
-
-### 6.4 La columna CONFIRMACION
+### 6.4 La columna CONFIRMACION — qué NO puede confirmar el asesor
 
 | Valor | Quién lo pone | Significado |
 |---|---|---|
 | `PENDIENTE CONFIRMACION` | **Asesor** | Registró el pago con su comprobante |
-| `CONFIRMADO JM` | **Solo JM** | JM verificó el ingreso real en la fuente financiera |
+| `CONFIRMADO JM` | **Solo JM** | JM verificó el ingreso real |
 | `REQUIERE REVISIÓN` | JM | El pago no coincide en valor, fecha, cliente o medio |
-| `SIN PAGO` | REQUIERE DECISIÓN (D5) | El valor existe en la lista, pero su uso por el asesor no está definido |
+| `SIN PAGO` | REQUIERE DECISIÓN (D5) | Está en la lista, pero no tiene regla de uso |
 
-> **El asesor nunca selecciona `CONFIRMADO JM`, aunque la lista se lo permita.** La hoja no lo bloquea técnicamente: la columna no está protegida (riesgo R1). Es una regla de gobierno, no de la herramienta.
+> **El asesor nunca selecciona `CONFIRMADO JM` ni `REQUIERE REVISIÓN`.** Al 20/10 la hoja **no lo impide**: la columna CONFIRMACION no tiene protección (riesgo **R1, P0**).
 
 ### 6.5 Qué calcula la hoja sola (no editar)
 
-Una vez registrado el pago, las columnas automáticas muestran:
-
 | Campo | Qué indica |
 |---|---|
-| `PLAN_CANONICO`, `DURACION_MESES`, `PANTALLAS` | El plan del cliente según BASE GENERAL |
-| `MONEDA_PAGO`, `VALOR_PAGO` | La moneda y el valor tomados de su registro |
-| `VALIDACION_TARIFA` | `COINCIDE PLAN`, `TARIFA ≠ PLAN`, `SIN COINCIDENCIA TARIFA`, `PENDIENTE ENLACE`, `ADD-ON / TARIFA SEPARADA` o `MONEDA NO USD` (solo en TRANSF) |
-| `PROP_F_ULTIMO`, `PROP_F_PROXIMO`, `PROP_T`, `PROP_ESTADO` | Fechas propuestas. **Solo aparecen** con `CONFIRMADO JM` + `ENLAZADO` + `COINCIDE PLAN` |
-| `ESTADO_PROPUESTA` | `VALIDADO` o `REQUIERE DECISIÓN` |
-| `MOTIVO_PROPUESTA` | Por qué falta: `PENDIENTE CONFIRMADO JM`, `PENDIENTE ENLACE`, `PENDIENTE VALIDACIÓN TARIFA`, `SIN DURACIÓN` o `PROPUESTA CALCULADA` |
-| `GATE_CAMBIO_PLAN` | `VALIDADO`, `REQUIERE DECISIÓN` o `PARCIAL` |
+| `PLAN_CANONICO`, `DURACION_MESES`, `PANTALLAS` | El plan según BASE GENERAL |
+| `MONEDA_PAGO`, `VALOR_PAGO` | La moneda y el valor tomados del registro |
+| `VALIDACION_TARIFA` | `COINCIDE PLAN`, `TARIFA ≠ PLAN`, `SIN COINCIDENCIA TARIFA`, `PENDIENTE ENLACE`, `ADD-ON / TARIFA SEPARADA` o `MONEDA NO USD` |
+| `PROP_F_ULTIMO`, `PROP_F_PROXIMO`, `PROP_T`, `PROP_ESTADO` | Propuestas de fecha **comercial**. Solo aparecen con `CONFIRMADO JM` + `ENLAZADO` + `COINCIDE PLAN` |
+| `ESTADO_PROPUESTA`, `MOTIVO_PROPUESTA`, `GATE_CAMBIO_PLAN` | Estado de la propuesta y su motivo |
 
-> `PROP_F_PROXIMO` es una **propuesta** para la F.PRÓXIMO PAGO, que es la fecha comercial. No es la F.VENCIMIENTO, que es la fecha técnica.
+> `PROP_F_PROXIMO` es una propuesta para la **F.PRÓXIMO PAGO**, la fecha comercial. **No es la F.VENCIMIENTO**, que es la fecha técnica.
 
 ### 6.6 Seguimiento en PAGOS OCTUBRE 2026
 
-La cartera del mes (encabezados en la fila 3, filas agrupadas por `SEMANA 1` a `SEMANA 5`) se cruza sola con las tres hojas de medio de pago:
-
 | Columna | Qué ve el asesor |
 |---|---|
-| `ESTADO` | `Al dia`, `Por vencer` o `Vencido`, calculado a partir de `T` |
-| `T` | Días hasta la F.PRÓXIMO PAGO: `T ≥ 30` es Al día, `1–29` es Por vencer, `≤ 0` es Vencido |
-| `COINCIDENCIAS_FINANCIERAS` | Cuántos pagos del mes se encontraron para el cliente |
-| `FUENTE_FINANCIERA` | `ZELLE`, `PAYPAL`, `TRANSFERENCIA` o `REQUIERE DECISIÓN` |
-| `CONFIRMACION_FINANCIERA` | `SIN PAGO`, `PENDIENTE CONFIRMACION`, `CONFIRMADO JM` o `REQUIERE DECISIÓN` |
-| `ESTADO_FINANCIERO` | `SIN PAGO`, `PENDIENTE CONFIRMACIÓN`, `PARCIAL`, `VALIDADO` o `REQUIERE DECISIÓN` |
-| `GATE_FINANCIERO` y `MOTIVO_GATE_FINANCIERO` | El resultado de la capa financiera y su motivo |
+| `ESTADO` / `T` | `Al dia` si `T ≥ 30`; `Por vencer` si `1–29`; `Vencido` si `≤ 0`. `T` son los días hasta la F.PRÓXIMO PAGO |
+| `COINCIDENCIAS_FINANCIERAS`, `FUENTE_FINANCIERA`, `FILA_FUENTE` | Qué pago del mes se encontró y en qué hoja y fila |
+| `CONFIRMACION_FINANCIERA` | `SIN PAGO`, `PENDIENTE CONFIRMACION`, `CONFIRMADO JM`, `REQUIERE REVISIÓN` o `REQUIERE DECISIÓN` |
+| `GATE_FINANCIERO`, `MOTIVO_GATE_FINANCIERO` | `VALIDADO` = "PAGO CONFIRMADO + FECHA + TARIFA + PROPUESTA CALCULADA" |
 
-**La capa financiera está completa cuando `GATE_FINANCIERO = VALIDADO`**, cuyo motivo es "PAGO CONFIRMADO + FECHA + TARIFA + PROPUESTA CALCULADA".
-
-En `PAGOS OCTUBRE 2026` el asesor **solo escribe en `OBSERVACIONES`**. Las columnas `ESTADO`, `T` y de `CONFIRMACION` a `MOTIVO_GATE_FINANCIERO` son fórmulas y **no tienen protección** (riesgo R2): no las sobrescriba.
+> **Si `CONFIRMACION` está vacía, la cartera la muestra como `PENDIENTE CONFIRMACION`**: así lo hace la fórmula de `CONFIRMACION_FINANCIERA`. En `PAGOS OCTUBRE 2026` escriba solo en `OBSERVACIONES`. Al 20/10 hay filas en las que las columnas calculadas se sobrescribieron con texto (riesgo R2): repórtelas, no las copie.
 
 ### 6.7 Fin de la responsabilidad financiera del asesor
 
-Su parte termina cuando el pago quedó registrado con `CONFIRMACION = PENDIENTE CONFIRMACION` y `ESTADO_ENLACE = ENLAZADO`, o cuando escaló la excepción. Desde ahí, la confirmación es de JM.
+Su parte termina cuando el pago quedó registrado con `PENDIENTE CONFIRMACION` y `ESTADO_ENLACE = ENLAZADO`, o cuando escaló la excepción. Desde ahí, la confirmación es de JM.
 
-## 7. CAPA DE SERVICIO — Registrar la renovación
+## 7. CAPA DE SERVICIO — Registrar la renovación en CONTROL
 
-### 7.1 Elegir la hoja CONTROL según el panel
+### 7.1 Elegir la hoja CONTROL
 
-| Panel | Hoja | Nombre del panel en la hoja |
+| Panel | Hoja | Nombre del panel (columna F) |
 |---|---|---|
 | Panel 1 | `CONTROL (OCT) P1` | `colombia77DM` |
 | Panel 2 | `CONTROL (OCT) P2` | `Med3lli454` |
 | Panel 3 | `CONTROL (OCT) P3` | `colombia78DM` |
 
-> La columna `PANEL` de `PAGOS OCTUBRE 2026` usa otros nombres: `PANEL 1`, `PANEL 2`, `PANEL 3`, `PANEL 3M`, `Canada1996`, `Reseller`, `NO CREADO`. Para `PANEL 3M`, `Canada1996` y `Reseller` la hoja CONTROL correspondiente **no está definida**: ver la decisión D4.
+> En BASE GENERAL y en PAGOS, la columna `PANEL` usa `PANEL 1`, `PANEL 2`, `PANEL 3`, `PANEL 3M` / `Panel 3M`, entre otros. Se observaron clientes con `PANEL 3` y con `PANEL 3M` registrados en `CONTROL (OCT) P3`, pero la correspondencia **no está aprobada** (D4). Si no tiene claro el panel, escale E7.
 
 ### 7.2 Cuándo renovar
 
-Según el contrato S0-E, la renovación **solo se autoriza** con PAGO CONFIRMADO (`CONFIRMADO JM`) o con una excepción aprobada (mes gratis, promoción, extensión u otra regla autorizada). Antes de renovar, confirme en `PAGOS OCTUBRE 2026` que `CONFIRMACION_FINANCIERA = CONFIRMADO JM` o que existe la excepción aprobada.
+Según S0-E, solo con `CONFIRMADO JM` o con una excepción aprobada (mes gratis, promoción, extensión u otra regla autorizada). Antes de renovar, verifique `CONFIRMACION_FINANCIERA = CONFIRMADO JM` o la excepción aprobada.
 
 ### 7.3 Columnas que alimenta el asesor
 
-Encabezados en la fila 2; una fila por cada renovación, de la fila 3 en adelante.
+Las tres hojas tienen la misma estructura: encabezados en la fila 2, una fila por evento desde la fila 3.
 
 | Col. | Campo | Qué escribir | Valores |
 |---|---|---|---|
-| A | `TC` | El TC del registro | Observado: `1` para recarga asignada, `0` para `SIN ASIGNAR` |
-| B | `ASESOR` | Su nombre | P1: `JULIAN`, `JORGE`, `HEIDY`, `MANUELA` · P2: `JULIAN`, `JORGE`, `DANNA`, `Juan` · P3: `JULIAN`, `JORGE`, `HEIDY` |
-| C | `RECARGA` | La duración asignada | Texto sin lista. Observado: `1 MES`, `SIN ASIGNAR` |
-| D | `USUARIO` | El usuario del cliente en el panel | Igual que la columna `USUARIO` de PAGOS / BASE |
-| E | `CONTRASEÑA` | Ver el riesgo R3 | — |
+| A | `TC` | El TC del registro | Observado: `1` en recarga, `0` en `SIN ASIGNAR` |
+| B | `ASESOR` | Su nombre | `JULIAN`, `JORGE`, `HEIDI`, `MANUELA` (estricta, igual en P1/P2/P3) |
+| C | `RECARGA` | La duración asignada | Sin lista. Observado: `1 MES`, `2 MESES`, `SIN ASIGNAR`, `LIBERADO` |
+| D | `USUARIO` | El usuario del cliente en el panel, sin espacios ni tabulaciones | Igual que `USUARIO` de BASE GENERAL |
+| E | `CONTRASEÑA` | Riesgo R3 | — |
 | F | `PANEL` | El nombre del panel | `colombia77DM` / `Med3lli454` / `colombia78DM` |
-| G | `FECHA` | La fecha y hora de la recarga | Observado: `AAAA-MM-DD hh:mm:ss` |
-| H | `ORIGEN` | El motivo (se pueden marcar varios) | `Facturación`, `Promoción`, `Venta`, `Resell`, `Sin Pagar`, `COMPRA`, `Reseller`, `Reconexión`, `Inactivo`, `sin pagar`, `CORTESIA` |
-| I | `CREDITO` | Los créditos consumidos | Número. Observado: `1` en recarga, `0` en `SIN ASIGNAR` |
-| J | (saldo) | **No editar** | Fórmula: saldo anterior − `CREDITO`. El encabezado de J es el saldo inicial |
-| K | `OBSERVACIÓN` | Notas. Observado: `CLIENTE EN P1` | Texto libre |
+| G | `FECHA` | La fecha y hora del evento | Observado: `AAAA-MM-DD hh:mm:ss` |
+| H | **`F.VENCIMIENTO`** | **La nueva fecha de vencimiento que muestra el panel después de la recarga** | Formato fecha `yyyy-mm-dd`. Sin regla de validación de fecha (R6) |
+| I | `ORIGEN` | El motivo (se pueden marcar varios) | `Facturación`, `Promoción`, `Venta`, `Resell`, `Sin Pagar`, `COMPRA`, `Reseller`, `Reconexión`, `Inactivo`, `sin pagar`, `CORTESIA` |
+| J | `CREDITO` | Los créditos consumidos | Observado: `1` (o `2` en `2 MESES`), `0` sin recarga |
+| K | (saldo) | **No editar** | Fórmula `=K2-J3`: saldo anterior − `CREDITO` |
+| L | `OBSERVACIÓN` | Notas. Observado: `CLIENTE EN P1` | Texto libre |
+
+> **Filas precargadas:** al 20/10 hay filas con `USUARIO`, `PANEL` y `FECHA` posteriores a hoy, pero sin `TC`, `ASESOR` ni `CREDITO`. Su significado y quién las genera **no está documentado** (D9). No las tome como renovaciones hechas.
+
+### 7.4 Cuándo y cómo registrar F.VENCIMIENTO
+
+1. **Cuándo:** inmediatamente después de asignar el crédito en el panel, en la **misma fila** de la recarga.
+2. **Qué representa:** la nueva fecha de vencimiento técnico que muestra el panel como resultado de **esa** recarga.
+3. **De dónde sale:** **solo del panel.** No la copie de BASE GENERAL ni de PAGOS, no la calcule y no la estime.
+4. **Validez:** debe ser una fecha real y **posterior al período renovado**. En la hoja `CONTROL (OCT)`, eso es posterior al **31/10/2026**.
+5. **Sin recarga** (`SIN ASIGNAR`, `CREDITO` = 0): deje `F.VENCIMIENTO` vacía.
+6. **No complete fechas en filas antiguas** si no tiene la lectura del panel de ese momento.
 
 **Ejemplo ficticio:**
 
-| TC | ASESOR | RECARGA | USUARIO | CONTRASEÑA | PANEL | FECHA | ORIGEN | CREDITO | (saldo) | OBSERVACIÓN |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | JORGE | 1 MES | usuario-ejemplo | — | colombia78DM | 2026-10-15 09:30:00 | Facturación | 1 | (automático) | |
+| TC | ASESOR | RECARGA | USUARIO | CONTRASEÑA | PANEL | FECHA | F.VENCIMIENTO | ORIGEN | CREDITO | (saldo) | OBSERVACIÓN |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | MANUELA | 1 MES | usuario-ejemplo | — | colombia78DM | 2026-10-25 09:30:00 | 2026-11-25 | Facturación | 1 | (automático) | |
 
-### 7.4 Validar F.VENCIMIENTO
+## 8. Cruce entre capas: cómo se relacionan el pago y la renovación
 
-1. En el panel técnico, después de la recarga, lea la nueva fecha de vencimiento del usuario.
-2. Verifique que es **posterior al mes en curso** y coherente con la `RECARGA` asignada.
-3. **Brecha:** las hojas `CONTROL (OCT)` **no tienen columna para F.VENCIMIENTO**, ni la anterior ni la nueva, aunque el contrato S0-E la exige. Hasta que Dirección decida dónde se registra (D1), **no declare el ciclo cerrado** solo porque existe la fila en CONTROL.
+No existe una fórmula que cruce las capas. La única cadena **determinística** con los campos actuales es:
 
-### 7.5 Evidencia de renovación
+```text
+Hoja del medio (ESTADO_ENLACE = ENLAZADO)
+  → FILA_BASE (fila exacta en BASE GENERAL)
+  → BASE GENERAL: USUARIO (col. M) + PANEL (col. O)
+  → CONTROL (OCT) del panel: fila(s) con el mismo USUARIO (col. D)
+```
 
-El servicio se considera renovado con estas tres piezas:
-- Una fila en la hoja `CONTROL (OCT)` del panel correcto, con el `USUARIO` del cliente y `CREDITO` ≥ 1.
-- El saldo de créditos actualizado en la columna J.
-- La nueva F.VENCIMIENTO verificada en el panel.
+Es inequívoca **solo si** se cumplen tres cosas:
+1. `ESTADO_ENLACE = ENLAZADO`.
+2. Ese `USUARIO` aparece **una sola vez** en BASE GENERAL.
+3. Hay **una sola** fila de recarga (`CREDITO` ≥ 1) de ese USUARIO en el CONTROL del panel en el período.
 
-La evidencia de esta última pieza todavía no tiene campo: ver D1.
+**Casos ambiguos observados en las hojas vivas (REQUIERE DECISIÓN, D7):**
 
-## 8. Cruce de las dos capas (match)
+| Caso | Evidencia al 20/10 |
+|---|---|
+| `USUARIO` repetido en BASE GENERAL | Varios usuarios aparecen en 2 o 3 filas |
+| Espacios, tabulaciones o saltos de línea en `USUARIO` | Presentes en BASE GENERAL y en CONTROL P2/P3 |
+| Varias filas del mismo USUARIO en un CONTROL | Por ejemplo, `LIBERADO` y `1 MES` del mismo usuario en P3 |
+| USUARIO en un CONTROL distinto al panel de BASE | Observado entre P1 y P3, y nota `CLIENTE EN P1` en P2 |
+| Planes de varios meses | Clientes con F.PRÓXIMO PAGO en 2027 renuevan mes a mes en CONTROL sin pago en octubre: no está definido qué `CONFIRMADO JM` respalda esa renovación (D8) |
 
-Hoy **ninguna fórmula cruza** la capa financiera con la de servicio. El campo común entre las dos hojas es `USUARIO`, junto con el panel:
-- `PAGOS OCTUBRE 2026`, columnas `USUARIO` y `PANEL`.
-- `CONTROL (OCT) Px`, columnas `USUARIO` y `PANEL`.
+Ante cualquiera de estos casos, **el asesor no elige una fila: escala** (E2, E7 o E11).
 
-El método de cruce propuesto es el de la tabla siguiente. Queda pendiente de aprobación (D7).
+### 8.1 Estado del caso
 
-| Capa financiera | Capa de servicio | Resultado |
+| Capa financiera | Capa de servicio | Estado del caso |
 |---|---|---|
-| `CONFIRMADO JM` (o `GATE_FINANCIERO = VALIDADO`) | Fila en CONTROL con `CREDITO` ≥ 1 y F.VENCIMIENTO posterior al mes | **Ciclo listo.** Back Office puede actualizar BASE GENERAL |
-| `CONFIRMADO JM` | Sin fila en CONTROL | Renovar (sección 7) |
-| `PENDIENTE CONFIRMACION` | Fila en CONTROL | **Excepción E6:** se renovó sin confirmación. Escalar |
-| `SIN PAGO` | Fila en CONTROL con origen `Promoción` o `CORTESIA` | Debe existir una excepción aprobada. Si no la hay, E6 |
-| Cualquiera | `USUARIO` en otra hoja de panel (p. ej. `CLIENTE EN P1`) | Escalar (E7) |
+| `CONFIRMADO JM` | Fila con `CREDITO` ≥ 1 y `F.VENCIMIENTO` posterior al período | **HABILITADO PARA ACTUALIZAR BASE GENERAL** |
+| `CONFIRMADO JM` | Sin fila en CONTROL | Pendiente de servicio: renovar (sección 7) |
+| `CONFIRMADO JM` | Fila con `CREDITO` ≥ 1 y `F.VENCIMIENTO` vacía | Pendiente de servicio: registrar la fecha (7.4) |
+| `CONFIRMADO JM` | `F.VENCIMIENTO` ≤ 31/10/2026 | **Excepción E9**: no habilita |
+| `PENDIENTE CONFIRMACION` o vacía | Cualquiera | **Pendiente financiero**: no habilita |
+| `PENDIENTE CONFIRMACION` | Fila con `CREDITO` ≥ 1 | **Excepción E6**: se renovó sin confirmación |
+| `REQUIERE REVISIÓN` / `SIN PAGO` | Fila con origen `Promoción`, `CORTESIA` o `Sin Pagar` | Requiere excepción aprobada (D6). Si no la hay, E6 |
+| Cualquier caso ambiguo de la sección 8 | — | **REQUIERE DECISIÓN**: escalar |
 
 ## 9. Errores frecuentes
 
 | Error | Consecuencia | Prevención |
 |---|---|---|
-| Escribir el nombre del cliente distinto a BASE GENERAL | `SIN BASE`: el pago no llega a PAGOS del mes | Copie el nombre desde BASE GENERAL |
-| Llenar dos monedas en TRANSF | La moneda y el valor quedan mal | Llene una sola columna |
-| Elegir `CONFIRMADO JM` | Se falsifica la firma financiera de Dirección | Nunca. Solo `PENDIENTE CONFIRMACION` |
-| Escribir sobre columnas calculadas | Se rompe la fórmula de toda la fila | Escriba solo en las columnas de las secciones 6.2 y 7.3 |
-| Registrar la recarga en la hoja de otro panel | El match falla y el saldo de créditos queda mal | Revise la tabla de la sección 7.1 |
-| Usar la pestaña de un mes anterior | El pago no aparece en el ciclo | Use siempre las pestañas `(OCT)` del mes en curso |
-| Renovar antes de `CONFIRMADO JM` sin excepción aprobada | Contradice el contrato S0-E | Revise la sección 7.2 |
+| Nombre del cliente distinto a BASE GENERAL | `SIN BASE` | Copiar el nombre desde BASE GENERAL |
+| Dos monedas en TRANSF | Moneda y valor incorrectos | Una sola columna |
+| Elegir `CONFIRMADO JM` | Falsifica la validación de Dirección | Nunca |
+| Escribir sobre columnas calculadas | Se rompe el gate de la fila | Solo las columnas de 6.2 y 7.3 |
+| Copiar `F.VENCIMIENTO` de BASE GENERAL | La evidencia de servicio queda falsa | Leerla del panel |
+| Registrar `F.VENCIMIENTO` sin recarga | Habilita un caso sin renovación | Dejarla vacía si `CREDITO` = 0 |
+| Recarga en la hoja de otro panel | El cruce falla y el saldo queda mal | Revisar 7.1; si hay duda, E7 |
+| Espacios o tabulaciones en `USUARIO` | El cruce falla | Escribir el usuario limpio |
+| Usar una pestaña de un mes anterior | El caso no aparece en el ciclo | Pestañas `(OCT)` |
 
 ## 10. Excepciones y escalamiento
 
-El escalamiento sigue el contrato S0-F: responsable → alerta por SLA → siguiente nivel → Julián cuando corresponda. Los destinatarios aplican el ownership de S0-D y S0-E: base → Back Office; validación financiera → Julián; panel técnico → asesor o soporte. Cada fila es una propuesta hasta que Dirección apruebe el manual.
+Escalamiento según S0-F: responsable → alerta por SLA → siguiente nivel → Julián. Ownership según S0-D y S0-E: base → Back Office; validación financiera → Julián; panel → asesor o soporte. Cada fila es una propuesta hasta que Dirección apruebe el manual.
 
 | ID | Situación | A quién | Qué entregar |
 |---|---|---|---|
-| E1 | `ESTADO_ENLACE = SIN BASE` después de corregir el nombre | Back Office | Hoja, fila y nombre usado |
-| E2 | `ESTADO_ENLACE = REQUIERE DECISIÓN` (cliente duplicado) | Back Office | Hoja y fila |
-| E3 | `VALIDACION_TARIFA` = `TARIFA ≠ PLAN`, `SIN COINCIDENCIA TARIFA` o `MONEDA NO USD` | Dirección | Valor, plan y moneda |
-| E4 | Diferencias del contrato S0-D: pago parcial, pago superior, comisión del medio, diferencia de moneda, valor no identificado | Dirección | Comprobante vinculado y diferencia |
-| E5 | `COINCIDENCIAS_FINANCIERAS` > 1 (varios pagos del mismo cliente) | Dirección | Filas de cada medio |
-| E6 | Renovación registrada sin `CONFIRMADO JM` ni excepción aprobada | Dirección | Fila de CONTROL |
-| E7 | El usuario aparece en un panel distinto al de BASE GENERAL | Soporte / Back Office | Ambos paneles |
-| E8 | El saldo de créditos (columna J) llega a 0 o menos | Dirección | Hoja CONTROL y saldo |
-| E9 | La F.VENCIMIENTO del panel no coincide con la recarga | Soporte | Usuario y fecha leída |
-| E10 | Su nombre no está en la lista de `Asesor` / `ASESOR` | Dirección | Hoja afectada |
+| E1 | `ESTADO_ENLACE = SIN BASE` después de corregir | Back Office | Hoja, fila y nombre usado |
+| E2 | `ESTADO_ENLACE = REQUIERE DECISIÓN`, o USUARIO repetido en BASE GENERAL | Back Office | Hoja y filas |
+| E3 | `VALIDACION_TARIFA` distinta de `COINCIDE PLAN` | Dirección | Valor, plan y moneda |
+| E4 | Diferencias S0-D: parcial, superior, comisión, moneda, no identificado | Dirección | Comprobante y diferencia |
+| E5 | `COINCIDENCIAS_FINANCIERAS` > 1 | Dirección | Filas de cada medio |
+| E6 | Renovación sin `CONFIRMADO JM` ni excepción aprobada | Dirección | Fila de CONTROL |
+| E7 | USUARIO en un panel distinto al de BASE, o panel sin hoja CONTROL | Soporte / Back Office | Ambos paneles |
+| E8 | Saldo de créditos (columna K) en 0 o menos | Dirección | Hoja y saldo |
+| E9 | `F.VENCIMIENTO` del panel no posterior al período o incoherente con la recarga | Soporte | Fila de CONTROL y fecha leída |
+| E10 | Su nombre no está en la lista de asesor | Dirección | Hoja afectada |
+| E11 | Plan de varios meses renovado sin pago del mes (D8) | Dirección | Fila de CONTROL y fila de BASE GENERAL |
+| E12 | Columnas calculadas de PAGOS sobrescritas | Dirección | Fila de PAGOS |
 
 ## 11. Checklist de cierre por cliente
 
-- [ ] Pago registrado en la hoja de su medio, con `CONFIRMACION = PENDIENTE CONFIRMACION`.
-- [ ] `ESTADO_ENLACE = ENLAZADO`.
+- [ ] Pago registrado con `PENDIENTE CONFIRMACION` y `ESTADO_ENLACE = ENLAZADO`.
 - [ ] JM marcó `CONFIRMADO JM`, o existe una excepción aprobada.
-- [ ] Renovación registrada en la hoja `CONTROL (OCT)` del panel correcto, con `CREDITO` ≥ 1.
-- [ ] Nueva F.VENCIMIENTO verificada en el panel, posterior al mes en curso.
-- [ ] Excepciones escaladas con su ID (sección 10).
+- [ ] Recarga registrada en el CONTROL del panel correcto, con `CREDITO` ≥ 1.
+- [ ] `F.VENCIMIENTO` registrada en la misma fila, leída del panel y posterior al período renovado.
+- [ ] El cruce entre capas es inequívoco (sección 8); si no, escalado.
+- [ ] Excepciones escaladas con su ID.
 - [ ] No se editaron columnas calculadas ni `BASE GENERAL`.
 
-**Definition of Done del caso:** `GATE_FINANCIERO = VALIDADO` en `PAGOS OCTUBRE 2026` **+** una fila de renovación en `CONTROL (OCT) Px` **+** F.VENCIMIENTO posterior al mes en curso verificada. Con eso, Back Office puede actualizar BASE GENERAL.
+**Definition of Done del caso:** se cumplen las tres condiciones de la sección 2 y el caso queda **HABILITADO PARA ACTUALIZAR BASE GENERAL**. La actualización de BASE GENERAL es un paso posterior y separado (D2).
 
 ## 12. Evidencia: origen de cada campo y regla
 
-Verificado el 2026-10-20 en `GESTION_DIA_PAGOS_2026_TIVIPLAY`. Solo se leyeron encabezados, listas de validación, fórmulas y protecciones; no se copiaron datos de clientes.
+Inspecciones del 2026-10-20 en `GESTION_DIA_PAGOS_2026_TIVIPLAY`: encabezados, validaciones, formatos, fórmulas y protecciones. En la segunda inspección se leyeron además columnas operativas para buscar un caso E2E, sin contraseñas, y sin copiar nombres ni usuarios a este documento.
 
 | Elemento del manual | Fuente verificada |
 |---|---|
-| Nombres de hojas del mes | Listado de pestañas del libro |
-| Columnas de ZELLE, PAYPAL y TRANSF | Fila de encabezados de cada hoja (3, 2 y 2) |
-| Listas de `Asesor`, `Origen`, `CONFIRMACION` y `MEDIO DE PAGO` | Validación de datos de la primera fila de datos |
-| `CLIENTE_KEY`, enlace con BASE, `ESTADO_ENLACE`, moneda, tarifa y propuestas | Fórmulas de las columnas calculadas |
-| Columnas calculadas protegidas | Rangos protegidos "SISTEMA · columnas calculadas", solo con advertencia |
-| `CONFIRMACION` y PAGOS OCTUBRE sin protección | Ausencia de rangos protegidos en esas columnas y hoja |
-| Columnas de CONTROL P1/P2/P3, nombre de cada panel y saldo J | Encabezados, título de la fila 1 y fórmula `=J2-I3` |
-| Listas de `ASESOR` y `ORIGEN` en CONTROL | Validación de datos (estricta en `ASESOR`) |
-| Columnas y gates de `PAGOS OCTUBRE 2026` | Encabezados (fila 3) y fórmulas de `ESTADO`, `T` y de `CONFIRMACION` a `MOTIVO_GATE_FINANCIERO` |
-| Regla de los tres requisitos (sección 2) | Instrucción de Dirección del 20/10/2026 |
-| Renovar solo con PAGO CONFIRMADO o excepción, y ownership | Contrato S0 v0.2: S0-C, S0-D, S0-E |
-| "Observado: …" | Valores vistos en filas de octubre; no son listas cerradas |
+| Hojas del mes | Listado de pestañas |
+| Columnas de ZELLE, PAYPAL y TRANSF | Encabezados (filas 3, 2 y 2) |
+| Listas de asesor, origen, CONFIRMACION y medio | Validación de datos (estricta) de la primera fila de datos; ZELLE actualizada a `JORGE`, `HEIDI`, `JULIAN`, `MANUELA` |
+| `CLIENTE_KEY`, `FILA_BASE`, `ESTADO_ENLACE`, moneda, tarifa y propuestas | Fórmulas de las columnas calculadas |
+| CONFIRMACION vacía = `PENDIENTE CONFIRMACION` | Fórmula de `CONFIRMACION_FINANCIERA` en PAGOS OCTUBRE 2026 |
+| Protecciones | Solo columnas calculadas de medios, en modo advertencia; CONFIRMACION, PAGOS y CONTROL sin protección |
+| `F.VENCIMIENTO` en CONTROL | Encabezado de H2 en P1/P2/P3; formato `yyyy-mm-dd`; sin regla de validación |
+| Lista de `ASESOR` en CONTROL | Validación estricta igual en P1/P2/P3; presente al menos en las filas 130 (P1), 12 (P2) y 600 (P3), ausente en la 700 de P3 |
+| Saldo de créditos | Fórmula `=K2-J3` en K3 de P1/P2/P3 |
+| Cadena del cruce (sección 8) | `FILA_BASE` de los medios + `USUARIO`/`PANEL` de BASE + `USUARIO` de CONTROL |
+| Casos ambiguos (sección 8) | Valores observados en BASE GENERAL y CONTROL (OCT) |
+| Regla del gate (sección 2) | Instrucción de Dirección del 20/10/2026 |
+| Renovar solo con pago confirmado o excepción, y ownership | Contrato S0 v0.2 |
+| "Observado: …" | Valores vistos en octubre; no son listas cerradas |
 
-## 13. Decisiones pendientes (REQUIERE DECISIÓN)
+## 13. Estado del gate operacional y evidencia E2E
 
-| ID | Decisión | Por qué bloquea |
+**Estado: PARCIAL.** La estructura existe, pero no hay un recorrido real completo.
+
+- Al 20/10, en las tres hojas CONTROL solo **2 filas** tienen `F.VENCIMIENTO` diligenciada.
+- **P2, fila 3:** es un registro `SIN ASIGNAR` con `CREDITO` 0. No es una renovación.
+- **P1, fila 3:** recarga `1 MES` con `CREDITO` 1, pero no cumple el gate:
+  - su cliente (BASE GENERAL, fila 478) no figura en la cartera `PAGOS OCTUBRE 2026`, porque es un plan multimes con F.PRÓXIMO PAGO en 2027 (D8). Tampoco aparece como `FILA_BASE` de ningún pago enlazado de octubre; los pagos con varias coincidencias dejan `FILA_BASE` vacía y no permiten descartarlo por completo;
+  - la `F.VENCIMIENTO` registrada no es posterior al 31/10/2026 (E9);
+  - BASE GENERAL tiene otra fecha (D10).
+- **No existe todavía** un caso `CONFIRMADO JM` + CONTROL + `F.VENCIMIENTO` posterior al período. No se fabricó ninguno.
+
+## 14. Decisiones pendientes y estado de brechas
+
+| ID | Tema | Estado |
 |---|---|---|
-| D1 | Dónde se registran la F.VENCIMIENTO anterior y la nueva | CONTROL no tiene la columna; S0-E y la regla del ciclo la exigen |
-| D2 | Quién actualiza la F.VENCIMIENTO en BASE GENERAL y cuándo | S0 asigna BASE a Back Office, pero no hay un procedimiento ejecutable documentado |
-| D3 | Completar las listas de asesor: `MANUELA` falta en CONTROL P2 y P3 y en ZELLE, PAYPAL y TRANSF; `HEIDY` falta en CONTROL P2 | En CONTROL la validación es estricta: no pueden registrarse |
-| D4 | A qué hoja CONTROL corresponden `PANEL 3M`, `Canada1996` y `Reseller` | Sin esto, el match por panel falla |
-| D5 | Si el asesor usa `SIN PAGO` en `CONFIRMACION` | El valor existe en la lista, pero no tiene regla |
-| D6 | Si se permite renovar con origen `Sin Pagar`, `Promoción` o `CORTESIA` sin `CONFIRMADO JM` | La lista lo permite; S0-E exige pago confirmado o excepción aprobada |
-| D7 | Aprobar el cruce entre capas por `USUARIO` + panel (sección 8), o definir otro | No hay una fórmula ni un campo de enlace entre PAGOS y CONTROL |
+| D1 | `F.VENCIMIENTO` en CONTROL | **IMPLEMENTADO** (columna H en P1/P2/P3, formato fecha). **PARCIAL** en uso: 2 filas diligenciadas, ninguna que cierre el gate |
+| D2 | Procedimiento de actualización de BASE GENERAL | REQUIERE DECISIÓN (backlog) |
+| D3 | Listas de asesor | **PARCIAL**: CONTROL P1/P2/P3 y ZELLE incluyen `JORGE`, `HEIDI`, `MANUELA`; PAYPAL y TRANSF no incluyen a Manuela y escriben `Heidy` |
+| D4 | Hoja CONTROL para `PANEL 3M`, `Canada1996` y `Reseller` | REQUIERE DECISIÓN (backlog) |
+| D5 | Uso de `SIN PAGO` | REQUIERE DECISIÓN (backlog) |
+| D6 | Renovar con `Sin Pagar`, `Promoción` o `CORTESIA` | REQUIERE DECISIÓN (backlog) |
+| D7 | Llave de cruce definitiva entre capas | REQUIERE DECISIÓN: la cadena de la sección 8 no es inequívoca en los casos observados |
+| D8 | Gate financiero de planes multimes en renovaciones mensuales | REQUIERE DECISIÓN (nueva, por evidencia real) |
+| D9 | Significado de las filas precargadas de CONTROL | REQUIERE DECISIÓN (nueva) |
+| D10 | Qué fecha prevalece si `F.VENCIMIENTO` de CONTROL y la de BASE difieren | REQUIERE DECISIÓN. Según S0-E, el panel es el estado técnico real; su verificación es del motor auditor de servicio |
 
-## 14. Riesgos detectados
+## 15. Riesgos detectados
 
-| ID | Riesgo | Mitigación propuesta (no aplicada) |
-|---|---|---|
-| R1 | `CONFIRMACION` no está protegida: cualquier editor puede elegir `CONFIRMADO JM` | Proteger la columna para que solo JM la edite, o dejar a los asesores solo `PENDIENTE CONFIRMACION` |
-| R2 | Las columnas calculadas de `PAGOS OCTUBRE 2026` no están protegidas | Rango protegido como en las hojas de medios |
-| R3 | `CONTROL (OCT) Px` y `PAGOS/BASE` guardan contraseñas de panel en texto plano | Decidir si el registro de renovación necesita la contraseña |
-| R4 | Diferencias de escritura: `PENDIENTE CONFIRMACION` (lista) frente a `PENDIENTE CONFIRMACIÓN` (fórmula de PAGOS); `Reseller`/`Resell` y `Sin Pagar`/`sin pagar` en ORIGEN | Normalizar las listas |
+| ID | Riesgo | Estado | Mitigación propuesta (no aplicada) |
+|---|---|---|---|
+| R1 | **P0.** CONFIRMACION sin protección en ZELLE (H), PAYPAL (M) y TRANSF (K) | Vigente | Ver el control mínimo abajo |
+| R2 | Columnas calculadas de PAGOS sin protección | **Materializado**: hay filas de PAGOS OCTUBRE 2026 con texto escrito en las columnas calculadas | Backlog |
+| R3 | Contraseñas de panel en texto plano en CONTROL, PAGOS y BASE | Vigente | Backlog |
+| R4 | Escrituras distintas: `HEIDI`/`Heidy`/`HEIDY`, `PENDIENTE CONFIRMACION`/`CONFIRMACIÓN`, `Sin Pagar`/`sin pagar`, `Reseller`/`Resell` | Vigente | Normalizar las listas |
+| R5 | Validación de CONTROL P3 ausente en filas finales (fila 700) | Nuevo | Extender la validación a toda la columna |
+| R6 | `F.VENCIMIENTO` sin regla "fecha válida": acepta texto | Nuevo | Agregar validación de fecha |
+
+**Control mínimo propuesto para R1, sin rediseñar la hoja:**
+1. **Proteger la columna** CONFIRMACION de cada hoja de medio (ZELLE `H4:H`, PAYPAL `M3:M`, TRANSF `K3:K`) con protección real, no "solo advertencia", y como única editora la cuenta de Dirección.
+2. **Asesor → pendiente:** deja CONFIRMACION **vacía**. La fórmula de PAGOS ya la muestra como `PENDIENTE CONFIRMACION`, y la hoja de medio como `PENDIENTE CONFIRMADO JM`. No hay que cambiar fórmulas.
+3. **Dirección → `CONFIRMADO JM`** o `REQUIERE REVISIÓN`.
+
+Requiere la autorización de Dirección para aplicarse. Cuando se aplique, la instrucción de 6.2 y 6.4 cambia de "escriba `PENDIENTE CONFIRMACION`" a "deje vacía".
