@@ -5,10 +5,11 @@
 
 ## 0. Lectura obligatoria, precedencia y principio de enfoque
 1. `AGENTS.md` (gobierno de cambios).
-2. `02_RUNTIME/METODOLOGIA_EJECUCION_REPRODUCIBLE_MER_V1_2026-10-18.md` (MER v1.0, propuesta).
-3. `03_AREAS/01_OPERACION/TIVIPLAY/01_CONTEXTO/TIVIPLAY_CONTRATO_OPERATIVO_S0_V0_2_2026-09-28.md` (reglas TiviPlay aprobadas como **diseño**, aún no totalmente validadas).
-4. `08_RUNTIME/SEMANA_2026-10-19_AL_25.md` (priorización ejecutiva general).
-5. Antecedentes fechados: `TIVIPLAY_CIERRE_CICLO_Y_REPETIBILIDAD_2026-09-30.md` y auditoría de intranet 26/09, disponibles en contexto restringido; no presumir que ambos estén en GitHub.
+2. `00_GOVERNANCE/PROTOCOLO_COLABORACION_MULTIAGENTE_V1.md` (GOV-MA-001, ciclo de ideas, revisión, decisión y Work Orders).
+3. `02_RUNTIME/METODOLOGIA_EJECUCION_REPRODUCIBLE_MER_V1_2026-10-18.md (MER v1.0, propuesta).
+4. `03_AREAS/01_OPERACION/TIVIPLAY/01_CONTEXTO/TIVIPLAY_CONTRATO_OPERATIVO_S0_V0_2_2026-09-28.md` (reglas TiviPlay aprobadas como **diseño**, aún no totalmente validadas).
+5. `08_RUNTIME/SEMANA_2026-10-19_AL_25.md` (priorización ejecutiva general).
+6. Antecedentes fechados: `TIVIPLAY_CIERRE_CICLO_Y_REPETIBILIDAD_2026-09-30.md` y auditoría de intranet 26/09, disponibles en contexto restringido; no presumir que ambos estén en GitHub.
 
 **Precedencia:** contrato S0 gobierna negocio; MER gobierna la manera de construir/probar; S3 organiza estandarización, sin saltar gates S0/S2. El calendario no equivale a aprobación. Si S2 no tiene evidencia de cierre, la semana empieza validando sus brechas y S3 solo avanza en preparación explícita.
 
@@ -75,7 +76,7 @@ Entradas: dataset autorizado congelado, contrato S0 y referencia de septiembre/o
 ### WO-03 — SOP soporte (Claude / revisión por el equipo)
 Entradas: incidencias/tickets con datos anonimizados, manuales vigentes y responsables. Entregar taxonomía, árboles de diagnóstico, scripts, criterios de escalamiento, pruebas de escenarios, límites sobre credenciales/paneles y costo estimado de mantenerlo.
 
-### WO-04 — Chatbot (Grok / OpenCloud / Claude según capacidades verificadas)
+### WO-04 — Chatbot (Grok / OpenClaw / Claude según capacidades verificadas)
 Entradas: FAQs aprobadas, canales/horarios, estados de tickets y criterios de identidad. Entregar mapa de intenciones, diagramas de handoff, pruebas de falsas confirmaciones y acceso mínimo. Prototipo sintético; ninguna activación productiva.
 
 ### WO-05 — Crítica de arquitectura/economía (todos)
@@ -112,7 +113,7 @@ Buscar riesgos, simplificaciones, funciones ya existentes, pruebas omitidas, cos
 - [ ] Checkpoint, commit, evidencia, decisiones y plan siguiente conservados.
 **RECHAZAR promoción:** si el dato es snapshot viejo, faltan accesos/autorizaciones, identity no resuelta, caso no reproducible, hay diferencia inexplicada o hay riesgo de exposición de clientes.
 
-## 9. Consulta coordinada a Claude, Codex, Grok y OpenCloud
+## 9. Consulta coordinada a Claude, Codex, Grok y OpenClaw
 **Fase inmediata:** solo lectura/revisión. Cada modelo recibe este archivo, MER, contrato S0 y runtime general. Pedir **máximo 3 modificaciones sustantivas** y **1 riesgo crítico**; no autorizar commits ni creación de estructura antes de decisión Dirección.
 Formato de respuesta:
 ```text
@@ -124,7 +125,7 @@ MODELO / FECHA / FUENTES LEÍDAS / CAPACIDADES Y LÍMITES REALES
 5. PLAN DE EJECUCIÓN ACOTADO: primera tarea < 90 minutos, salida verificable, tests y checkpoint
 6. NO MODIFICADO / NO VERIFICADO: dejar constancia
 ```
-ChatGPT consolida respuestas sin fusionar contradicciones; Dirección resuelve el martes o en el checkpoint del lunes según urgencia. Ninguna propuesta pasa a implementación por consenso de modelos exclusivamente.
+ChatGPT consolida respuestas sin fusionar contradicciones; Dirección aprueba explícitamente el plan y las Work Orders según el gate G4 del protocolo GOV-MA-001. Ninguna propuesta pasa a implementación por consenso de modelos exclusivamente.
 
 ## 10. Continuidad
 **ACTIVE CONTEXT:** semana 19–25; foco TiviPlay y caja; MER v1 en propuesta; contrato S0 rector; S2 gate por verificar; S3 condicionado.
@@ -137,3 +138,21 @@ ChatGPT consolida respuestas sin fusionar contradicciones; Dirección resuelve e
 ## 11. Handoff y cambio de estado
 Cada agente deja en su entrega: `fecha, fuente/corte, objetivo, outputs, pruebas, estado permitido, diferencias, consumo/tiempo, archivos/commit, decisión pendiente, NEXT_ACTION + owner`. No modificar el estado global por narrativas de éxito.
 Última actualización: 2026-10-18; no se han ejecutado pruebas nuevas de producción en esta planificación.
+
+## 12. Coordinación multiagente, adopción de protocolo y revisión recibida (19/10)
+
+**Protocolo transversal aprobado documentalmente:** [GOV-MA-001](../../../00_GOVERNANCE/PROTOCOLO_COLABORACION_MULTIAGENTE_V1.md); leer también `AGENTS.md`. Este plan v0.1 **sigue en estado REQUIERE DECISIÓN** y no constituye Work Orders aprobadas.
+
+**Nombre corregido:** `OpenClaw` (agente/orquestador según implementación), NO `OpenCloud`.
+
+**Respuestas recibidas en conversación y evaluadas por ChatGPT:**
+- **Grok:** reutilizar `05_AUTOMATION/tiviplay-monthly-close-v1`, verificar datos vivos, priorizar agenda de cobro, señalar necesidad de corte anterior.
+- **Claude:** no confundir 99 filas leídas del preliminar con reconstrucción desde Base General previa; extender oracle a montos y registros; consolidar lógica duplicada; revisar la evidencia JSON sensible y autenticación de intranet.
+
+**Verificado en repo:** existen `05_AUTOMATION/tiviplay-monthly-close-v1/{run.mjs,src/core.mjs,src/google-sheets.mjs}`, módulo S0-A de conciliación, API `monthly-close` y vista `/operaciones/tiviplay/runtime`. El checkpoint 05/10 certifica repetibilidad de lectura, y el 09/10 la vertical técnica, **no el cierre financiero S0-B**. `run.mjs` serializa previews con campos sensibles en JSON bajo `evidence/`; priorizar aislamiento/saneamiento antes de ejecutar con datos reales dentro de Git.
+
+**Revisiones restantes para consolidación formal:** Codex y OpenClaw, salvo decisión de Dirección de cerrar consulta con revisiones disponibles.
+
+**Borrador de consolidación (NO aprobado):** (1) eliminar construcción redundante de CLI o dashboard; (2) P0 proteger salidas de evidencia; (3) ampliar prueba con montos USD/COP y comparación por registro; (4) buscar snapshot de `BASE GENERAL` anterior a 30/09 o preparar captura gobernada para octubre→noviembre; (5) agenda de recaudo privada/local después de permisos y fechas definidas.
+
+**Gate siguiente:** ChatGPT presenta matriz G3 → Dirección ratifica G4 → se actualiza **este mismo archivo** a v0.2 con WOs, cronograma, owners y criterio de validación G5. Hasta entonces no ejecutar writes ni despliegues por este plan.
