@@ -357,3 +357,24 @@ Rutas encontradas en GitHub:
 **Criterio de resultado:** exponer solo RUN 1/RUN 2, semanas, repeatable, estabilidad, duplicados, excepciones, oracle y estado. `VALIDADO` emitido por el programa al cotejar solo conteos/semanas **no es** validación S0-B de negocio, conciliación bancaria ni histórico pre-correcciones. Conservar evidencia por caso en ubicación privada y checkpoint saneado en GitHub.
 
 **NEXT_ACTION:** ejecutar el motor en copia privada local y compartir solo el resumen no sensible; analizar discrepancias y proponer siguiente WO para revisión/aprobación de Dirección. Claude completa acceso ADMIN en paralelo solo con credenciales provistas privadamente por Dirección.
+
+
+## 19. Primer intento REAL del motor read-only — 19/10/2026, 22:54–22:56 Bogotá (salida aportada por Dirección)
+
+**Componente:** `05_AUTOMATION/tiviplay-monthly-close-v1` ejecutado mediante copia local privada bajo `%LOCALAPPDATA%\JUMOCOL_OS\private_runs\tiviplay-monthly-close-20261019-225410\engine`. No hay ejecución en vivo comprobada desde esta sesión de ChatGPT; se evalúa el log reproducido íntegramente por Dirección.
+
+### Evidencia del intento
+- `npm test`: **7 tests / 7 aprobados / 0 fallidos** sobre la copia privada, en Node.js **v24.16.0**. Reglas sintéticas: fechas, cinco semanas, determinismo, excepciones y conciliación Confirmado JM a nivel de test.
+- `01_LECTURA_REFERENCIA_99` (`PAGOS OCTUBRE 2026 - PRELIMINAR`, mes 2026-10): **BLOQUEADO antes de leer datos**, error `ERR_OSSL_UNSUPPORTED` / `DECODER routines::unsupported` al firmar JWT de Google con la clave privada; exit code **1**.
+- `02_BASE_GENERAL_VIVA` (`BASE GENERAL`, mes 2026-10): **BLOQUEADO por el mismo error antes de leer datos**; exit code **1**.
+- No hay `RUN 1/RUN 2`, `Oracle` ni `STATUS` calculados para ninguna de las dos fuentes en este intento. El código de salida 1 aquí **no equivale a PARCIAL por reglas de negocio**: el motor ni siquiera consiguió un token Google.
+- La salida indicó ausencia de escrituras en Google Sheets, confirmaciones de pago o modificaciones del repositorio. Evidencias privadas en `%LOCALAPPDATA%\JUMOCOL_OS\private_runs\tiviplay-monthly-close-20261019-225410\reportes_sanitizados`; no copiar previews con PII a Git.
+
+### Diagnóstico y mitigación
+**Hipótesis principal a verificar:** la clave PEM entregada por variables de entorno/`.env.local` tiene comillas o saltos de línea escapados y la biblioteca no la decodifica; el error también sería compatible con una clave errónea/truncada u otro formato incompatible. No se ha visto la clave ni es necesario exponerla.
+
+Se preparó un ejecutor PowerShell de **reintento en la copia privada** con prueba PEM por `crypto.createPrivateKey` y normalización **solo en memoria** de secuencias `\\n`; se comprobó su lógica PEM con claves sintéticas. No modifica credenciales, servidor, repositorio ni Sheets. Si la clave continúa inválida, **detenerse** y corregirla desde su origen autorizado, en privado; no desactivar OpenSSL ni controles de autenticación.
+
+**Estado:** pruebas unitarias **VALIDADO**, acceso fuente Google Sheets **BLOQUEADO**, ejecución real del cierre **NO VALIDADA**. La evidencia previa del backup del 30/09 continúa siendo **consistencia interna** y no se ve alterada por este intento.
+
+**NEXT_ACTION ÚNICA:** ejecutar una vez el script de reintento privado `EJECUTAR_MOTOR_TIVIPLAY_CORREGIR_CREDENCIAL_2026-10-19.ps1` en la terminal de Dirección, comprobar `AUTH_CONFIG` y obtener `RUN`/oracle sin compartir secretos; si es `PEM_INVALIDO`, escalar únicamente la corrección de credencial a custodio autorizado.
