@@ -320,3 +320,19 @@ Rutas encontradas en GitHub:
 - Seguridad de compartir XLSX: **BLOQUEADO** hasta revocar `anyone/reader`.
 - Acceso e indicadores de intranet gerencial actual: **REQUIERE DECISIÓN**; código parcial, servidor/sesión no verificados.
 - **NEXT_ACTION:** permiso restringido del archivo + diagnóstico del acceso gerencial; retomar MER prueba técnica en entorno controlado con outputs saneados.
+
+
+## 17. Evidencia de acceso local a JUMOCOL OS — 19/10/2026, 22:03 aprox. Bogotá
+
+**Fuente:** capturas de pantalla entregadas por Dirección, no inspección remota del escritorio.
+
+- `Test-Path "C:\Users\USUARIO\Documents\JUMOCOL_SYSTEM_OS"` → `True`.
+- `Test-Path "...\06_APPLICATIONS\JUMOCOL_OPERATIONS_INTELLIGENCE"` → `True`.
+- `pnpm dev` invocado dentro de la raíz de la app mostró `Next.js 16.3.1` y `Another next dev server is already running`, porque **ya había** una instancia local en `127.0.0.1:3000` (PID reportado por consola: **24960** en ese instante). El segundo arranque devolvió `ELIFECYCLE`, sin que eso pruebe una caída de la primera instancia.
+- El navegador abrió `http://localhost:3000/login` y mostró formulario `JUMOCOL OS — Acceso individual`, usuario, contraseña y vínculo `Tengo un código de activación`. **No se observó intento de autenticación ni error de credenciales.**
+- La comparación contra **rama principal GitHub** no encontró archivos en rutas probables `src/app/login/page.tsx`, `src/app/(auth)/login/page.tsx`, `src/app/(public)/login/page.tsx`, `src/app/api/auth/login/route.ts` ni `src/proxy.ts`; esto **no demuestra que el login local sea inválido**, sino que la implementación local puede diferir de GitHub o estar en otra ruta/commit.
+- `/operaciones/tiviplay/runtime` aparece en código GitHub, pero no se verificó sesión gerencial activa, roles ni acceso al módulo en el servidor local.
+
+**Estado:** raíz local y app accesible **VALIDADO por capturas**; instancia local **IMPLEMENTADO / verificada en ese instante**; autenticación de Dirección **REQUIERE DECISIÓN/diagnóstico**; paridad local–GitHub **PARCIAL**.
+
+**NEXT_ACTION del bloque UI:** no crear un segundo servidor ni sincronizar destructivamente. En equipo local, identificar rutas reales de login/roles y `git status -sb` sin exponer secretos; que Dirección indique si dispone de credenciales de usuario ya activadas o si recibió código de activación. Probar acceso solo a través del formulario local y comunicar síntoma, sin compartir contraseña. Si entra, inspeccionar la vista gerencial real y el rol asignado antes de construir una pantalla paralela.
