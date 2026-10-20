@@ -1,3 +1,5 @@
+import { requireApi } from "@/server/auth/access";
+import { audit } from "@/server/auth/store";
 import { NextResponse } from "next/server";
 
 import { getTiviplayMonthlyCloseLive } from "@/server/tiviplay-live/monthly-close";
@@ -5,6 +7,9 @@ import { getTiviplayMonthlyCloseLive } from "@/server/tiviplay-live/monthly-clos
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const access = await requireApi(request);
+  if (access.response) return access.response;
+  audit(access.user.id, "tiviplay-monthly-close", "read", "REQUESTED");
   const url = new URL(request.url);
   const targetMonth =
     url.searchParams.get("month") ??
@@ -26,11 +31,11 @@ export async function GET(request: Request) {
         "Cache-Control": "no-store, max-age=0",
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         status: "BLOQUEADO",
-        error: error instanceof Error ? error.message : "Unknown live-read error",
+        error: "Fuente temporalmente no disponible",
       },
       { status: 500 },
     );

@@ -1,11 +1,7 @@
 import "server-only";
 
 import crypto from "node:crypto";
-import { GoogleAuth } from "google-auth-library";
-
-import { getGoogleSheetsLeadConfig } from "@/server/leads/google-sheets/config";
-
-const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
+import { batchReadSheets, getSheetsAccessToken, getTiviplaySpreadsheetId } from "@/server/tiviplay-live/sheets-client";
 
 type ReviewReason =
   | "POSSIBLE_NO_RENEWAL"
@@ -263,48 +259,12 @@ function buildReadModel(rows: unknown[][], targetMonth: string) {
   };
 }
 
-function getGoogleAuth() {
-  // Reuse the same normalized Google Sheets credentials already proven by
-  // the commercial leads integration. TiviPlay only overrides the workbook.
-  const sharedGoogleConfig = getGoogleSheetsLeadConfig();
-
-  return new GoogleAuth({
-    credentials: {
-      client_email: sharedGoogleConfig.clientEmail,
-      private_key: sharedGoogleConfig.privateKey,
-    },
-    scopes: [SHEETS_SCOPE],
-  });
-}
-
 async function readBaseGeneral() {
-  const spreadsheetId = process.env.TIVIPLAY_SPREADSHEET_ID;
-  if (!spreadsheetId) {
-    throw new Error("Missing TIVIPLAY_SPREADSHEET_ID");
-  }
-
-  const auth = getGoogleAuth();
-  const client = await auth.getClient();
-  const token = await client.getAccessToken();
-
-  if (!token?.token) throw new Error("Could not obtain Google access token");
-
-  const a1 = "'BASE GENERAL'!A1:W5000";
-  const url =
-    `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}` +
-    `/values/${encodeURIComponent(a1)}?valueRenderOption=FORMATTED_VALUE`;
-
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${token.token}` },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error(`Google Sheets read failed (${response.status})`);
-  }
-
-  const payload = (await response.json()) as { values?: unknown[][] };
-  return payload.values ?? [];
+  // Misma credencial y cliente compartido que el Runtime Operativo (sheets-client).
+  const spreadsheetId = getTiviplaySpreadsheetId();
+  const token = await getSheetsAccessToken();
+  const values = await batchReadSheets(spreadsheetId, token, ["BASE GENERAL"], "W", 5000);
+  return values["BASE GENERAL"] ?? [];
 }
 
 export async function getTiviplayMonthlyCloseLive(

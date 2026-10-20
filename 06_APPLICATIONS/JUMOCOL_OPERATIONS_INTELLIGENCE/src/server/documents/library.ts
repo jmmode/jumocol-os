@@ -1,0 +1,100 @@
+import "server-only";
+import { audit, db, listUsers, type Identity } from "@/server/auth/store";
+import { readCanonicalDocument, type DocumentId } from "./document-repository";
+import { CATALOG_STATUS_LABEL, OPERATIONAL_STANDARD_KEYS, type CatalogStatus } from "./curation";
+import { discoverLifeosDocuments, type DocumentCategory, type Disposition } from "./lifeos-discovery";
+
+type CatalogItem = {
+  id: DocumentId;
+  category: DocumentCategory;
+  owner: string | null;
+  origin: "JUMOCOL_SYSTEM_OS" | "LIFE-OS";
+  disposition: Disposition;
+  restriction: string | null;
+  catalogStatus: CatalogStatus;
+  catalogReason: string;
+  proposedCurrent: boolean;
+};
+const GOVERNANCE = "Documento de gobierno interno de JUMOCOL OS (contexto, contrato o baseline); no es un manual de operador.";
+const STATIC_CATALOG: ReadonlyArray<CatalogItem> = [
+  { id: "tiviplay-operations-guide", category: "Formación inicial", owner: null, origin: "JUMOCOL_SYSTEM_OS", disposition: "vigente", restriction: null, catalogStatus: "PENDIENTE_VALIDACION", catalogReason: "Mini guía del módulo Operaciones elaborada desde el código (13/10/2026). Requiere revisión de Dirección antes de publicarse.", proposedCurrent: true },
+  { id: "tiviplay-context", category: "Formación inicial", owner: null, origin: "JUMOCOL_SYSTEM_OS", disposition: "vigente", restriction: null, catalogStatus: "RESTRINGIDO", catalogReason: GOVERNANCE, proposedCurrent: false },
+  { id: "tiviplay-s0-contract", category: "Cobros y facturación", owner: null, origin: "JUMOCOL_SYSTEM_OS", disposition: "vigente", restriction: null, catalogStatus: "RESTRINGIDO", catalogReason: GOVERNANCE, proposedCurrent: false },
+  { id: "tiviplay-s0-baseline", category: "Back Office", owner: null, origin: "JUMOCOL_SYSTEM_OS", disposition: "vigente", restriction: null, catalogStatus: "RESTRINGIDO", catalogReason: GOVERNANCE, proposedCurrent: false },
+  { id: "tiviplay-cycle-close", category: "Back Office", owner: null, origin: "JUMOCOL_SYSTEM_OS", disposition: "vigente", restriction: null, catalogStatus: "RESTRINGIDO", catalogReason: GOVERNANCE, proposedCurrent: false },
+];
+const CATALOG: CatalogItem[] = [...STATIC_CATALOG];
+// Live view: static canonical documents + read-only LIFE-OS discovery (refreshed at most every 60 s).
+export const DOCUMENT_CATALOG: ReadonlyArray<CatalogItem> = CATALOG;
+
+function refreshCatalog() {
+  const discovered = discoverLifeosDocuments().documents.map((doc): CatalogItem => ({
+    id: doc.id, category: doc.category, owner: doc.owner, origin: "LIFE-OS", disposition: doc.disposition, restriction: doc.restriction,
+    catalogStatus: doc.catalogStatus, catalogReason: doc.catalogReason, proposedCurrent: doc.proposedCurrent,
+  }));
+  CATALOG.splice(0, CATALOG.length, ...STATIC_CATALOG, ...discovered);
+  return CATALOG;
+}
+
+type Publication = { sha256: string; approved_by: string; approved_at: string; evidence: string };
+export function documentId(value: string): DocumentId | null {
+  if (typeof value !== "string" || !/^[a-z0-9-]{1,80}$/.test(value)) return null;
+  return refreshCatalog().find(x => x.id === value)?.id ?? null;
+}
+
+/** Reason that prevents publication to operators, or null when an ADMIN may authorize it. */
+function publicationBlock(definition: CatalogItem, status: string) {
+  if (definition.catalogStatus !== "PENDIENTE_VALIDACION") return `${CATALOG_STATUS_LABEL[definition.catalogStatus]}: ${definition.catalogReason}`;
+  if (/DRAFT|BORRADOR|HIST[OÓ]RICO|RESTRINGIDO|CONFIDENCIAL|OBSOLET|DEROGAD/i.test(status)) return `estado documental: ${status}`;
+  if (definition.disposition === "duplicado") return "copia idéntica de otro documento";
+  if (definition.disposition === "version-superada") return "existe una versión más reciente";
+  return definition.restriction;
+}
+
+/** Explicit security restriction: content that may expose credentials is not rendered for anyone, ADMIN included. */
+export function readingBlocked(item: Pick<CatalogItem, "restriction">) {
+  return item.restriction?.startsWith("posible credencial") ?? false;
+}
+
+export async function libraryEntry(id: DocumentId, actor: Identity) {
+  const definition = (CATALOG.find(x => x.id === id) ? CATALOG : refreshCatalog()).find(x => x.id === id);
+  if (!definition || readingBlocked(definition)) return null;
+  const document = await readCanonicalDocument(id);
+  const approval = db().prepare("SELECT * FROM publications WHERE document_id=?").get(id) as Publication | undefined;
+  const blockedReason = publicationBlock(definition, document.status);
+  const draft = blockedReason !== null;
+  const published = !!approval && approval.sha256 === document.sha256 && !draft;
+  if (actor.role !== "ADMIN" && !published) return null;
+  const catalogLabel = published ? CATALOG_STATUS_LABEL.VIGENTE_APTO : CATALOG_STATUS_LABEL[definition.catalogStatus];
+  return { ...definition, owner: definition.owner ?? document.owner, document, published, approval: approval ?? null, draft, blockedReason, catalogLabel };
+}
+
+export async function libraryInventory(actor: Identity) {
+  const entries = await Promise.all(refreshCatalog().map(async item => {
+    if (readingBlocked(item)) return actor.role === "ADMIN" ? { ...item, unavailable: true as const } : null;
+    try { return await libraryEntry(item.id, actor); }
+    catch { return actor.role === "ADMIN" ? { ...item, unavailable: true as const } : null; }
+  }));
+  // Operators only ever receive current, published versions; ADMIN sees everything pending decision.
+  return entries.filter(x => x !== null);
+}
+
+/** `checklist`: keys of OPERATIONAL_STANDARD the ADMIN confirmed; all 7 are required to publish (not to revoke). */
+export async function publishDocument(actor: Identity, id: DocumentId, sha256: string, evidence: string, revoke = false, checklist: readonly string[] = []) {
+  listUsers(actor); // Revalidate live ADMIN authority, including deactivation.
+  const entry = await libraryEntry(id, actor);
+  if (!entry || entry.document.sha256 !== sha256) throw new Error("La fuente cambió. Revise la versión actual.");
+  if (!revoke && (entry.draft || evidence.trim().length < 12 || evidence.length > 300)) throw new Error(entry.blockedReason ? `No publicable: ${entry.blockedReason}.` : "Se requiere documento revisado y referencia de aprobación (12–300 caracteres).");
+  const missing = OPERATIONAL_STANDARD_KEYS.filter(key => !checklist.includes(key));
+  if (!revoke && missing.length) throw new Error(`El manual debe cubrir los 7 elementos operativos. Falta confirmar: ${missing.join(", ")}.`);
+  const database = db();
+  database.exec("BEGIN IMMEDIATE");
+  try {
+    listUsers(actor);
+    if (revoke) database.prepare("DELETE FROM publications WHERE document_id=?").run(id);
+    else database.prepare("INSERT INTO publications VALUES(?,?,?,?,?) ON CONFLICT(document_id) DO UPDATE SET sha256=excluded.sha256,approved_by=excluded.approved_by,approved_at=excluded.approved_at,evidence=excluded.evidence")
+      .run(id, sha256, actor.id, new Date().toISOString(), `${evidence.trim()} · Estándar operativo 7/7 confirmado`);
+    audit(actor.id, `document:${id}`, revoke ? "revoke" : "publish", "SUCCESS");
+    database.exec("COMMIT");
+  } catch (error) { database.exec("ROLLBACK"); throw error; }
+}
