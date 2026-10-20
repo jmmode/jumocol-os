@@ -336,3 +336,24 @@ Rutas encontradas en GitHub:
 **Estado:** raíz local y app accesible **VALIDADO por capturas**; instancia local **IMPLEMENTADO / verificada en ese instante**; autenticación de Dirección **REQUIERE DECISIÓN/diagnóstico**; paridad local–GitHub **PARCIAL**.
 
 **NEXT_ACTION del bloque UI:** no crear un segundo servidor ni sincronizar destructivamente. En equipo local, identificar rutas reales de login/roles y `git status -sb` sin exponer secretos; que Dirección indique si dispone de credenciales de usuario ya activadas o si recibió código de activación. Probar acceso solo a través del formulario local y comunicar síntoma, sin compartir contraseña. Si entra, inspeccionar la vista gerencial real y el rol asignado antes de construir una pantalla paralela.
+
+
+## 18. Revisión Claude: acceso administrativo local y separación de frentes — 19/10/2026 (reporte recibido)
+
+**Fuente:** respuesta de Claude compartida por Dirección. Las observaciones de procesos locales se registran como **REPORTADAS POR CLAUDE**, no repetidas independientemente en esta sesión.
+
+**Claude informa:**
+- El formulario de login exige origen `http://localhost:3000` y rechaza `127.0.0.1` con 403; desde localhost, un usuario inexistente devolvió 401 (prueba de ruta y controles de origen, no acceso ADMIN).
+- Identificó cuenta `julian` y bootstrap existente: `scripts/identity-admin.mjs` invoca `bootstrapAdmin`. Recuperación con `node --no-warnings scripts/identity-admin.mjs recover` desde raíz de app, solo mediante consola interactiva privada y si la contraseña existente no funciona.
+- Reporta que `recover` sustituye contraseña y revoca sesiones; no efectuar recuperación sin necesidad, intervención/decisión directa del titular y conocimiento del impacto.
+- Restricciones de operadores verificadas por Claude en código; no verificadas contra sesión de operador viva.
+- Código local incorpora `runtimeForRole` para separar lectura ADMIN/operador y tiene rutas `/operaciones/tiviplay/dashboard` y `/pagos`, pero no una vista gerencial integrada validada. Puede diferir de rama GitHub; **no sincronizar destructivamente**.
+- No hubo cambios de código, DB, archivos de configuración ni Github según Claude. No verificó autenticación real de ADMIN.
+
+**Decisión de coordinación:** activar login gerencial y correr motor mensual son **frentes separables**. La verificación de acceso queda `PARCIAL` sin detener prueba read-only de `tiviplay-monthly-close-v1`. No gastar más sesiones de descubrimiento de identidad. Dirección intenta login en localhost y, solo si falla, sigue recuperación interactiva.
+
+**WO técnica inmediata para motor, todavía sujeta a ejecución local y prueba:** utilizar el motor existente (sin rediseñar), ejecutar pruebas sintéticas, una lectura de `PAGOS OCTUBRE 2026 - PRELIMINAR` con referencia 99 / 13-30-27-16-13 y una lectura de `BASE GENERAL` viva, todo bajo credenciales readonly. Proteger salidas de evidencia con datos sensibles en copia privada fuera de Git, no publicar JSON con PII ni registrar ingresos bancarios ficticios. Documento/guion local `EJECUTAR_MOTOR_TIVIPLAY_SOLO_LECTURA_2026-10-19.ps1` entregado por ChatGPT, **no ejecutado ni auditado en Windows en esta sesión**.
+
+**Criterio de resultado:** exponer solo RUN 1/RUN 2, semanas, repeatable, estabilidad, duplicados, excepciones, oracle y estado. `VALIDADO` emitido por el programa al cotejar solo conteos/semanas **no es** validación S0-B de negocio, conciliación bancaria ni histórico pre-correcciones. Conservar evidencia por caso en ubicación privada y checkpoint saneado en GitHub.
+
+**NEXT_ACTION:** ejecutar el motor en copia privada local y compartir solo el resumen no sensible; analizar discrepancias y proponer siguiente WO para revisión/aprobación de Dirección. Claude completa acceso ADMIN en paralelo solo con credenciales provistas privadamente por Dirección.
