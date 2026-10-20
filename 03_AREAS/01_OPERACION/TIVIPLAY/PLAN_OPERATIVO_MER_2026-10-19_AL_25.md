@@ -143,7 +143,7 @@ Cada agente deja en su entrega: `fecha, fuente/corte, objetivo, outputs, pruebas
 
 **Protocolo transversal aprobado documentalmente:** [GOV-MA-001](../../../00_GOVERNANCE/PROTOCOLO_COLABORACION_MULTIAGENTE_V1.md); leer también `AGENTS.md`. Este plan v0.1 **sigue en estado REQUIERE DECISIÓN** y no constituye Work Orders aprobadas.
 
-**Nombre corregido:** `OpenClaw` (agente/orquestador según implementación), NO `OpenCloud`.
+**Nombre corregido:** `OpenClaw` (agente/orquestador según implementación), NO `nombre anterior`.
 
 **Respuestas recibidas en conversación y evaluadas por ChatGPT:**
 - **Grok:** reutilizar `05_AUTOMATION/tiviplay-monthly-close-v1`, verificar datos vivos, priorizar agenda de cobro, señalar necesidad de corte anterior.
