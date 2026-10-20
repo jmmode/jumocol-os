@@ -57,4 +57,13 @@ describe("Drive originals", () => {
     expect(all.some(e => "linkOnly" in e && /CUENTAS AMAZON|Trabajo en equipo/.test(e.linkOnly?.relativePath ?? ""))).toBe(false);
     expect(all.every(e => !e.driveUrl || /^https:\/\/(drive|docs)\.google\.com\//.test(e.driveUrl))).toBe(true);
   });
+
+  it("serves the pilot financial/renewal manual as a canonical, publishable document hidden until ADMIN approval", async () => {
+    const id = "tiviplay-manual-financiero-renovacion";
+    expect(await libraryEntry(id, operator)).toBeNull();
+    const entry = (await libraryEntry(id, admin))!;
+    expect(entry.document.title).toMatch(/Gestión financiera y renovación/);
+    expect(entry.draft).toBe(false);
+    expect(entry.document.markdown).not.toMatch(/(contrase[nñ]a|password)[ \t]*[:=][ \t]*\S{4,}/i);
+  });
 });
