@@ -77,3 +77,9 @@ Nunca publicar en GitHub credenciales, tokens, filas de clientes, comprobantes, 
 
 **Referencia operativa:** `03_AREAS/01_OPERACION/TIVIPLAY/01_CONTEXTO/TIVIPLAY_CONTRATO_OPERATIVO_S0_V0_2_2026-09-28.md`.
 **Referencia precedente:** `07_YOUTUBE/SHORT_PRODUCTION_CONTRACT.md`.
+
+## 12. Gobierno de colaboración multiactor
+
+La adopción documental de [GOV-MA-001 — Protocolo Multiagente](../00_GOVERNANCE/PROTOCOLO_COLABORACION_MULTIAGENTE_V1.md) el 19/10/2026 establece que toda idea multiagente pasa por: propuesta inicial ChatGPT → revisiones independientes con la misma versión → consolidación → aprobación explícita de Dirección → Work Orders, responsables y cronograma publicados en GitHub → ejecución controlada → revisión cruzada y checkpoint.
+
+MER mantiene sus gates técnicos y su estado documental original de propuesta de adopción transversal: **la adopción del protocolo de coordinación no aprueba por sí sola producción, código, ni otras decisiones pendientes**. Antes de MER-3, verificar código y capacidades existentes en repo y evidencia real.
