@@ -82,3 +82,45 @@ Seguridad, revalidada sin datos vivos:
 - Diff del PR #3: no contiene `.env`, `sqlite`, `data/private` ni snapshots. Los únicos teléfonos son los ficticios del fixture (`300000000x`).
 
 **NEXT ACTION:** en el equipo de Dirección, en una carpeta aparte con `git worktree add` (no toca la copia de trabajo), levantar `wo-tivi-hoy-001` con el `.env.local` existente y abrir `/operaciones/tiviplay/hoy?semana=todas` en el navegador integrado, para que el agente lea los conteos.
+
+## GATE 4 — CORRIDA VIVA · 2026-10-20 21:21 (America/Bogota) · worktree `JUMOCOL_HOY` @ `716df0d`
+
+**Estado: VALIDADO.** Esta corrida reemplaza al bloqueo anterior.
+
+**Ejecución:**
+- Worktree aislado en el equipo de Dirección. `.env.local` y la base de identidad se copiaron dentro del mismo equipo a `JUMOCOL_HOY` (ignorados por Git); `JUMOCOL_SYSTEM_OS` no se modificó.
+- Build y start de producción en `127.0.0.1:3001`.
+- Sesión ADMIN iniciada por Dirección. Lectura en el navegador; los conteos se calcularon en la página, sin extraer PII.
+
+| Verificación | HOY (motor `core.mjs`) | Runtime (`buildReadModel`) | Resultado |
+|---|---|---|---|
+| Universo del mes 2026-10 | 73 | 73 | Coincide |
+| FACTURAR_CANDIDATO | 66 (66 filas de origen únicas, 0 mal formadas, todas en 2026-10) | 66 | Coincide |
+| REQUIERE_REVISION | 7 (5 mes gratis, 1 no renovación, 1 excepción explícita) | 7 (5 / 1 / 1) | Coincide |
+| Fechas inválidas | 0 | 0 | Coincide |
+| Duplicados | 0 | 0 | Coincide |
+| Estado | VALIDADO_TECNICO | VALIDADO_TECNICO | Coincide |
+| Estabilidad de la fuente | Estable | Estable (hash `e36078fa6f73` en ambas lecturas) | OK |
+| Firma del resultado | `a8d5fb7268ab…` | `67cb434c7324…` | **Diverge** |
+
+- Semanas de los candidatos: S1–S5 = 6 / 17 / 16 / 15 / 12. Universo del Runtime: 7 / 17 / 17 / 17 / 15. La diferencia por semana suma 7 y corresponde a las revisiones.
+- Huella de la lista de candidatos (SHA-256 de origen|cliente|teléfono, 12 caracteres): `753457b6b394`.
+- Campos vacíos en candidatos: teléfono 1, cliente 0, plan 0, método 0.
+- Responsable en las 7 excepciones: `REQUIERE DECISIÓN`.
+- Bloque 3: `BLOQUEADO — monthly-close-v1 no expone actualmente pendientes de Confirmado JM`.
+
+**Drift: RIESGO DE DRIFT CONFIRMADO.** Hoy afecta solo la firma, no los conteos.
+- Un candidato tiene espacios repetidos en un campo de identidad (teléfono).
+- `buildReadModel` junta esos espacios en `canon` y `core.mjs` no. Por eso el `identityHash` de esa fila, y con él la firma, difiere.
+- Los conteos y el estado coinciden porque ese dato no genera duplicados en esta corrida.
+- La autoridad es `monthly-close-v1`: HOY coincide con el motor. No es falla de HOY.
+
+**Seguridad:**
+- Anónimo: página → redirección a `/login`; API → 401; POST a `/hoy` → redirección, sin ejecución.
+- El único formulario de la página es el POST de cierre de sesión (`/api/auth/logout`).
+- Solicitudes del navegador: solo GET (prefetch RSC y `monthly-close`).
+- Cliente de Sheets con scope de solo lectura. No hubo escritura en Sheets.
+- OPERADOR con GET: no se probó en vivo porque no hay sesión de operador disponible; está cubierto por `security.test.ts` y por el E2E del 20/10.
+- Este checkpoint no contiene nombres ni teléfonos.
+
+**NEXT ACTION:** Dirección decide el merge (PR #2 → main y después PR #3).
