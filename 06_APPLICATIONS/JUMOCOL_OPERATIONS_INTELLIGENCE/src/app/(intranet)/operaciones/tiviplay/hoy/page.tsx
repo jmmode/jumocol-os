@@ -8,7 +8,8 @@ import { TiviplayNavigation } from "@/features/tiviplay-command-center/tiviplay-
 import { SectionCard } from "@/features/tiviplay-payments/dashboard-charts";
 import { requirePage } from "@/server/auth/access";
 import { audit } from "@/server/auth/store";
-import { CONFIRMADO_JM_BLOCKED, type HoyException, type TiviplayHoy } from "@/server/tiviplay-live/hoy-projection";
+import { getPendingConfirmadoJm, type PendingSource } from "@/server/tiviplay-live/confirmado-jm";
+import { type HoyException, type TiviplayHoy } from "@/server/tiviplay-live/hoy-projection";
 import { getTiviplayHoyLive } from "@/server/tiviplay-live/monthly-close";
 import { bogotaToday } from "@/server/tiviplay-live/runtime-source";
 
@@ -34,8 +35,16 @@ export default async function TiviplayHoyPage({ searchParams }: { searchParams: 
   const currentWeek = today.startsWith(targetMonth) ? weekBucket(today) : null;
   const showAll = semana === "todas" || currentWeek == null;
 
-  const [result] = await Promise.allSettled([getTiviplayHoyLive(targetMonth)]);
+  // Bloque 3 es de Dirección: la lectura financiera solo se ejecuta para ADMIN.
+  const isAdmin = identity.role === "ADMIN";
+  const [result, pendingResult] = await Promise.allSettled([
+    getTiviplayHoyLive(targetMonth),
+    isAdmin ? getPendingConfirmadoJm(targetMonth, today) : Promise.resolve(null),
+  ]);
   const data: TiviplayHoy | null = result.status === "fulfilled" ? result.value : null;
+  const pending: PendingSource[] | null = pendingResult.status === "fulfilled" ? pendingResult.value : null;
+  const pendingItems = pending?.flatMap((s) => s.items) ?? [];
+  const pendingProblems = isAdmin ? (pending ?? (["ZELLE", "PAYPAL", "TRANSF"] as const).map((source) => ({ source, status: "REQUIERE_REVISION" as const, reason: "lectura fallida" }))).filter((s) => s.status !== "OK") : [];
   audit(identity.id, "tiviplay-hoy", "read", data ? "SUCCESS" : "UNAVAILABLE");
 
   const contacts = data ? data.contacts.filter((c) => showAll || c.week === currentWeek) : [];
@@ -138,11 +147,50 @@ export default async function TiviplayHoyPage({ searchParams }: { searchParams: 
         <SectionCard
           eyebrow="Bloque 3 · Dirección"
           title="Pendientes de Confirmado JM"
-          description="Se mostraría solo si la salida actual del motor permitiera identificar estos casos."
+          description="Pagos registrados con CONFIRMACION = PENDIENTE CONFIRMACION en ZELLE, PAYPAL y TRANSF del mes. Solo lectura: la confirmación se hace en la hoja de origen."
         >
-          <p className={blocked}>
-            {CONFIRMADO_JM_BLOCKED.state} — {CONFIRMADO_JM_BLOCKED.reason}. El motor lee solo BASE GENERAL y no devuelve la columna CONFIRMACION de ZELLE, PAYPAL ni TRANSF.
-          </p>
+          {!isAdmin ? (
+            <p className="text-sm text-brand-muted">Bloque reservado a Dirección.</p>
+          ) : (
+            <div className="space-y-4">
+              {pendingProblems.map((s) => (
+                <p className={blocked} key={s.source}>
+                  {s.status === "REQUIERE_DECISION" ? "REQUIERE DECISIÓN" : "REQUIERE_REVISION"} — no fue posible verificar {s.source}
+                  {s.reason ? ` (${s.reason})` : ""}
+                </p>
+              ))}
+              {pending ? (
+                <p className="text-xs text-brand-muted">
+                  {pending.map((s) => `${s.source}: ${s.status === "OK" ? s.items.length : "sin verificar"}`).join(" · ")}
+                </p>
+              ) : null}
+              {pendingItems.length === 0 ? (
+                pendingProblems.length === 0 ? <p className="text-sm text-brand-muted">Sin pagos pendientes de Confirmado JM.</p> : null
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-brand-border">
+                    <thead><tr><th className={th}>Fuente</th><th className={th}>Fila</th><th className={th}>Cliente</th><th className={th}>Fecha</th><th className={th}>Valor</th><th className={th}>Plan</th><th className={th}>Enlace</th><th className={th}>Estado</th><th className={th}>Referencia</th></tr></thead>
+                    <tbody className="divide-y divide-brand-border">
+                      {pendingItems.map((p) => (
+                        <tr key={p.reference}>
+                          <td className={`${td} font-semibold`}>{p.source}</td>
+                          <td className={`${td} font-mono text-[11px]`}>{p.row}</td>
+                          <td className={td}>{p.client || "—"}</td>
+                          <td className={`${td} tabular-nums`}>{p.date || "—"}</td>
+                          <td className={`${td} tabular-nums`}>{p.amount || "—"}</td>
+                          <td className={td}>{p.plan || "—"}</td>
+                          <td className={td}>{p.link || "—"}</td>
+                          <td className={`${td} font-bold text-status-warning`}>{p.confirmation}</td>
+                          <td className={`${td} font-mono text-[11px] text-brand-muted`}>{p.reference}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="mt-3 text-xs text-brand-muted">{pendingItems.length} pagos pendientes de Confirmado JM.</p>
+                </div>
+              )}
+            </div>
+          )}
         </SectionCard>
       </div>
     </div>
