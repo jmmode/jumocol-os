@@ -7,7 +7,7 @@ import { discoverLifeosDocuments, readSourceMarkdown } from "./lifeos-discovery"
 import { extractHeadings, extractMetadata, extractTitle, type DocumentHeading } from "./markdown-metadata";
 
 export type { DocumentHeading };
-export type StaticDocumentId = "tiviplay-context" | "tiviplay-s0-contract" | "tiviplay-s0-baseline" | "tiviplay-cycle-close" | "tiviplay-operations-guide" | "tiviplay-manual-financiero-renovacion";
+export type StaticDocumentId = "tiviplay-context" | "tiviplay-s0-contract" | "tiviplay-s0-baseline" | "tiviplay-cycle-close" | "tiviplay-operations-guide" | "tiviplay-manual-financiero-renovacion" | "tiviplay-manual-lista-octubre-hoy";
 // Static canonical IDs plus IDs discovered (read-only) in LIFE-OS; every ID is resolved against an allowlist.
 export type DocumentId = string;
 
@@ -35,6 +35,7 @@ const DOCUMENT_ALLOWLIST: Readonly<Record<StaticDocumentId, { relativePath: stri
 
   "tiviplay-operations-guide": { relativePath: "03_AREAS/01_OPERACION/TIVIPLAY/07_GUIAS/TIVIPLAY_GUIA_MODULO_OPERACIONES_V0_1.md" },
   "tiviplay-manual-financiero-renovacion": { relativePath: "03_AREAS/01_OPERACION/TIVIPLAY/07_GUIAS/TIVIPLAY_MANUAL_GESTION_FINANCIERA_Y_RENOVACION_V0_1.md" },
+  "tiviplay-manual-lista-octubre-hoy": { relativePath: "03_AREAS/01_OPERACION/TIVIPLAY/07_GUIAS/TIVIPLAY_MANUAL_LISTA_OCTUBRE_HOY_V1.md" },
 
   "tiviplay-context": {
     relativePath:

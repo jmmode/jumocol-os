@@ -67,6 +67,24 @@ describe("Drive originals", () => {
     expect(entry.document.markdown).not.toMatch(/(contrase[nñ]a|password)[ \t]*[:=][ \t]*\S{4,}/i);
   });
 
+  it("serves the October HOY instruction once, readable, publishable and visible to operators only after ADMIN publication", async () => {
+    const id = "tiviplay-manual-lista-octubre-hoy";
+    expect(await libraryEntry(id, operator)).toBeNull();
+    const entry = (await libraryEntry(id, admin))!;
+    expect(entry.document.title).toBe("Manual operativo — Lista de octubre");
+    expect(entry.draft).toBe(false);
+    expect(entry.category).toBe("Cobros y facturación");
+    const md = entry.document.markdown;
+    expect(md.match(/^\d+\. /gm)).toHaveLength(10);
+    expect(md).toContain("Intranet → Operaciones → TiviPlay → HOY");
+    expect(md).toContain("exclusivamente a Dirección mediante `CONFIRMADO JM`");
+    expect(md).not.toMatch(/@\w|\b\d{7,}\b|\(\d{3}\)\s?\d|(contrase[nñ]a|password)\s*[:=]|docs\.google\.com/i);
+    const titles = (await libraryInventory(admin)).map(e => ("document" in e && e.document ? e.document.title : ""));
+    expect(titles.filter(t => /Lista de octubre/.test(t))).toHaveLength(1);
+    await publishDocument(admin, id, entry.document.sha256, "Aprobado por Dirección 20/10/2026 (test)", false, OPERATIONAL_STANDARD_KEYS);
+    expect((await libraryEntry(id, operator))?.published).toBe(true);
+  });
+
   it("documents the approved operational gate as observed in the live sheets, without declaring it validated", async () => {
     const md = (await libraryEntry("tiviplay-manual-financiero-renovacion", admin))!.document.markdown;
     expect(md).toMatch(/\*\*Versión:\*\* 0\.2/);
