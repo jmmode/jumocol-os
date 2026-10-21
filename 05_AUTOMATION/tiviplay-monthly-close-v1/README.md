@@ -145,4 +145,11 @@ El preview contiene las filas candidatas para `PAGOS [MES]` con origen `BASE GEN
 
 `FACTURAR_CANDIDATO` no sustituye todavía las reglas S0-B de mes gratis, desactivado, plan/acuerdo especial o excepción. Es una salida determinística intermedia que permite iterar esas reglas sin escribir en producción.
 
-Las excepciones de calidad de datos se separan en una cola explícita y nunca se corrigen silenciosamente.
+Las excepciones de calidad de datos se separan en una cola explícita y nunca se corrigen silenciosamente. Una ficha `TC=1` con F. PRÓXIMO PAGO vacía o no interpretable aparece como `INVALID_NEXT_PAYMENT_DATE`, con `cause` igual a `EMPTY_NEXT_PAYMENT_DATE` o `UNPARSEABLE_NEXT_PAYMENT_DATE`.
+
+## Fecha de corte y cartera vencida (S0-B)
+
+- `TIVIPLAY_CUTOFF_DATE=YYYY-MM-DD` fija la fecha de referencia. El motor nunca usa la fecha de ejecución. Sin ella, `daysPastDue` queda en `null`.
+- `carteraVencida[]` reúne las fichas `TC=1` con F. PRÓXIMO PAGO válida anterior al inicio del mes objetivo. Es una población separada del ciclo mensual, sin datos personales, con `origin`, `dueMonth`, `lastPaymentDate`, `daysPastDue` y `signals`.
+- Las señales (`USUARIO_LIBERADO`, `DESACTIVADO`, `NO_RENUEVA`, `MES_GRATIS`, `EXCEPCION`, `MIGRACION`, `CUENTA_UNIFICADA`) marcan `REQUIERE_REVISION`, pero nunca excluyen la ficha.
+- `signature` se conserva para el ciclo mensual. `outputSignature` firma ciclo, cartera, excepciones y corte.

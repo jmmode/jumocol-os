@@ -11,6 +11,8 @@ import { readSheetValues } from "./src/google-sheets.mjs";
 const spreadsheetId = process.env.TIVIPLAY_SPREADSHEET_ID;
 const sheetName = process.env.TIVIPLAY_SOURCE_SHEET ?? "BASE GENERAL";
 const targetMonth = process.env.TIVIPLAY_TARGET_MONTH;
+// Fecha de corte explícita (YYYY-MM-DD). Sin ella no se calculan días de mora de cartera.
+const cutoffDate = process.env.TIVIPLAY_CUTOFF_DATE || null;
 const sourceRange = process.env.TIVIPLAY_SOURCE_RANGE ?? "A1:W5000";
 const persistSnapshot = (process.env.TIVIPLAY_PERSIST_SNAPSHOT ?? "true").toLowerCase() !== "false";
 
@@ -41,8 +43,8 @@ const snapshot1 = await readSheetValues({
 const sourceHash1 = hashRows(snapshot1);
 
 // Pure determinism: same captured input, executed twice.
-const run1 = buildMonthlyClose(snapshot1, targetMonth);
-const run2 = buildMonthlyClose(snapshot1, targetMonth);
+const run1 = buildMonthlyClose(snapshot1, targetMonth, { cutoffDate });
+const run2 = buildMonthlyClose(snapshot1, targetMonth, { cutoffDate });
 const repeatability = compareRuns(run1, run2);
 
 // Live drift check: did the source mutate during the execution window?
@@ -168,6 +170,9 @@ console.log(`Repeatable: ${repeatability.identical ? "YES" : "NO"}`);
 console.log(`Source stable during run: ${sourceStableDuringRun ? "YES" : "NO"}`);
 console.log(`Duplicates: ${run1.duplicates.length}`);
 console.log(`Exceptions: ${run1.exceptions.length}`);
+console.log(`Cutoff date: ${run1.cutoffDate ?? "NO SUMINISTRADA"}`);
+console.log(`Cartera vencida: ${run1.carteraVencida.length} | ${run1.carteraByMonth.map((m) => `${m.month}:${m.count}`).join(" ")}`);
+console.log(`Output signature: ${run1.outputSignature}`);
 console.log(`Classifications: ${JSON.stringify(run1.classificationCounts)}`);
 console.log(`Review reasons: ${JSON.stringify(run1.reviewReasonCounts)}`);
 console.log(`Oracle: ${oracleProvided ? (oracle.valid ? "MATCH" : "DIFFERENCE") : "NOT PROVIDED"}`);
@@ -251,6 +256,9 @@ function renderMarkdown(e) {
 - Duplicados detectados: **${e.run1.duplicates.length}**
 - Excepciones de fecha: **${e.run1.exceptions.length}**
 - Preview privado generado: **${e.run1.preview.length} registros**
+- Fecha de corte: **${e.run1.cutoffDate ?? "no suministrada"}**
+- Cartera vencida (TC=1, F. PRÓXIMO PAGO < mes objetivo): **${e.run1.carteraVencida.length}**
+- Firma de salida completa: \`${e.run1.outputSignature}\`
 - Clasificaciones: \`${JSON.stringify(e.run1.classificationCounts)}\`
 - Motivos de revisión: \`${JSON.stringify(e.run1.reviewReasonCounts)}\`
 
