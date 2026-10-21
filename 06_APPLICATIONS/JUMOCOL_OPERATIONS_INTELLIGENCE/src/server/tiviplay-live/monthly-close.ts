@@ -1,6 +1,9 @@
 import "server-only";
 
 import crypto from "node:crypto";
+import { buildMonthlyClose } from "@motor/tiviplay-monthly-close-v1/core";
+
+import { projectHoy, type TiviplayHoy } from "@/server/tiviplay-live/hoy-projection";
 import { batchReadSheets, getSheetsAccessToken, getTiviplaySpreadsheetId } from "@/server/tiviplay-live/sheets-client";
 
 type ReviewReason =
@@ -306,4 +309,17 @@ export async function getTiviplayMonthlyCloseLive(
       sourceRead2,
     },
   };
+}
+
+/**
+ * Superficie HOY: misma lectura read-only de BASE GENERAL (dos lecturas para
+ * detectar drift), clasificada por el motor gobernado monthly-close-v1 sin copiar
+ * su lógica, y proyectada a listas operacionales.
+ */
+export async function getTiviplayHoyLive(targetMonth: string): Promise<TiviplayHoy> {
+  const rows1 = await readBaseGeneral();
+  const close = buildMonthlyClose(rows1, targetMonth);
+  const rows2 = await readBaseGeneral();
+  const stableDuringRead = sha256(JSON.stringify(rows1)) === sha256(JSON.stringify(rows2));
+  return projectHoy(close, { generatedAt: new Date().toISOString(), stableDuringRead });
 }

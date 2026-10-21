@@ -153,6 +153,8 @@ describe("server policy and transport", () => {
   });
   it("allows only enumerated operational reads and denies future financial writes", () => {
     expect(allowed("OPERADOR", "/operaciones/tiviplay/runtime")).toBe(true);
+    expect(allowed("OPERADOR", "/operaciones/tiviplay/hoy")).toBe(true);
+    expect(allowed("OPERADOR", "/operaciones/tiviplay/hoy", "POST")).toBe(false);
     expect(allowed("OPERADOR", "/api/operations/tiviplay/monthly-close")).toBe(true);
     expect(allowed("OPERADOR", "/api/operations/tiviplay/monthly-close", "POST")).toBe(false);
     expect(allowed("OPERADOR", "/api/operations/tiviplay/confirmado-jm", "POST")).toBe(false);
