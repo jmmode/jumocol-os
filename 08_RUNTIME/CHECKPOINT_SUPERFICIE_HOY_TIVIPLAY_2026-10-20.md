@@ -61,3 +61,24 @@ En el equipo de Dirección, con `.env.local` vigente, ejecutar `pnpm build && pn
 Registrar en este checkpoint:
 - fecha y hora;
 - minutos de Dirección antes y después.
+
+## GATE 4 — VALIDACIÓN VIVA · 2026-10-20 20:55 (America/Bogota) · commit `fdd5bc1`
+
+**Estado: BLOQUEADO — no se pudo leer BASE GENERAL viva desde la sesión del agente. No se fabricaron resultados.**
+
+| Ruta | Resultado |
+|---|---|
+| Shell en el equipo de Dirección (`desktop-k9t0ts8`) | `Workspace unavailable`: la VM local no arrancó. |
+| Contenedor del agente → `oauth2.googleapis.com` / `sheets.googleapis.com` | `connect_rejected` por el proxy de egreso: Google no está permitido en esta sesión. |
+| Código HOY en la copia local de Dirección | La carpeta local no tiene `operaciones/tiviplay/hoy` y ejecuta el estado de `wo-tivi-doc-001`. HOY solo existe en la rama `wo-tivi-hoy-001`. |
+| Credenciales | `.env.local` existe en la copia local. No se leyó, no se copió y no salió del equipo. |
+
+Bloques 1, 2 y drift Runtime↔motor: **sin medir**, por falta de lectura viva. Bloque 3: BLOQUEADO por diseño, sin cambios.
+
+Seguridad, revalidada sin datos vivos:
+- `security.test.ts` + `hoy-projection.test.ts`: 41/41.
+- E2E previo: el anónimo va a `/login`, OPERADOR recibe 200 en GET y la página no hace solicitudes que no sean GET.
+- Cliente de Sheets: solo lectura.
+- Diff del PR #3: no contiene `.env`, `sqlite`, `data/private` ni snapshots. Los únicos teléfonos son los ficticios del fixture (`300000000x`).
+
+**NEXT ACTION:** en el equipo de Dirección, en una carpeta aparte con `git worktree add` (no toca la copia de trabajo), levantar `wo-tivi-hoy-001` con el `.env.local` existente y abrir `/operaciones/tiviplay/hoy?semana=todas` en el navegador integrado, para que el agente lea los conteos.
