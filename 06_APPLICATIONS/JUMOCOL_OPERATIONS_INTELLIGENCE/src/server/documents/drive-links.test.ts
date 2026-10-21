@@ -75,7 +75,10 @@ describe("Drive originals", () => {
     expect(entry.draft).toBe(false);
     expect(entry.category).toBe("Cobros y facturación");
     const md = entry.document.markdown;
-    expect(md.match(/^\d+\. /gm)).toHaveLength(10);
+    const rules = md.split("## 1. Reglas aprobadas por Dirección")[1].split("\n## ")[0];
+    expect(rules.match(/^\d+\. /gm)).toHaveLength(10);
+    for (const sheet of ["ZELLE (OCT) — columnas A a H", "PAYPAL (OCT) — columnas A a M", "TRANSF (OCT) — columnas A a K"]) expect(md).toContain(sheet);
+    expect(md).toContain("Nunca selecciones `CONFIRMADO JM`");
     expect(md).toContain("Intranet → Operaciones → TiviPlay → HOY");
     expect(md).toContain("exclusivamente a Dirección mediante `CONFIRMADO JM`");
     expect(md).not.toMatch(/@\w|\b\d{7,}\b|\(\d{3}\)\s?\d|(contrase[nñ]a|password)\s*[:=]|docs\.google\.com/i);
