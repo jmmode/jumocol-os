@@ -99,4 +99,27 @@ describe("Drive originals", () => {
     expect(md).not.toMatch(/Estado:\*\* VALIDADO/);
     expect(md).toContain("Solo Dirección (JM)");
   });
+  it("serves the shift quick guide (templates, S0-safe payment scripts, players, Fire Stick) hidden until ADMIN publication", async () => {
+    const id = "tiviplay-guia-rapida-turno";
+    expect(await libraryEntry(id, operator)).toBeNull();
+    const entry = (await libraryEntry(id, admin))!;
+    expect(entry.draft).toBe(false);
+    expect(entry.category).toBe("Servicio al cliente");
+    const md = entry.document.markdown;
+    for (const h of ["### 2.1 Caída de panel", "### 2.2 Intermitencia general", "### 2.3 Actualización de canales", "### 2.4 Actualización de películas y series (movies/series)", "### 2.5 Seguimiento de la incidencia", "### 2.6 Servicio normalizado",
+      "### 3.1 Recepción inicial", "### 3.2 Mensaje de espera mientras verificas", "### 3.3 Recepción de comprobante", "### 3.4 Pago pendiente de validación (el cliente pregunta)", "### 3.5 Cierre de gestión",
+      "## 4. Reproductores y configuración por dispositivo", "## 5. URL de configuración por panel", "## 6. Fire Stick → Downloader → código TiviPlay", "## 7. Información que todavía requiere evidencia"]) expect(md).toContain(h);
+    // S0: ningún mensaje al cliente afirma que el pago está confirmado.
+    const messages = [...md.matchAll(/```mensaje\n([\s\S]*?)```/g)].map(m => m[1]);
+    expect(messages.length).toBeGreaterThanOrEqual(12);
+    for (const m of messages) expect(m).not.toMatch(/pago (ha sido |fue |est[aá] )?(exitoso|aprobado)|confirmamos (que )?(su|tu) pago|pago confirmado|tu pago est[aá] confirmado/i);
+    expect(md).toContain("`PENDIENTE CONFIRMACION ≠ CONFIRMADO JM`");
+    // AT&T y URL por panel quedan como faltantes, sin solución inventada.
+    expect(md).toMatch(/\| AT&T[^\n]*REQUIERE EVIDENCIA/);
+    expect(md.split("## 5.")[1].split("\n## ")[0].match(/\| Panel \d \| REQUIERE EVIDENCIA/g)).toHaveLength(3);
+    expect(md).not.toMatch(/\b(8\.8\.8\.8|1\.1\.1\.1)\b|nordvpn|expressvpn/i);
+    // Sin credenciales, hosts de servidor ni direcciones IP.
+    expect(md).not.toMatch(/(contrase[nñ]a|password|usuario|username)[ \t]*[:=][ \t]*\S{3,}|https?:\/\/\d|\b\d{1,3}(\.\d{1,3}){3}\b|:\d{4}\b|\/reseller|\/accesoprivado|\/Revendedor/i);
+    expect(md).toContain("2865004");
+  });
 });

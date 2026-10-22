@@ -178,7 +178,7 @@ const STANDARD = [...OPERATIONAL_STANDARD_KEYS];
 describe("governed document library", () => {
   it("excludes unapproved documents and metadata from operator inventory", async () => {
     expect(await libraryInventory(operator)).toEqual([]);
-    expect((await libraryInventory(admin)).length).toBe(8);
+    expect((await libraryInventory(admin)).length).toBe(9);
     expect(await libraryEntry("tiviplay-context", operator)).toBeNull();
   });
   it("rejects arbitrary filesystem paths and IDs", async () => {

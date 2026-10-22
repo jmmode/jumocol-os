@@ -1,4 +1,6 @@
 import { Fragment, type ReactNode } from "react";
+import { CopyableMessage } from "./copyable-message";
+import { headingIdAllocator } from "./section-search";
 
 type MarkdownDocumentProps = {
   markdown: string;
@@ -12,15 +14,6 @@ const STATUS_CLASSES: Readonly<Record<string, string>> = {
   "DRAFT — IN REVIEW": "border-brand-yellow/45 bg-brand-yellow/10 text-status-warning",
   "IN VALIDATION": "border-brand-yellow/45 bg-brand-yellow/10 text-status-warning",
 };
-
-function slugify(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 function renderCode(value: string, key: string): ReactNode {
   const statusClass = STATUS_CLASSES[value];
@@ -95,7 +88,7 @@ function isBlockStart(lines: string[], index: number): boolean {
 export function MarkdownDocument({ markdown }: MarkdownDocumentProps) {
   const lines = markdown.split(/\r?\n/);
   const blocks: ReactNode[] = [];
-  const headingOccurrences = new Map<string, number>();
+  const allocateId = headingIdAllocator();
   let index = 0;
 
   while (index < lines.length) {
@@ -113,10 +106,7 @@ export function MarkdownDocument({ markdown }: MarkdownDocumentProps) {
         index += 1;
         continue;
       }
-      const baseId = slugify(label);
-      const occurrence = headingOccurrences.get(baseId) ?? 0;
-      headingOccurrences.set(baseId, occurrence + 1);
-      const id = occurrence === 0 ? baseId : `${baseId}-${occurrence + 1}`;
+      const id = allocateId(label);
       const className = level === 2
         ? "mt-12 scroll-mt-28 border-t border-brand-border pt-8 text-2xl font-semibold tracking-[-0.035em] text-brand-text sm:text-3xl"
         : "mt-8 scroll-mt-28 text-xl font-semibold tracking-[-0.025em] text-brand-text";
@@ -127,6 +117,8 @@ export function MarkdownDocument({ markdown }: MarkdownDocumentProps) {
     }
 
     if (/^```/.test(line)) {
+      // ```mensaje: plantilla o dato de uso frecuente, legible en móvil y con botón Copiar.
+      const copyable = /^```mensaje\s*$/.test(line);
       const code: string[] = [];
       index += 1;
       while (index < lines.length && !/^```/.test(lines[index])) {
@@ -134,6 +126,7 @@ export function MarkdownDocument({ markdown }: MarkdownDocumentProps) {
         index += 1;
       }
       index += 1;
+      if (copyable) { blocks.push(<CopyableMessage key={`message-${index}`} text={code.join("\n").trim()} />); continue; }
       blocks.push(<pre className="mt-5 overflow-x-auto rounded-2xl bg-brand-primary-dark p-5 text-xs leading-6 text-white" key={`code-${index}`}><code>{code.join("\n")}</code></pre>);
       continue;
     }
