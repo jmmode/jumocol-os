@@ -36,6 +36,7 @@ Registra decisiones sobre estructura, responsabilidades, governance, contexto, r
 | DEC-2026-10-17-012 | 2026-10-17 | Crear canal nuevo de YouTube para monetización con YCS; Music relax excluido; GitHub como fuente canónica; README de 07_YOUTUBE sincronizado con árbol real. | Vigente | `DEC-2026-10-17-012_YOUTUBE_NEW_CHANNEL.md` |
 
 | DEC-2026-10-19-013 | 2026-10-19 | Adoptar GOV-MA-001 como protocolo común para ideas y colaboración IA: ChatGPT propone, modelos revisan independientemente, ChatGPT consolida, Dirección aprueba, GitHub recibe plan/Work Orders/cronograma y evidencia. Se corrige el actor OpenClaw (no nombre anterior). La aprobación del protocolo no aprueba proyectos ni despliegues. | Vigente — estándar documental; ejecución por validar | [PROTOCOLO_COLABORACION_MULTIAGENTE_V1.md](../PROTOCOLO_COLABORACION_MULTIAGENTE_V1.md) |
+| DEC-2026-10-21-014 | 2026-10-21 | TiviPlay S0-E: crédito/renovación ejecutable solo con necesidad técnica + habilitación financiera (A: CONFIRMADO JM enlazado; B: cobertura vigente por F.PRÓXIMO PAGO coherente con PLAN ACTIVO, incluida la bonificación +k) + identidad inequívoca; contradicciones → REQUIERE_REVISION. | Vigente — norma documental; implementación (Bloque 4 de HOY) no autorizada | [S0 v0.3 §7.1](../../03_AREAS/01_OPERACION/TIVIPLAY/01_CONTEXTO/TIVIPLAY_CONTRATO_OPERATIVO_S0_V0_2_2026-09-28.md) |
 
 ## Riesgos
 
