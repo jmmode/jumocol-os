@@ -1,9 +1,13 @@
 import { Fragment, type ReactNode } from "react";
 import { CopyableMessage } from "./copyable-message";
 import { headingIdAllocator } from "./section-search";
+import { PanelEndpointsBlock } from "./panel-endpoints-block";
+import type { PanelEndpointsResult } from "@/server/documents/panel-endpoints";
 
 type MarkdownDocumentProps = {
   markdown: string;
+  /** URL por panel desde la configuración local; ```endpoints N las inserta en el documento. */
+  panelEndpoints?: PanelEndpointsResult;
 };
 
 const STATUS_CLASSES: Readonly<Record<string, string>> = {
@@ -85,7 +89,7 @@ function isBlockStart(lines: string[], index: number): boolean {
   );
 }
 
-export function MarkdownDocument({ markdown }: MarkdownDocumentProps) {
+export function MarkdownDocument({ markdown, panelEndpoints }: MarkdownDocumentProps) {
   const lines = markdown.split(/\r?\n/);
   const blocks: ReactNode[] = [];
   const allocateId = headingIdAllocator();
@@ -119,6 +123,7 @@ export function MarkdownDocument({ markdown }: MarkdownDocumentProps) {
     if (/^```/.test(line)) {
       // ```mensaje: plantilla o dato de uso frecuente, legible en móvil y con botón Copiar.
       const copyable = /^```mensaje\s*$/.test(line);
+      const endpointsPanel = line.match(/^```endpoints\s+([123])\s*$/)?.[1];
       const code: string[] = [];
       index += 1;
       while (index < lines.length && !/^```/.test(lines[index])) {
@@ -126,6 +131,7 @@ export function MarkdownDocument({ markdown }: MarkdownDocumentProps) {
         index += 1;
       }
       index += 1;
+      if (endpointsPanel) { blocks.push(<PanelEndpointsBlock key={`endpoints-${index}`} panel={Number(endpointsPanel) as 1 | 2 | 3} data={panelEndpoints} />); continue; }
       if (copyable) { blocks.push(<CopyableMessage key={`message-${index}`} text={code.join("\n").trim()} />); continue; }
       blocks.push(<pre className="mt-5 overflow-x-auto rounded-2xl bg-brand-primary-dark p-5 text-xs leading-6 text-white" key={`code-${index}`}><code>{code.join("\n")}</code></pre>);
       continue;

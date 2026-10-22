@@ -116,7 +116,10 @@ describe("Drive originals", () => {
     expect(md).toContain("`PENDIENTE CONFIRMACION ≠ CONFIRMADO JM`");
     // AT&T y URL por panel quedan como faltantes, sin solución inventada.
     expect(md).toMatch(/\| AT&T[^\n]*REQUIERE EVIDENCIA/);
-    expect(md.split("## 5.")[1].split("\n## ")[0].match(/\| Panel \d \| REQUIERE EVIDENCIA/g)).toHaveLength(3);
+    // URL por panel: solo marcadores; los valores viven en configuración local (data/private), nunca en Git.
+    const section5 = md.slice(md.indexOf("\n## 5. "), md.indexOf("\n## 6. "));
+    expect(section5.match(/^```endpoints [123]$/gm)).toHaveLength(3);
+    expect(section5).not.toMatch(/https?:\/\/[a-z0-9]/i);
     expect(md).not.toMatch(/\b(8\.8\.8\.8|1\.1\.1\.1)\b|nordvpn|expressvpn/i);
     // Sin credenciales, hosts de servidor ni direcciones IP.
     expect(md).not.toMatch(/(contrase[nñ]a|password|usuario|username)[ \t]*[:=][ \t]*\S{3,}|https?:\/\/\d|\b\d{1,3}(\.\d{1,3}){3}\b|:\d{4}\b|\/reseller|\/accesoprivado|\/Revendedor/i);

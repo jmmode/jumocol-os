@@ -6,7 +6,7 @@
 **Responsable:** Dirección (Julián)
 **Módulo:** Operaciones
 **Submódulo:** TiviPlay · Manuales y procesos
-**Decisión gobernante:** Contrato S0 v0.3 (`PENDIENTE CONFIRMACION ≠ CONFIRMADO JM`) y feedback de operadores (Jorge, Heidi, Manuela) del 22/10/2026. Consolida, sin reemplazar sus originales, el Texto de apoyo (2023), el Guion cliente nuevo (11/2025), el Documento 5 (instalaciones), el Documento 6 (servicio técnico) y LINKS DE DESCARGA.
+**Decisión gobernante:** Contrato S0 v0.3 (`PENDIENTE CONFIRMACION ≠ CONFIRMADO JM`) y feedback de operadores (Jorge, Heidi, Manuela) del 22/10/2026. La versión 1.1 muestra las URL por panel desde la configuración local de la intranet y valida el código de Downloader (decisiones de Dirección del 22/10/2026). Consolida, sin reemplazar sus originales, el Texto de apoyo (2023), el Guion cliente nuevo (11/2025), el Documento 5 (instalaciones), el Documento 6 (servicio técnico) y LINKS DE DESCARGA.
 
 > **Cómo usar esta guía:** busca en Manuales y procesos lo que necesitas («se cayó el panel», «recibí comprobante», «Downloader», «Panel 2»…) y abre la sección que aparece. Cada mensaje tiene un botón **Copiar**. Reemplaza lo que está entre corchetes, por ejemplo `[NOMBRE]`, antes de enviarlo.
 
@@ -150,20 +150,38 @@ El usuario y la contraseña de cada cliente los entrega Back Office por el canal
 
 ## 5. URL de configuración por panel
 
-Búsquedas frecuentes: Panel 1, Panel 2, Panel 3, URL servidor, URL de configuración, host, DNS del reproductor.
+Búsquedas frecuentes: Panel 1, Panel 2, Panel 3, URL servidor, URL de configuración, host, DNS del reproductor, servidor caído, cambiar URL.
 
-| Panel | URL que se escribe en el reproductor del cliente | Reproductores | Estado |
-| --- | --- | --- | --- |
-| Panel 1 | REQUIERE EVIDENCIA | XCIPTV, Smarters y equivalentes | Pendiente de registrar por Dirección |
-| Panel 2 | REQUIERE EVIDENCIA | XCIPTV, Smarters y equivalentes | Pendiente de registrar por Dirección |
-| Panel 3 | REQUIERE EVIDENCIA | XCIPTV, Smarters y equivalentes | Pendiente de registrar por Dirección |
+**Ruta de consulta:** `PANEL` → URL de configuración → reproductor / dispositivo → procedimiento.
 
-Mientras esta tabla diga REQUIERE EVIDENCIA, pide la URL a Back Office o a Dirección. No la tomes de documentos históricos.
+1. Confirma con Back Office a qué panel pertenece la línea del cliente.
+2. Copia una URL marcada **VALIDADO** de ese panel, completa: con `http://` o `https://` y con el puerto.
+3. Escríbela en el campo **URL** del reproductor: XCIPTV (campo URL) o Smarters / Smarters Lite / Smarters Pro (Iniciar sesión con Xtream Codes API → campo URL). Pasos por dispositivo en la sección 4; Fire Stick en la sección 6.
+4. Si el cliente no conecta, prueba la siguiente URL **VALIDADO** del mismo panel. No mezcles URL de paneles distintos.
+5. Nunca uses una URL marcada **REQUIERE EVIDENCIA**: su escritura no está confirmada.
+6. Usuario y contraseña del cliente: los entrega Back Office. Nunca los escribas en esta guía ni en grupos.
 
-Importante:
+Las URL vigentes se muestran desde la configuración local de la intranet, que mantiene Dirección a partir de su evidencia (pizarra operacional). Si una URL cambia, Dirección actualiza esa configuración; esta guía no se modifica.
 
-- La dirección de **inicio de sesión del panel de revendedor** (la que usa Back Office para crear o renovar líneas) **no** es la URL del cliente. Es un acceso administrativo `RESTRINGIDO` y nunca se envía a un cliente ni se publica aquí.
-- La URL del reproductor sí es información operacional compartible con el cliente, porque no da acceso administrativo. Dirección la registrará en esta tabla después de contrastarla con su evidencia actual.
+### 5.1 Panel 1
+
+```endpoints 1
+```
+
+### 5.2 Panel 2
+
+```endpoints 2
+```
+
+### 5.3 Panel 3
+
+```endpoints 3
+```
+
+### 5.4 Qué no es una URL de configuración
+
+- La dirección de **inicio de sesión del panel de revendedor** (la que usa Back Office para crear o renovar líneas) **no** es la URL del cliente. Es un acceso administrativo `RESTRINGIDO`: nunca se envía a un cliente ni se publica aquí.
+- Las URL de configuración son `OPERACIONAL COMPARTIBLE`: solo indican el servidor al que se conecta el reproductor y no dan acceso administrativo.
 
 ## 6. Fire Stick → Downloader → código TiviPlay
 
@@ -204,7 +222,7 @@ Estado del código `2865004`: **VALIDADO COMO REFERENCIA OPERACIONAL** (evidenci
 | Tema | Estado | Qué falta | Qué hacer mientras tanto |
 | --- | --- | --- | --- |
 | AT&T bloquea enlaces o el servicio | REQUIERE EVIDENCIA | Procedimiento real validado por Dirección | Escalar el caso a Dirección con: operador de internet, dispositivo, app y hora. No sugerir DNS, VPN ni cambios de configuración. |
-| URL de configuración Panel 1, 2 y 3 | REQUIERE EVIDENCIA | Registro por Dirección contrastado con su evidencia actual | Pedir la URL a Back Office o Dirección. |
+| Dominios de lectura dudosa en la pizarra (por panel, sección 5) | REQUIERE EVIDENCIA | Confirmación carácter por carácter de Dirección | Usar solo las URL VALIDADO del mismo panel. |
 | Propiedad del servidor de descarga del código 2865004 | REQUIERE EVIDENCIA | Confirmación de Dirección | Usar el código; no afirmar a quién pertenece el servidor. |
 | Campos de acceso de la app TiviPlay (Fire Stick) | REQUIERE EVIDENCIA | Captura o instructivo de la pantalla de ingreso | Usar los datos que entrega Back Office. |
 | Horario de atención y valor de NET IPTV | PENDIENTE DE VALIDACIÓN | Confirmación de Dirección | Usar el horario de la Guía 2025 hasta que Dirección indique otro. |
