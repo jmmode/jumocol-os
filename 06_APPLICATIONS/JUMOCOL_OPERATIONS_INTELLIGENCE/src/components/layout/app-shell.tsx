@@ -48,7 +48,7 @@ export function AppShell({ children, user }: AppShellProps) {
         <Topbar />
         <div className="flex flex-wrap items-center gap-4 border-b px-5 py-3 text-sm">
           <span>{user.name} · {user.role}</span>
-          {user.role === "ADMIN" ? <><Link href="/administracion/usuarios">Usuarios</Link><Link href="/administracion/auditoria">Auditoría</Link><Link href="/administracion/biblioteca">Biblioteca</Link></> : null}
+          {user.role === "ADMIN" ? <><Link href="/administracion/usuarios#accesos">Accesos</Link><Link href="/administracion/usuarios">Usuarios</Link><Link href="/administracion/auditoria">Auditoría</Link><Link href="/administracion/biblioteca">Biblioteca</Link></> : null}
           <form action="/api/auth/logout" method="post"><button className="underline">Cerrar sesión</button></form>
         </div>
         <div className="border-b border-brand-border bg-brand-background lg:hidden">

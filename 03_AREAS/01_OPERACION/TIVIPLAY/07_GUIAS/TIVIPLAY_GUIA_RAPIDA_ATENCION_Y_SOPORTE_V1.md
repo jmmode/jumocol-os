@@ -1,6 +1,6 @@
 # Guía rápida de turno — Mensajes, scripts y configuración
 
-**Versión:** 1.0
+**Versión:** 1.1
 **Estado:** PENDIENTE DE VALIDACIÓN — PROPUESTA PARA PUBLICACIÓN POR DIRECCIÓN
 **Fecha de corte:** 2026-10-22
 **Responsable:** Dirección (Julián)
@@ -130,7 +130,7 @@ Búsquedas frecuentes: reproductor, aplicación, app, XCIPTV, Smarters, Smarters
 
 | Dispositivo | Reproductor | Cómo se instala | Datos que pide |
 | --- | --- | --- | --- |
-| Fire Stick | App TiviPlay (método actual reportado por Dirección) | Downloader → código `2865004` (sección 6) | REQUIERE EVIDENCIA: campos de acceso de la app TiviPlay |
+| Fire Stick | App TiviPlay (método actual, validado por Dirección) | Downloader → código `2865004` (sección 6) | REQUIERE EVIDENCIA: campos de acceso de la app TiviPlay |
 | Fire Stick | XCIPTV | Downloader → `bit.ly/xciptvapk7` | URL, usuario, contraseña |
 | Fire Stick | IPTV Smarters (segunda opción) | Downloader → `troypoint.com/smarters` | Xtream Codes API: Any name, username, password, URL |
 | Celular o tablet Android | XCIPTV | Navegador → `bit.ly/xciptvapk7` | URL, usuario, contraseña |
@@ -197,10 +197,7 @@ Búsquedas frecuentes: Fire Stick, Fire TV, Amazon, Downloader, código, 2865004
 
 **Alternativas documentadas (si el código no funciona):** XCIPTV con `bit.ly/xciptvapk7` o IPTV Smarters con `troypoint.com/smarters`, siguiendo los mismos pasos 1 y 2.
 
-Estado del código `2865004`: reportado por Dirección el 22/10/2026. Al 22/10/2026 el código redirige a un archivo llamado «TiviPlay V5.0». No aparece en los documentos históricos (Documento 5 y presentaciones de Fire Stick, que usan los enlaces de XCIPTV y Smarters). Antes de publicar esta guía, Dirección confirma:
-
-1. que el código sigue apuntando a la app oficial;
-2. que el servidor de descarga es propio.
+Estado del código `2865004`: **VALIDADO COMO REFERENCIA OPERACIONAL** (evidencia fotográfica de Dirección, 22/10/2026). Propiedad o control del servidor al que redirige el código: **REQUIERE EVIDENCIA**. No informes al cliente a quién pertenece ese servidor.
 
 ## 7. Información que todavía requiere evidencia
 
@@ -208,6 +205,7 @@ Estado del código `2865004`: reportado por Dirección el 22/10/2026. Al 22/10/2
 | --- | --- | --- | --- |
 | AT&T bloquea enlaces o el servicio | REQUIERE EVIDENCIA | Procedimiento real validado por Dirección | Escalar el caso a Dirección con: operador de internet, dispositivo, app y hora. No sugerir DNS, VPN ni cambios de configuración. |
 | URL de configuración Panel 1, 2 y 3 | REQUIERE EVIDENCIA | Registro por Dirección contrastado con su evidencia actual | Pedir la URL a Back Office o Dirección. |
+| Propiedad del servidor de descarga del código 2865004 | REQUIERE EVIDENCIA | Confirmación de Dirección | Usar el código; no afirmar a quién pertenece el servidor. |
 | Campos de acceso de la app TiviPlay (Fire Stick) | REQUIERE EVIDENCIA | Captura o instructivo de la pantalla de ingreso | Usar los datos que entrega Back Office. |
 | Horario de atención y valor de NET IPTV | PENDIENTE DE VALIDACIÓN | Confirmación de Dirección | Usar el horario de la Guía 2025 hasta que Dirección indique otro. |
 
