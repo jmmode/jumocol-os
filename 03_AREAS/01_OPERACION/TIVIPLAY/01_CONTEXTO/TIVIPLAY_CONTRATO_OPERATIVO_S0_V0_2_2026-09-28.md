@@ -1,10 +1,16 @@
 # TIVIPLAY --- CONTRATO OPERATIVO S0
 
-**Versión:** 0.2\
-**Fecha:** 28 de septiembre de 2026\
+**Versión:** 0.3\
+**Fecha:** 21 de octubre de 2026 (v0.2: 28 de septiembre de 2026)\
 **Estado:** PARCIAL --- diseño A--F aprobado; validación con evidencia
 real pendiente\
 **Gate activo:** S0 --- Baseline y Backlog
+
+> **Cambios v0.3 (21/10/2026, Dirección):** nueva sección 7.1
+> *Habilitación financiera para crédito/renovación* (casos A y B,
+> bonificaciones, identidad) y ajuste de la autorización de S0-E y de su
+> gate. El nombre del archivo conserva `V0_2` para no romper referencias
+> existentes; la versión vigente es la indicada en este encabezado.
 
 ## 1. Arquitectura operacional vigente
 
@@ -265,12 +271,10 @@ Objetivo:
 
 `F.VENCIMIENTO - 1 → tarea automática de servicio`
 
-La tarea puede generarse por fecha, pero solo se autoriza con:
-
-`PAGO CONFIRMADO`
-
-o excepción aprobada: mes gratis, promoción, extensión u otra regla
-autorizada.
+La tarea puede generarse por fecha, pero solo se autoriza con
+**habilitación financiera** según la sección 7.1 (caso A: pago nuevo
+validado; caso B: cobertura vigente ya pagada), o con excepción
+aprobada: mes gratis, promoción, extensión u otra regla autorizada.
 
 Después de renovar debe registrarse:
 
@@ -280,6 +284,87 @@ Las hojas `CONTROL P1/P2/P3` son evidencia operacional de las
 renovaciones.
 
 La nueva `F.VENCIMIENTO` debe actualizar `BASE GENERAL`.
+
+## 7.1 Habilitación financiera para crédito/renovación (v0.3, Dirección 21/10/2026)
+
+### Regla canónica
+
+`NECESIDAD DE RENOVACIÓN TÉCNICA + HABILITACIÓN FINANCIERA + IDENTIDAD INEQUÍVOCA = CRÉDITO EJECUTABLE`
+
+- `F.VENCIMIENTO` indica **necesidad** de renovación técnica; por sí sola
+  no autoriza el crédito.
+- La ausencia de un nuevo `CONFIRMADO JM` en el mes **no** significa por
+  sí sola `NO HABILITADO` (ver caso B).
+- Después de ejecutar: `crédito/recarga en CONTROL + F.VENCIMIENTO
+  resultante` = evidencia de renovación técnica ejecutada.
+
+Separaciones obligatorias:
+
+- `PAGO VALIDADO ≠ SERVICIO RENOVADO`
+- `VENCIMIENTO TÉCNICO ≠ CRÉDITO AUTORIZADO`
+- `CRÉDITO EJECUTADO ≠ BASE GENERAL ACTUALIZADA`
+
+`PAGO CONFIRMADO` en este contrato equivale al valor `CONFIRMADO JM`
+de la columna `CONFIRMACION` de `ZELLE / PAYPAL / TRANSF`.
+
+### Caso A --- Pago nuevo validado
+
+`CONFIRMADO JM + ESTADO_ENLACE = ENLAZADO (FILA_BASE) + identidad inequívoca = HABILITADO FINANCIERAMENTE`
+
+Un pago validado no equivale a renovación técnica ejecutada.
+
+### Caso B --- Cobertura vigente ya pagada
+
+`F.PRÓXIMO PAGO` de `BASE GENERAL` puede actuar como evidencia
+operacional de cobertura financiera vigente para una renovación técnica
+sin pago nuevo del mes, cuando se cumplen **todas**:
+
+1. `TC=1`;
+2. identidad inequívoca;
+3. `F.PRÓXIMO PAGO` posterior a la fecha del crédito/renovación;
+4. cobertura coherente con `PLAN ACTIVO` (ver bonificaciones).
+
+Permite las renovaciones técnicas sucesivas de planes multimes ya
+pagados. `F.PRÓXIMO PAGO` no se usa aisladamente: ante contradicción de
+identidad, plan o cobertura → `REQUIERE_REVISION`.
+
+### Bonificaciones
+
+El componente `+k` registrado explícitamente en `PLAN ACTIVO` forma
+parte de la cobertura del plan (`3 MESES + 1` → 4 meses;
+`12 MESES + 1` → 13 meses). Si la distancia demostrada entre las fechas
+de cobertura no coincide con la duración del plan incluida la
+bonificación → `REQUIERE_REVISION`. No se corrigen fechas
+automáticamente ni se infieren bonificaciones no registradas.
+
+### Identidad
+
+La habilitación determinística exige identidad inequívoca. Es
+`REQUIERE_REVISION` cuando:
+
+- el `USUARIO` aparece varias veces y no se resuelve por una relación ya
+  gobernada;
+- el `USUARIO` no existe en `BASE GENERAL`;
+- un pago `CONFIRMADO JM` no tiene enlace inequívoco con `FILA_BASE`;
+- hay contradicción de panel o identidad.
+
+No se resuelve con heurísticas silenciosas.
+
+### Hallazgos operacionales (lectura del 21/10/2026, sin PII)
+
+Evidencia de la práctica observada en octubre. **No convierte las
+prácticas incorrectas en reglas**: las renovaciones sin habilitación
+financiera permanecen como excepción.
+
+| Hallazgo | Recargas |
+|---|---:|
+| Recargas observadas en `CONTROL (OCT)` P1/P2/P3 | 563 |
+| Respaldadas por `CONFIRMADO JM` del mes | 25 |
+| Operando por cobertura previa (`F.PRÓXIMO PAGO` > fecha) | 433 |
+| Con el pago todavía en `PENDIENTE CONFIRMACION` | 29 |
+| Sin pago ni cobertura | 4 |
+| Con problemas de identidad (`USUARIO` repetido o inexistente en BASE) | 72 |
+| Renovación hecha con el pago en `PENDIENTE CONFIRMACION` (población con vencimiento técnico 01–21/10) | 3 |
 
 ## Auditoría de fin de período
 
@@ -310,7 +395,7 @@ Ownership:
 
 Cierre diario:
 
-`pago autorizado + renovación + CONTROL + F.VENCIMIENTO actualizada + trazabilidad + sin excepción pendiente`
+`habilitación financiera (7.1: caso A o B, o excepción aprobada) + identidad inequívoca + renovación + CONTROL + F.VENCIMIENTO actualizada + trazabilidad + sin excepción pendiente`
 
 Certificación periódica:
 
