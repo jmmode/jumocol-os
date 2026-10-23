@@ -9,6 +9,8 @@ import { SectionCard } from "@/features/tiviplay-payments/dashboard-charts";
 import { requirePage } from "@/server/auth/access";
 import { audit } from "@/server/auth/store";
 import { getPendingConfirmadoJm, type PendingSource } from "@/server/tiviplay-live/confirmado-jm";
+import { getCreditosHoy, type CreditosHoy } from "@/server/tiviplay-live/creditos-hoy";
+import { CreditosHoyBlock } from "@/features/tiviplay-command-center/creditos-hoy-block";
 import { type HoyException, type TiviplayHoy } from "@/server/tiviplay-live/hoy-projection";
 import { getTiviplayHoyLive } from "@/server/tiviplay-live/monthly-close";
 import { bogotaToday } from "@/server/tiviplay-live/runtime-source";
@@ -37,10 +39,12 @@ export default async function TiviplayHoyPage({ searchParams }: { searchParams: 
 
   // Bloque 3 es de Dirección: la lectura financiera solo se ejecuta para ADMIN.
   const isAdmin = identity.role === "ADMIN";
-  const [result, pendingResult] = await Promise.allSettled([
+  const [result, pendingResult, creditsResult] = await Promise.allSettled([
     getTiviplayHoyLive(targetMonth),
     isAdmin ? getPendingConfirmadoJm(targetMonth, today) : Promise.resolve(null),
+    getCreditosHoy(targetMonth, today),
   ]);
+  const credits: CreditosHoy | null = creditsResult.status === "fulfilled" ? creditsResult.value : null;
   const data: TiviplayHoy | null = result.status === "fulfilled" ? result.value : null;
   const pending: PendingSource[] | null = pendingResult.status === "fulfilled" ? pendingResult.value : null;
   const pendingItems = pending?.flatMap((s) => s.items) ?? [];
@@ -67,6 +71,8 @@ export default async function TiviplayHoyPage({ searchParams }: { searchParams: 
       <TiviplayNavigation />
 
       <div className="mt-6 space-y-5">
+        <CreditosHoyBlock data={credits} />
+
         {data ? (
           <p className="rounded-2xl border border-brand-border bg-brand-surface px-4 py-3 text-xs text-brand-muted">
             Motor <code>05_AUTOMATION/tiviplay-monthly-close-v1</code> · universo del mes {data.motorTotal} · fuente estable durante lectura:{" "}
