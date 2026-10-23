@@ -8,7 +8,7 @@ const ctl = (title: string, rows: string[][]) => [[title], H, ...rows];
 const r = (user: string, g: string, h = "", origin = "Facturación", credit = "1", obs = "") => ["1", "HEIDY", "1 MES", user, "SECRETO-NO-MOSTRAR", "panel", g, h, origin, credit, "9", obs];
 
 const BASE_H = ["TC", "CLIENTE", "TELEFONO", "CORREO", "ESTADO", "OBSERVACIONES", "PLAN ACTIVO", "PANTALLAS", "CELULAR", "USD", "COP", "MÉTODO DE PAGO", "USUARIO", "CONTRASEÑA", "PANEL", "F.VENCIMIENTO", "F.ULTIMO PAGO", "F. PRÓXIMO PAGO"];
-const b = (user: string, panel: string, plan: string, next: string, tc = "1") => [tc, "Cliente", "", "", "", "", plan, "1", "", "", "", "", user, "x", panel, "", "", next];
+const b = (user: string, panel: string, plan: string, next: string, tc = "1", due = "") => [tc, "Cliente", "", "", "", "", plan, "1", "", "", "", "", user, "x", panel, due, "", next];
 const PAY_H = ["TC", "Cliente", "Monto Recibido", "Fecha", "Asesor", "Origen", "Observación", "CONFIRMACION", "CLIENTE_KEY", "COINCIDENCIAS_BASE", "FILA_BASE", "TIPO_SERVICIO", "PLAN_CANONICO", "DURACION_MESES", "PANTALLAS", "ESTADO_ENLACE"];
 const pay = (conf: string, fila: string, link = "ENLAZADO") => ["1", "Cliente", "15", "20-10-26", "JORGE", "", "", conf, "", "1", fila, "", "", "", "", link];
 
@@ -22,6 +22,8 @@ function input(overrides: Partial<CreditosHoyInput> = {}): CreditosHoyInput {
     b("USRD", "PANEL 3", "PLAN 1 MES", "20-10-26"), // fila 6 · sin pago ni cobertura
     b("USRE", "PANEL 1", "PLAN 1 MES", "01-12-26"), // fila 7 · contradicción de panel
     b("DUP", "PANEL 3", "PLAN 1 MES", "01-12-26"), b("DUP", "PANEL 3", "PLAN 1 MES", "01-12-26"), // repetido
+    b("EJ3", "PANEL 3", "PLAN 1 MES", "22-11-26", "1", "2026-11-22"), // fila 10 · BASE ya actualizada con H
+    b("EJ2", "PANEL 2", "PLAN 1 MES", "22-11-26", "1", "2026-10-22"), // fila 11 · BASE pendiente de actualizar
   ];
   return {
     today: TODAY,
@@ -70,7 +72,14 @@ describe("CRÉDITOS DE HOY (CONTROL P1/P2/P3, G = hoy, S0 v0.3 §7.1)", () => {
   it("marks H after G as EJECUTADO (not as BASE GENERAL updated)", () => {
     expect(byUser(out, "EJ3")).toMatchObject({ state: "EJECUTADO", newDue: "2026-11-22" });
     expect(byUser(out, "EJ2").state).toBe("EJECUTADO");
-    expect(byUser(out, "EJ3").reason).toMatch(/BASE GENERAL se actualiza aparte/);
+    expect(byUser(out, "EJ3").reason).toMatch(/registrado en CONTROL \(Facturación\)/);
+  });
+
+  it("treats an H pre-registered without ORIGEN as not executed and evaluates S0 (real P3 23/10)", () => {
+    const pre = projectCreditosHoy(input({ controls: { ...input().controls, P3: { sheet: "CONTROL (OCT) P3", rows: ctl("P3", [r("USRA", "2026-10-22\n12:06:47", "2026-11-22", "", ""), r("SP", "2026-10-22\n13:00", "2026-11-22", "Sin Pagar", "0")]) } } }));
+    expect(byUser(pre, "USRA")).toMatchObject({ state: "HABILITADO", basis: "A", baseSync: null });
+    expect(byUser(pre, "USRA").reason).toMatch(/pre-registrada/);
+    expect(byUser(pre, "SP").state).toBe("REQUIERE_REVISION");
   });
 
   it("applies S0 §7.1 cases A and B and leaves the rest NO HABILITADO", () => {
@@ -89,11 +98,24 @@ describe("CRÉDITOS DE HOY (CONTROL P1/P2/P3, G = hoy, S0 v0.3 §7.1)", () => {
     for (const u of ["MOV", "USRC", "USRE", "NOEXISTE", "DUP", "MAL"]) expect(byUser(out, u).state).toBe("REQUIERE_REVISION");
   });
 
-  it("does not show 0 for a panel whose G dates are outside the sheet month (real P1)", () => {
+  it("applies the same G = today rule to P1 and only warns when its dates fall outside the sheet month", () => {
     const p1 = out.panels.find((p) => p.panel === "P1")!;
-    expect(p1.status).toBe("REQUIERE_REVISION");
-    expect(p1.reason).toMatch(/no corresponde al mes 2026-10.*2026-11-22 a 2026-11-23/);
+    expect(p1.status).toBe("OK");
     expect(p1.tasks).toEqual([]);
+    expect(p1.warning).toMatch(/2026-11-22 a 2026-11-23.*G = hoy/);
+    const p1Today = projectCreditosHoy(input({ today: "2026-11-22" })).panels.find((p) => p.panel === "P1")!;
+    // Real P1: H = fecha de G (no posterior) → no se marca EJECUTADO en silencio.
+    expect(p1Today.tasks.map((t) => [t.user, t.state])).toEqual([["X1", "REQUIERE_REVISION"]]);
+    expect(out.panels.find((p) => p.panel === "P3")!.warning).toBeNull();
+  });
+
+  it("closes the cycle by matching CONTROL H against BASE GENERAL F.VENCIMIENTO (read-only)", () => {
+    expect(byUser(out, "EJ3").baseSync).toMatchObject({ state: "ACTUALIZADA", baseDue: "2026-11-22" });
+    expect(byUser(out, "EJ2").baseSync).toMatchObject({ state: "PENDIENTE", baseDue: "2026-10-22" });
+    expect(byUser(out, "EJ2").baseSync!.detail).toMatch(/Llevar 2026-11-22 a BASE GENERAL \(fila 11\)/);
+    expect(byUser(out, "USRA").baseSync).toBeNull();
+    expect(out.basePending).toBe(1);
+    expect(byUser(projectCreditosHoy(input({ base: null })), "EJ3").baseSync!.state).toBe("SIN_VERIFICAR");
   });
 
   it("totals by state and never carries the password column", () => {

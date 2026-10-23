@@ -12,7 +12,7 @@ const STATE_HINT: Record<CreditState, string> = {
   HABILITADO: "Ejecutar en el panel y registrar en CONTROL",
   NO_HABILITADO: "No ejecutar",
   REQUIERE_REVISION: "Escalar a Dirección",
-  EJECUTADO: "Ya registrado",
+  EJECUTADO: "Ya registrado en CONTROL",
 };
 const PANEL_NAME = { P1: "Panel 1", P2: "Panel 2", P3: "Panel 3" } as const;
 
@@ -28,7 +28,7 @@ export function CreditosHoyBlock({ data }: { data: CreditosHoy | null }) {
     <SectionCard
       eyebrow="Bloque 4"
       title="Créditos de hoy"
-      description="Filas de CONTROL P1/P2/P3 con FECHA (G) = hoy. G indica la necesidad técnica; la habilitación sigue el contrato S0 v0.3 §7.1. Solo lectura: el crédito se ejecuta en el panel y se registra en CONTROL (H = nuevo vencimiento)."
+      description="Filas de CONTROL P1/P2/P3 con FECHA (G) = hoy. G gobierna el día del crédito; la habilitación sigue el contrato S0 v0.3 §7.1. Al ejecutar se registra H (nuevo vencimiento) en CONTROL, y H se lleva a F.VENCIMIENTO de BASE GENERAL: ese match cierra el ciclo. Solo lectura."
     >
       {!data ? (
         <p className="rounded-2xl border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-sm text-status-error">REQUIERE_REVISION: no fue posible leer las hojas CONTROL. No se muestra una cola sin fuente.</p>
@@ -61,12 +61,18 @@ export function CreditosHoyBlock({ data }: { data: CreditosHoy | null }) {
             </div>
           </dl>
 
+          {data.totals.EJECUTADO ? (
+            <p className={`rounded-2xl border px-4 py-3 text-xs ${data.basePending ? "border-brand-yellow/50 bg-brand-yellow/10 text-status-warning" : "border-brand-green/40 bg-brand-green/10 text-status-success"}`}>
+              Cierre del ciclo (H → BASE GENERAL): {data.basePending ? `${data.basePending} de ${data.totals.EJECUTADO} créditos ejecutados todavía no tienen su nueva F.VENCIMIENTO en BASE GENERAL (o no se pudo verificar).` : `los ${data.totals.EJECUTADO} créditos ejecutados ya tienen su nueva F.VENCIMIENTO en BASE GENERAL.`}
+            </p>
+          ) : null}
+
           {data.financeSource !== "OK" ? (
             <p className="rounded-2xl border border-brand-yellow/50 bg-brand-yellow/10 px-4 py-3 text-xs text-status-warning">No fue posible leer BASE GENERAL o las hojas de pago: los créditos pendientes quedan en REQUIERE_REVISION hasta poder verificar la habilitación.</p>
           ) : null}
 
           {data.panels.map((p) => (
-            <details className="rounded-2xl border border-brand-border" key={p.panel} open={p.status !== "OK" || p.tasks.some((t) => t.state !== "EJECUTADO")}>
+            <details className="rounded-2xl border border-brand-border" key={p.panel} open={p.status !== "OK" || p.tasks.some((t) => t.state !== "EJECUTADO" || (t.baseSync && t.baseSync.state !== "ACTUALIZADA"))}>
               <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 px-4 py-3">
                 <span className="font-semibold">{PANEL_NAME[p.panel]} <span className="text-xs font-normal text-brand-muted">· {p.sheet ?? "sin hoja"}</span></span>
                 <span className="flex flex-wrap gap-1.5">
@@ -75,6 +81,7 @@ export function CreditosHoyBlock({ data }: { data: CreditosHoy | null }) {
                 </span>
               </summary>
               <div className="border-t border-brand-border px-4 py-3">
+                {p.warning ? <p className="mb-2 text-xs text-status-warning">{p.warning}</p> : null}
                 {p.status !== "OK" ? (
                   <p className="text-sm text-status-warning">{p.reason}</p>
                 ) : p.tasks.length === 0 ? (
@@ -90,6 +97,7 @@ export function CreditosHoyBlock({ data }: { data: CreditosHoy | null }) {
                         <div className="min-w-0 text-xs text-brand-graphite">
                           <p>{t.reason}</p>
                           {t.newDue ? <p className="mt-0.5 text-brand-muted">Nuevo vencimiento (H): {fmt(t.newDue)}</p> : null}
+                          {t.baseSync ? <p className={`mt-0.5 font-semibold ${t.baseSync.state === "ACTUALIZADA" ? "text-status-success" : "text-status-warning"}`}>Base General: {t.baseSync.state === "ACTUALIZADA" ? "actualizada" : t.baseSync.state === "PENDIENTE" ? "pendiente de actualizar" : "sin verificar"} · {t.baseSync.detail}</p> : null}
                           {t.observation ? <p className="mt-0.5 text-brand-muted">Obs.: {t.observation}</p> : null}
                         </div>
                         <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
