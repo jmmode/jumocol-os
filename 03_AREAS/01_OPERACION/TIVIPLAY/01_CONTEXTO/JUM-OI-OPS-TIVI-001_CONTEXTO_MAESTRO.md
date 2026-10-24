@@ -262,6 +262,17 @@ Las cifras operativas no se reproducen en este documento; deben consultarse en l
 | Captura WhatsApp o correo inbound para TiviPlay | `NO DOCUMENTADO` | No hay integración autorizada |
 | Automatizaciones o agentes de TiviPlay | `NO DOCUMENTADO` | No implementados ni autorizados |
 
+**Estado activo al 2026-10-23 — iteración S3 cerrada (`FREEZE FUNCIONAL S3`).** Fuente detallada: `08_RUNTIME/CHECKPOINT_S3_FREEZE_FUNCIONAL_TIVIPLAY_2026-10-23.md`. NEXT ACTION: `AUDITORÍA INDEPENDIENTE GROK`; después, prueba real CONFIRMADO JM → habilitación → servicio → match → BASE GENERAL → intranet (no es desarrollo).
+
+| Flujo o capacidad (S3) | Estado | Evidencia y límite |
+| --- | --- | --- |
+| Intranet con login y roles ADMIN/OPERADOR | `VALIDADO` | Solo red local; 1 ADMIN y 3 OPERADOR activos |
+| HOY (motor mensual + cola diaria) | `VALIDADO` en conteos | HOY = Runtime (73/66/7); drift de firma abierto |
+| Créditos P1/P2/P3 y KPI | `VALIDADO` como Dirección | Paridad 767/618/149 el 23/10; vista OPERADOR pendiente de evidencia |
+| Habilitación financiera S0 y match H ↔ BASE GENERAL | `IMPLEMENTADO` | Sin caso real observado |
+| Manuales y procesos, Guía rápida v1.2, 8 accesos rápidos, AT&T | `VALIDADO` | Guía v1.2 publicada a OPERADOR por SHA-256 |
+| Launcher local | `VALIDADO` | Depende del equipo de Dirección encendido |
+
 ## 14. Restricciones técnicas y operativas
 
 - `VALIDADO` — No escribir en Google Sheets desde la intranet en el alcance actual.
@@ -283,6 +294,7 @@ Las cifras operativas no se reproducen en este documento; deben consultarse en l
 | DEC-2026-08-26-004 | Vista de TiviPlay Marketing basada en fixtures | `VALIDADO` con límite explícito |
 | DEC-2026-08-26-002 | Capa de aplicación canónica de la intranet | `VALIDADO` |
 | DEC-2026-08-27-009 | Command Center técnico y fuente canónica JUM-OI-TECH-001 | `VALIDADO` |
+| DEC-2026-10-22-014 a DEC-2026-10-23-017 | URL por panel en configuración privada; regla de créditos G/COMPRA/J; publicación de la guía v1.2 y AT&T; cierre S3 y próxima prueba | `VALIDADO` como decisión de Dirección |
 
 ## 16. Glosario
 
