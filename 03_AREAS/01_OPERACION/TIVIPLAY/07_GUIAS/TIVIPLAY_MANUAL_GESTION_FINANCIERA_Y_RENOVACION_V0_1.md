@@ -6,7 +6,7 @@
 **Responsable:** Dirección (Julián)
 **Módulo:** Operaciones
 **Submódulo:** TiviPlay · Pagos y renovación
-**Decisión gobernante:** TIVIPLAY_CONTRATO_OPERATIVO_S0_V0_2 (S0-C, S0-D, S0-E) + regla de gate operacional aprobada por Dirección el 20/10/2026
+**Decisión gobernante:** S0 v0.3 — contrato vigente (`TIVIPLAY_CONTRATO_OPERATIVO_S0_V0_2_2026-09-28.md`, DEC-2026-10-24-018), secciones S0-C, S0-D y S0-E + regla de gate operacional aprobada por Dirección el 20/10/2026
 
 > Este manual describe el trabajo del asesor sobre las hojas vivas de octubre tal como existen al 20/10/2026. Cada hoja, columna y valor permitido se verificó en la hoja real (sección 12). Donde la hoja no permite cumplir una regla, el manual lo marca como **REQUIERE DECISIÓN** y no inventa un procedimiento.
 >

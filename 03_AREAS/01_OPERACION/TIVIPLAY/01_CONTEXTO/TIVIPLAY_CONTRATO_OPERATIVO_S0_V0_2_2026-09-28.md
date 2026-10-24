@@ -360,6 +360,16 @@ repositorio antes del 24/10/2026. Esta sección transcribe la regla tal
 como ya la aplica la capa operacional de lectura (Bloque Créditos de
 HOY, commit `3733130`), sin reinterpretarla ni ampliarla.
 
+**Confirmación de Dirección --- 24/10/2026:** Dirección (JM) confirmó
+explícitamente el Caso B como regla operacional vigente:
+`TC=1 + identidad inequívoca + F.PRÓXIMO PAGO posterior a la fecha del crédito + coherencia con PLAN ACTIVO`,
+incluida la cobertura multimes/`+k` correspondiente. La regla
+reconstruida en esta sección queda aceptada como representación
+canónica de S0 v0.3 §7.1. Su procedencia documental sigue siendo la
+indicada arriba: reconstruida desde la implementación existente,
+porque no se encontró un original documental versionado. La lógica del
+Caso B no se modificó con esta confirmación.
+
 La nueva `F.VENCIMIENTO` debe actualizar `BASE GENERAL`.
 
 ## Auditoría de fin de período
