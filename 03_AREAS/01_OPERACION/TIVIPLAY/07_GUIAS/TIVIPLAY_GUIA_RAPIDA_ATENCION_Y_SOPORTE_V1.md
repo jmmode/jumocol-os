@@ -1,12 +1,12 @@
 # Guía rápida de turno — Mensajes, scripts y configuración
 
-**Versión:** 1.1
+**Versión:** 1.2
 **Estado:** PENDIENTE DE VALIDACIÓN — PROPUESTA PARA PUBLICACIÓN POR DIRECCIÓN
-**Fecha de corte:** 2026-10-22
+**Fecha de corte:** 2026-10-23
 **Responsable:** Dirección (Julián)
 **Módulo:** Operaciones
 **Submódulo:** TiviPlay · Manuales y procesos
-**Decisión gobernante:** Contrato S0 v0.3 (`PENDIENTE CONFIRMACION ≠ CONFIRMADO JM`) y feedback de operadores (Jorge, Heidi, Manuela) del 22/10/2026. La versión 1.1 muestra las URL por panel desde la configuración local de la intranet y valida el código de Downloader (decisiones de Dirección del 22/10/2026). Consolida, sin reemplazar sus originales, el Texto de apoyo (2023), el Guion cliente nuevo (11/2025), el Documento 5 (instalaciones), el Documento 6 (servicio técnico) y LINKS DE DESCARGA.
+**Decisión gobernante:** Contrato S0 v0.3 (`PENDIENTE CONFIRMACION ≠ CONFIRMADO JM`) y feedback de operadores (Jorge, Heidi, Manuela) del 22/10/2026. La versión 1.1 muestra las URL por panel desde la configuración local de la intranet y valida el código de Downloader (decisiones de Dirección del 22/10/2026). La versión 1.2 documenta el procedimiento AT&T ActiveArmor (sección 7) con el procedimiento de Jorge y capturas aportadas por Dirección el 23/10/2026. Consolida, sin reemplazar sus originales, el Texto de apoyo (2023), el Guion cliente nuevo (11/2025), el Documento 5 (instalaciones), el Documento 6 (servicio técnico) y LINKS DE DESCARGA.
 
 > **Cómo usar esta guía:** busca en Manuales y procesos lo que necesitas («se cayó el panel», «recibí comprobante», «Downloader», «Panel 2»…) y abre la sección que aparece. Cada mensaje tiene un botón **Copiar**. Reemplaza lo que está entre corchetes, por ejemplo `[NOMBRE]`, antes de enviarlo.
 
@@ -217,17 +217,65 @@ Búsquedas frecuentes: Fire Stick, Fire TV, Amazon, Downloader, código, 2865004
 
 Estado del código `2865004`: **VALIDADO COMO REFERENCIA OPERACIONAL** (evidencia fotográfica de Dirección, 22/10/2026). Propiedad o control del servidor al que redirige el código: **REQUIERE EVIDENCIA**. No informes al cliente a quién pertenece ese servidor.
 
-## 7. Información que todavía requiere evidencia
+## 7. AT&T ActiveArmor bloquea el inicio de sesión
+
+Búsquedas frecuentes: AT&T, ActiveArmor, Smart Home Manager, Privacy Threat Blocked, Allow Access, Security exceptions, error de inicio de sesión, no deja entrar, bloqueo.
+
+**Cuándo aplica:** el cliente usa servicios AT&T (Wi-Fi residencial AT&T o una conexión protegida por AT&T ActiveArmor) y presenta un error de inicio de sesión en la aplicación. Aplica **únicamente cuando existe evidencia de un bloqueo de ActiveArmor** (una alerta o un evento de bloqueo que coincide con la hora del intento). No lo uses como explicación automática de cualquier error de inicio de sesión.
+
+> **Advertencia de seguridad:** ActiveArmor puede bloquear esta conexión porque detecta información de autenticación transmitida sin cifrar. Permitir la excepción reduce esa protección específicamente para ese acceso. El cliente debe decidir si desea autorizarlo. No afirmes que la conexión es segura ni que «no pasa nada».
+
+**Opción 1 — Permitir desde la notificación de bloqueo**
+
+1. Pide al cliente que reproduzca el problema intentando ingresar nuevamente desde la aplicación.
+2. Que revise las notificaciones del teléfono.
+3. Que busque una alerta de AT&T ActiveArmor (o del ecosistema AT&T) sobre una página o conexión bloqueada. En la evidencia aparece como `Privacy Threat Blocked`.
+4. Que abra la alerta.
+5. Que revise que la hora del bloqueo coincida con su intento de inicio de sesión.
+6. Que revise el detalle del evento bloqueado.
+7. Si reconoce que el evento corresponde al acceso que acaba de intentar, que use la opción para permitir el acceso (`Allow Access`) o agregarlo a `Security exceptions`. El nombre exacto puede variar según la versión de la aplicación.
+8. Que confirme que ActiveArmor indica que el acceso quedó permitido. En la evidencia aparece `This website has been allowed`.
+9. Que vuelva a la aplicación TiviPlay o al reproductor que usa.
+10. Que intente nuevamente el inicio de sesión.
+
+**Opción 2 — AT&T Smart Home Manager** (principalmente cuando el problema ocurre conectado al Wi-Fi residencial administrado por AT&T)
+
+1. Abrir la aplicación AT&T Smart Home Manager.
+2. Entrar a la sección de mensajes, actividad o seguridad de la red. Según la versión puede aparecer como Message Center, Network, Security u otra sección equivalente.
+3. Buscar el evento de bloqueo reciente que coincida con la hora en que falló el inicio de sesión.
+4. Abrir el evento.
+5. Verificar que se trate del bloqueo producido durante el intento que acaba de realizar.
+6. Si corresponde a ese acceso, usar la opción disponible para permitirlo o agregarlo a las excepciones.
+7. Confirmar que el evento o sitio aparezca permitido dentro de las excepciones de seguridad, cuando la aplicación lo muestre.
+8. Regresar a la aplicación TiviPlay o al reproductor.
+9. Intentar nuevamente el inicio de sesión.
+
+**Mensaje para el cliente**
+
+```mensaje
+Si estás conectado a una red AT&T, revisa si ActiveArmor generó una alerta de bloqueo justo cuando intentaste ingresar. Abre esa alerta y verifica si corresponde al acceso que acabas de realizar. Si deseas autorizarlo, ActiveArmor puede darte la opción de permitir ese acceso o agregarlo a las excepciones de seguridad. Después intenta ingresar nuevamente. Ten presente que ActiveArmor puede mostrar una advertencia de seguridad antes de permitir la excepción.
+```
+
+**Qué no hacer**
+
+- No envíes al cliente la URL completa que muestra el bloqueo, ni usuarios, contraseñas o datos de acceso. Si el cliente comparte una captura del bloqueo, no la reenvíes ni copies su contenido: la URL bloqueada puede incluir sus datos de acceso.
+- No pidas al cliente desactivar completamente ActiveArmor ni las protecciones generales de su red.
+- No uses VPN ni cambios de DNS como primera solución.
+- La acción se limita a la excepción específica identificada durante el intento del cliente.
+
+**Cuándo escalar:** si no aparece ninguna alerta o evento de bloqueo, o si después de permitir el acceso el inicio de sesión sigue fallando, escala el caso a Dirección con: operador de internet, dispositivo, app y hora.
+
+## 8. Información que todavía requiere evidencia
 
 | Tema | Estado | Qué falta | Qué hacer mientras tanto |
 | --- | --- | --- | --- |
-| AT&T bloquea enlaces o el servicio | REQUIERE EVIDENCIA | Procedimiento real validado por Dirección | Escalar el caso a Dirección con: operador de internet, dispositivo, app y hora. No sugerir DNS, VPN ni cambios de configuración. |
+| Nombres exactos de los menús de AT&T Smart Home Manager (sección 7, opción 2) | REQUIERE EVIDENCIA | Captura de la aplicación | Buscar la sección equivalente de mensajes, actividad o seguridad; no inventar nombres de menú. |
 | Dominios de lectura dudosa en la pizarra (por panel, sección 5) | REQUIERE EVIDENCIA | Confirmación carácter por carácter de Dirección | Usar solo las URL VALIDADO del mismo panel. |
 | Propiedad del servidor de descarga del código 2865004 | REQUIERE EVIDENCIA | Confirmación de Dirección | Usar el código; no afirmar a quién pertenece el servidor. |
 | Campos de acceso de la app TiviPlay (Fire Stick) | REQUIERE EVIDENCIA | Captura o instructivo de la pantalla de ingreso | Usar los datos que entrega Back Office. |
 | Horario de atención y valor de NET IPTV | PENDIENTE DE VALIDACIÓN | Confirmación de Dirección | Usar el horario de la Guía 2025 hasta que Dirección indique otro. |
 
-## 8. Fuentes y clasificación
+## 9. Fuentes y clasificación
 
 | Fuente | Uso en esta guía | Clasificación |
 | --- | --- | --- |
@@ -238,6 +286,7 @@ Estado del código `2865004`: **VALIDADO COMO REFERENCIA OPERACIONAL** (evidenci
 | Documento 7 · Funciones por turno (28/02/2026) | Llamada a los 15 minutos; créditos solo con pago confirmado | OPERACIONAL COMPARTIBLE |
 | LINKS DE DESCARGA | Enlaces de XCIPTV, Smarters y Windows | OPERACIONAL COMPARTIBLE |
 | Contrato S0 v0.3 | Regla de pagos | Fuente canónica (gobierno interno) |
+| Procedimiento AT&T ActiveArmor de Jorge y 3 capturas aportadas por Dirección (23/10/2026) | Sección 7 | OPERACIONAL COMPARTIBLE; las capturas no se incorporan porque contienen datos de acceso de un cliente |
 | INSTALACIONES ESCRITAS | No se usa: contiene servidor y usuario reales | RESTRINGIDO |
 | Documento 4 · Inventario de paneles y resellers | No se usa: contiene accesos administrativos | RESTRINGIDO |
 | Manual de cobro (PDF) | No se usa: contiene datos bancarios | RESTRINGIDO |

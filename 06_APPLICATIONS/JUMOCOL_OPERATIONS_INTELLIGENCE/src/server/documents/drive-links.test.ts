@@ -108,14 +108,15 @@ describe("Drive originals", () => {
     const md = entry.document.markdown;
     for (const h of ["### 2.1 Caída de panel", "### 2.2 Intermitencia general", "### 2.3 Actualización de canales", "### 2.4 Actualización de películas y series (movies/series)", "### 2.5 Seguimiento de la incidencia", "### 2.6 Servicio normalizado",
       "### 3.1 Recepción inicial", "### 3.2 Mensaje de espera mientras verificas", "### 3.3 Recepción de comprobante", "### 3.4 Pago pendiente de validación (el cliente pregunta)", "### 3.5 Cierre de gestión",
-      "## 4. Reproductores y configuración por dispositivo", "## 5. URL de configuración por panel", "## 6. Fire Stick → Downloader → código TiviPlay", "## 7. Información que todavía requiere evidencia"]) expect(md).toContain(h);
+      "## 4. Reproductores y configuración por dispositivo", "## 5. URL de configuración por panel", "## 6. Fire Stick → Downloader → código TiviPlay", "## 7. AT&T ActiveArmor bloquea el inicio de sesión", "## 8. Información que todavía requiere evidencia"]) expect(md).toContain(h);
     // S0: ningún mensaje al cliente afirma que el pago está confirmado.
     const messages = [...md.matchAll(/```mensaje\n([\s\S]*?)```/g)].map(m => m[1]);
     expect(messages.length).toBeGreaterThanOrEqual(12);
     for (const m of messages) expect(m).not.toMatch(/pago (ha sido |fue |est[aá] )?(exitoso|aprobado)|confirmamos (que )?(su|tu) pago|pago confirmado|tu pago est[aá] confirmado/i);
     expect(md).toContain("`PENDIENTE CONFIRMACION ≠ CONFIRMADO JM`");
-    // AT&T y URL por panel quedan como faltantes, sin solución inventada.
-    expect(md).toMatch(/\| AT&T[^\n]*REQUIERE EVIDENCIA/);
+    // AT&T: procedimiento ActiveArmor con evidencia de Dirección (23/10/2026); los menús no evidenciados siguen como faltantes.
+    expect(md).toMatch(/únicamente cuando existe evidencia de un bloqueo de ActiveArmor/);
+    expect(md).toMatch(/\| Nombres exactos de los menús de AT&T Smart Home Manager[^\n]*REQUIERE EVIDENCIA/);
     // URL por panel: solo marcadores; los valores viven en configuración local (data/private), nunca en Git.
     const section5 = md.slice(md.indexOf("\n## 5. "), md.indexOf("\n## 6. "));
     expect(section5.match(/^```endpoints [123]$/gm)).toHaveLength(3);
