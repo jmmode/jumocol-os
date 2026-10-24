@@ -1,10 +1,21 @@
 # TIVIPLAY --- CONTRATO OPERATIVO S0
 
-**Versión:** 0.2\
-**Fecha:** 28 de septiembre de 2026\
-**Estado:** PARCIAL --- diseño A--F aprobado; validación con evidencia
-real pendiente\
+**Versión vigente:** 0.3 --- consolidada el 24 de octubre de 2026\
+**Versión de origen:** 0.2 --- 28 de septiembre de 2026 (este archivo
+nació como v0.2 y conserva su nombre para preservar continuidad)\
+**Estado:** VIGENTE --- S0 v0.3 reconocido por Dirección (JM) como
+contrato vigente para consolidación documental el 24/10/2026
+(DEC-2026-10-24-018). Diseño A--F aprobado y sin rediseño; validación
+operacional PARCIAL.\
 **Gate activo:** S0 --- Baseline y Backlog
+
+> **Qué agrega v0.3 sobre v0.2:** terminología `CONFIRMADO JM`
+> (§2), separaciones obligatorias (§2), tipo de ciclo y `ALTA PENDIENTE`
+> (§3), ruta provisional de RECONEXIÓN (§3), habilitación financiera de
+> la tarea de servicio, Casos A/B (§7.1), y evidencia del 24/10/2026
+> (§10). La autorización es exclusivamente documental: no autoriza
+> cambios de código, motor, fórmulas, Google Sheets, despliegues ni
+> automatizaciones.
 
 ## 1. Arquitectura operacional vigente
 
@@ -19,7 +30,10 @@ Flujo vigente:
 Roles:
 
 -   `VENTAS_SEPTIEMBRE`: origen comercial de altas, referidos y
-    reactivaciones.
+    reactivaciones. (v0.3: el mismo rol aplica a la hoja de ventas de
+    cada mes. La estructura viva y la semántica exacta de las hojas de
+    octubre ---ventas del mes y pendientes del mes--- son REQUIERE
+    EVIDENCIA; ninguna posición de columna es contrato.)
 -   `BASE GENERAL`: universo operacional recurrente.
 -   `PAGOS [MES]`: cartera mensual.
 -   `ZELLE / PAYPAL / TRANSF`: evidencia y validación financiera.
@@ -52,6 +66,23 @@ El asesor puede recibir comprobantes y registrar
 
 Solo Julián puede validar el ingreso real y convertirlo en
 `PAGO CONFIRMADO`.
+
+v0.3: en las hojas de medio de pago y en `PAGOS [MES]` ese estado se
+registra como `CONFIRMADO JM`. `PAGO CONFIRMADO` y `CONFIRMADO JM` son
+el mismo concepto. Solo Dirección (JM) lo asigna.
+
+### Separaciones obligatorias (v0.3)
+
+-   `ORIGEN COMERCIAL ≠ ESTADO DEL CICLO`
+-   `ESTADO ≠ CONFIRMACIÓN FINANCIERA`
+-   `CONFIRMADO JM ≠ ALTA AUTOMÁTICA`
+-   `CONFIRMADO JM ≠ SERVICIO RENOVADO`
+-   `F.PRÓXIMO PAGO ≠ F.VENCIMIENTO`
+-   `F.VENCIMIENTO ≠ CRÉDITO AUTORIZADO`
+-   `CONTROL ≠ BASE GENERAL ACTUALIZADA`
+-   `HABILITADO PARA ACTUALIZAR BASE ≠ BASE ACTUALIZADA`
+-   `VENCIDO ≠ BAJA` (no pago no equivale automáticamente a baja; el
+    criterio de BAJA es REQUIERE DECISIÓN)
 
 ------------------------------------------------------------------------
 
@@ -97,6 +128,24 @@ Objetivo:
 ### Gate S0-A
 
 `TC=1 + datos completos + CONFIRMADO + identidad válida + paridad + trazabilidad = transición cerrada`
+
+### Tipo de ciclo (v0.3)
+
+Todo evento se clasifica en un tipo de ciclo antes de evaluar
+identidad. El tipo no reemplaza `AL DIA / POR VENCER / VENCIDO`.
+
+| Tipo | Origen | Ruta | Estado del gate |
+|---|---|---|---|
+| ALTA | Venta: Cliente nuevo / Referido | Gate S0-A → crear en `BASE GENERAL` | Diseño vigente (S0-A) |
+| RECURRENTE | `BASE GENERAL` por `F.PRÓXIMO PAGO` | S0-B → S0-F | Diseño vigente |
+| RECONEXIÓN | Venta: Reconexión (cliente histórico o existente) | Provisional: `EXISTENTE → ACTUALIZAR / REACTIVAR`; no es alta nueva | REQUIERE DECISIÓN (detalle del gate) |
+
+**`ALTA PENDIENTE`.** Una venta de tipo ALTA registrada cuyo cliente
+todavía no está en `BASE GENERAL` es `ALTA PENDIENTE`, no un error de
+enlace. `SIN BASE` en la capa financiera de un evento ALTA no se
+interpreta automáticamente como anomalía. La creación en `BASE GENERAL`
+sigue exigiendo todos los requisitos del Gate S0-A. `CONFIRMADO JM`
+no produce el alta automáticamente.
 
 ------------------------------------------------------------------------
 
@@ -279,6 +328,38 @@ Después de renovar debe registrarse:
 Las hojas `CONTROL P1/P2/P3` son evidencia operacional de las
 renovaciones.
 
+## 7.1 Habilitación financiera de la tarea de servicio --- Casos A/B (v0.3)
+
+`NECESIDAD TÉCNICA + HABILITACIÓN FINANCIERA + IDENTIDAD INEQUÍVOCA = CRÉDITO EJECUTABLE`
+
+**Identidad inequívoca (previa a ambos casos):** el `USUARIO` de la
+fila de CONTROL aparece exactamente una vez en `BASE GENERAL` y el
+panel de esa fila no contradice el panel registrado en `BASE GENERAL`.
+Si no se cumple, o si `BASE GENERAL` o las hojas de pago no pueden
+leerse: `REQUIERE REVISIÓN`.
+
+**Caso A --- confirmación financiera:**
+`CONFIRMADO JM` en la hoja de medio de pago, con
+`ESTADO_ENLACE = ENLAZADO` y `FILA_BASE` = la fila de `BASE GENERAL`
+de ese `USUARIO`.
+
+**Caso B --- cobertura activa:**
+`TC=1` en `BASE GENERAL` + `F.PRÓXIMO PAGO` posterior a la fecha del
+crédito + `F.PRÓXIMO PAGO` dentro de la cobertura de `PLAN ACTIVO`
+(meses del plan más la bonificación registrada `+k`, contados desde la
+fecha del crédito). Cubre planes multimes y bonificaciones. Si
+`PLAN ACTIVO` no es interpretable, o `F.PRÓXIMO PAGO` excede la
+cobertura: `REQUIERE REVISIÓN`.
+
+Sin Caso A ni Caso B: `NO HABILITADO`. Los Casos A/B habilitan la
+tarea de servicio; no prueban la renovación ni actualizan
+`BASE GENERAL`. Los demás gates de S0-E siguen aplicando.
+
+Trazabilidad: el texto original de §7.1 no estaba versionado en este
+repositorio antes del 24/10/2026. Esta sección transcribe la regla tal
+como ya la aplica la capa operacional de lectura (Bloque Créditos de
+HOY, commit `3733130`), sin reinterpretarla ni ampliarla.
+
 La nueva `F.VENCIMIENTO` debe actualizar `BASE GENERAL`.
 
 ## Auditoría de fin de período
@@ -450,7 +531,43 @@ clasificarse:
 -   REQUIERE DECISIÓN
 -   VALIDADO
 
-## Próxima acción exacta
+## Evidencia operacional v0.3 --- 24/10/2026
+
+Muestra real de seis casos, seudonimizada por método (`ZEL`, `PAY`,
+`TRF`) y muestra (`-1`, `-2`). No se registran nombres, contactos,
+importes ni otros datos personales.
+
+| Caso | Observado | Clasificación |
+|---|---|---|
+| ZEL-1 | `CONFIRMADO JM`. Existe en `BASE GENERAL`, pero la capa financiera lo marcó `SIN BASE` / `PENDIENTE ENLACE`. En ventas del mes su origen es Reconexión | Ruta RECONEXIÓN; causa del no enlace REQUIERE EVIDENCIA |
+| PAY-1 | `CONFIRMADO JM` reflejado en `PAGOS OCTUBRE 2026`; detenido por `SIN COINCIDENCIA TARIFA`, `CAMBIO PLAN`, `REQUIERE DECISIÓN` | Excepción no forzada (correcto) |
+| TRF-1 | `CONFIRMADO JM`. En ventas del mes: Cliente nuevo, `REGISTRADA` | Posible `ALTA PENDIENTE` |
+| ZEL-2 | `CONFIRMADO JM → ENLAZADO → COINCIDE PLAN → VALIDADO → PROPUESTA CALCULADA`; **no** reflejado en `PAGOS OCTUBRE 2026` | Diferencia de propagación: REQUIERE EVIDENCIA; no se atribuye al motor |
+| PAY-2 | `CONFIRMADO JM → ENLAZADO → COINCIDE PLAN → VALIDADO → PROPUESTA CALCULADA`; reflejado en `PAGOS OCTUBRE 2026`. Sin cambio de plan | Camino financiero positivo |
+| TRF-2 | `CONFIRMADO JM`. En ventas del mes: Referido, `REGISTRADA` | Posible `ALTA PENDIENTE` |
+
+| Transición | Estado |
+|---|---|
+| `PENDIENTE CONFIRMACION → CONFIRMADO JM` en Zelle, PayPal y Transferencia | VALIDADO (6 casos reales) |
+| `CONFIRMADO JM → ENLAZADO → COINCIDE PLAN → VALIDADO → PROPUESTA CALCULADA` en casos enlazados | VALIDADO |
+| Excepciones de identidad/tarifa no avanzan solo por `CONFIRMADO JM` | VALIDADO |
+| Hoja de medio de pago → `PAGOS OCTUBRE 2026` | PARCIAL (positivo en PayPal; un caso Zelle no reflejado) |
+| `CONFIRMADO JM → servicio → CONTROL → F.VENCIMIENTO → BASE GENERAL actualizada` | NO IMPLEMENTADO COMO EVIDENCIA (no observado) |
+| `BASE GENERAL consolidada → corte → F.PRÓXIMO PAGO → PAGOS [MES+1]` | Diseño documentado; reproducibilidad PARCIAL |
+
+Brechas abiertas de v0.3 (no se resuelven por supuesto):
+
+-   REQUIERE EVIDENCIA: causa de la diferencia de propagación (ZEL-2);
+    causa del no enlace (ZEL-1); organización física de vencidos en
+    `BASE GENERAL`; estructura viva de las hojas de ventas y pendientes
+    de octubre; un caso real completo hasta CONTROL y `BASE GENERAL`.
+-   REQUIERE DECISIÓN: gate definitivo de RECONEXIÓN; criterio de
+    BAJA; responsable y escritura de las actualizaciones de
+    `BASE GENERAL`; precedencia de fechas técnicas cuando CONTROL y
+    `BASE GENERAL` difieren; pagador distinto del titular cuando afecte
+    identidad.
+
+## Próxima acción exacta (v0.2, 28/09/2026 --- histórica)
 
 Comenzar **VALIDACIÓN S0-A** con casos reales de septiembre:
 
@@ -470,3 +587,17 @@ trazabilidad, continuidad y cierre mensual.\
 **Gate activo:** S0.\
 **Next Action:** validar S0-A con evidencia real y convertir diferencias
 en backlog P0/P1/P2.
+
+# CHECKPOINT v0.3 --- 24/10/2026
+
+**Qué cambió:** Dirección (JM) reconoció S0 v0.3 como contrato vigente
+para consolidación documental. Se versionaron §7.1 (Casos A/B), tipo de
+ciclo, `ALTA PENDIENTE`, ruta provisional de RECONEXIÓN y separaciones
+obligatorias.\
+**Qué quedó validado:** `CONFIRMADO JM` en los tres métodos y el camino
+financiero enlazado hasta `PROPUESTA CALCULADA`.\
+**Qué falta:** propagación universal hacia `PAGOS [MES]`, un caso real
+de servicio hasta `BASE GENERAL` y las decisiones abiertas de §10.\
+**Gate activo:** S0.\
+**Next Action:** definida por Dirección; esta consolidación no autoriza
+cambios de implementación.

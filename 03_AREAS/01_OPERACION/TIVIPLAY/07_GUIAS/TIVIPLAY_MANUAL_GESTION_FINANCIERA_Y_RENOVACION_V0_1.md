@@ -367,9 +367,13 @@ Inspecciones del 2026-10-20 en `GESTION_DIA_PAGOS_2026_TIVIPLAY`: encabezados, v
 | D5 | Uso de `SIN PAGO` | REQUIERE DECISIÓN (backlog) |
 | D6 | Renovar con `Sin Pagar`, `Promoción` o `CORTESIA` | REQUIERE DECISIÓN (backlog) |
 | D7 | Llave de cruce definitiva entre capas | REQUIERE DECISIÓN: la cadena de la sección 8 no es inequívoca en los casos observados |
-| D8 | Gate financiero de planes multimes en renovaciones mensuales | REQUIERE DECISIÓN (nueva, por evidencia real) |
+| D8 | Gate financiero de planes multimes en renovaciones mensuales | **Definido documentalmente** por S0 v0.3 §7.1, Caso B (cobertura activa), 24/10/2026. E11 aplica solo cuando no se cumple ni el Caso A ni el Caso B |
 | D9 | Significado de las filas precargadas de CONTROL | REQUIERE DECISIÓN (nueva) |
 | D10 | Qué fecha prevalece si `F.VENCIMIENTO` de CONTROL y la de BASE difieren | REQUIERE DECISIÓN. Según S0-E, el panel es el estado técnico real; su verificación es del motor auditor de servicio |
+| D11 | Propagación de `CONFIRMADO JM` de la hoja de medio a `PAGOS OCTUBRE 2026`: un caso enlazado y coherente no se reflejó (24/10/2026) | REQUIERE EVIDENCIA. No corregir ni atribuir al motor sin diagnóstico por fila |
+| D12 | `SIN BASE` de una venta de tipo ALTA todavía no incorporada | Definido documentalmente por S0 v0.3 §3 como `ALTA PENDIENTE`, no como error de enlace. La escalada E1 aplica a eventos RECURRENTE o RECONEXIÓN |
+| D13 | Gate de RECONEXIÓN (cliente existente que aparece `SIN BASE`) | REQUIERE DECISIÓN. Ruta provisional S0 v0.3: `EXISTENTE → ACTUALIZAR / REACTIVAR` |
+| D14 | Pagador distinto del titular cuando afecte identidad | REQUIERE DECISIÓN |
 
 ## 15. Riesgos detectados
 

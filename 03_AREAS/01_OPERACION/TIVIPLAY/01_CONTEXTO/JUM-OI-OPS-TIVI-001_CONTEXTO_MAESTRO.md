@@ -1,11 +1,11 @@
 # JUM-OI-OPS-TIVI-001 - Contexto Maestro de TiviPlay
 
-**Versión:** 0.1  
-**Estado:** DRAFT — IN REVIEW  
-**Fecha de corte:** 2026-09-02  
+**Versión:** 0.2 (nació como 0.1 con corte 2026-09-02)  
+**Estado:** DRAFT — IN REVIEW; §5.4 consolida el contrato lógico del ciclo según S0 v0.3 vigente  
+**Fecha de corte:** 2026-10-24  
 **Módulo:** Operaciones  
 **Submódulo:** TiviPlay  
-**Decisión gobernante:** DEC-2026-09-02-010
+**Decisión gobernante:** DEC-2026-09-02-010; contrato operativo vigente: S0 v0.3 (`TIVIPLAY_CONTRATO_OPERATIVO_S0_V0_2_2026-09-28.md`, DEC-2026-10-24-018)
 
 ## Regla de lectura y evidencia
 
@@ -119,13 +119,78 @@ Fuente de gestión de pagos
 
 `PENDIENTE DE VALIDACIÓN` — El flujo completo `Payment → Credit → Service → Reconciliation` no está certificado E2E.
 
+### 5.4 Contrato lógico del ciclo TiviPlay (S0 v0.3)
+
+Fuente de las reglas: contrato S0 v0.3. Esta sección solo las ordena y no crea reglas nuevas. Estados según S0: `IMPLEMENTADO`, `PARCIAL`, `NO IMPLEMENTADO`, `BLOQUEADO`, `REQUIERE DECISIÓN`, `VALIDADO`, más `REQUIERE EVIDENCIA` para datos aún no observados.
+
+```text
+1. ORIGEN
+   VENTAS [mes]  → eventos: Cliente nuevo | Referido | Reconexión   (estructura viva de octubre: REQUIERE EVIDENCIA)
+   BASE GENERAL  → universo recurrente; F.PRÓXIMO PAGO lo incorpora a PAGOS [MES]
+
+2. TIPO DE CICLO          (no reemplaza AL DIA / POR VENCER / VENCIDO)
+   ALTA        ← Cliente nuevo / Referido
+   RECURRENTE  ← BASE GENERAL por F.PRÓXIMO PAGO
+   RECONEXIÓN  ← Reconexión de cliente histórico o existente    (gate: REQUIERE DECISIÓN)
+
+3. IDENTIDAD
+   Capa financiera: CLIENTE_KEY + TC → ENLAZADO (FILA_BASE) | SIN BASE | REQUIERE DECISIÓN
+   ALTA sin fila en BASE → ALTA PENDIENTE (no es fallo de enlace)
+   Ambigüedad → Back Office; pagador ≠ titular → REQUIERE DECISIÓN
+
+4. GATE FINANCIERO        (solo Dirección/JM)
+   comprobante → PENDIENTE CONFIRMACION → CONFIRMADO JM | REQUIERE REVISIÓN
+   GATE_FINANCIERO VALIDADO = CONFIRMADO JM + ENLAZADO + COINCIDE PLAN + PROPUESTA CALCULADA
+   Tarifa ≠ plan / cambio de plan → REQUIERE DECISIÓN (la excepción no avanza)
+
+5. ALTA / ACTUALIZACIÓN / RECONEXIÓN en BASE GENERAL
+   ALTA        → crear solo con Gate S0-A (TC=1, datos completos, identidad, sin duplicidad, confirmación)
+   RECURRENTE  → actualizar fechas comerciales      (responsable/escritura: REQUIERE DECISIÓN; no automatizado)
+   RECONEXIÓN  → EXISTENTE → ACTUALIZAR / REACTIVAR (provisional; no es alta nueva)
+
+6. SERVICIO
+   tarea de renovación autorizada por S0 §7.1:
+     Caso A = CONFIRMADO JM + ENLAZADO + FILA_BASE del USUARIO
+     Caso B = TC=1 + F.PRÓXIMO PAGO > fecha del crédito + dentro de la cobertura de PLAN ACTIVO (+k)
+   requisito previo: USUARIO único en BASE y panel coherente; si no → REQUIERE REVISIÓN
+
+7. CONTROL P1/P2/P3
+   G = día del crédito · ejecutado ⇔ CREDITO > 0 · H = nueva F.VENCIMIENTO leída del panel · COMPRA excluida
+
+8. BASE GENERAL
+   CONFIRMADO JM + crédito ejecutado + F.VENCIMIENTO posterior al período = HABILITADO PARA ACTUALIZAR BASE
+   HABILITADO ≠ ACTUALIZADO · precedencia si CONTROL y BASE difieren: REQUIERE DECISIÓN
+
+9. ESTADO COMERCIAL
+   F.PRÓXIMO PAGO → T → AL DIA (≥30) / POR VENCER (1–29) / VENCIDO (≤0)
+   no pago ≠ baja · BAJA solo demostrada (criterio: REQUIERE DECISIÓN)
+   disposición física de vencidos en BASE: REQUIERE EVIDENCIA
+
+10. SIGUIENTE CICLO
+   BASE GENERAL consolidada → corte gobernado → F.PRÓXIMO PAGO → PAGOS [MES+1]
+   (diseño documentado; reproducibilidad PARCIAL)
+```
+
+Separaciones obligatorias: `ORIGEN COMERCIAL ≠ ESTADO DEL CICLO` · `ESTADO ≠ CONFIRMACIÓN FINANCIERA` · `CONFIRMADO JM ≠ ALTA AUTOMÁTICA` · `CONFIRMADO JM ≠ SERVICIO RENOVADO` · `F.PRÓXIMO PAGO ≠ F.VENCIMIENTO` · `F.VENCIMIENTO ≠ CRÉDITO AUTORIZADO` · `CONTROL ≠ BASE GENERAL ACTUALIZADA` · `HABILITADO PARA ACTUALIZAR BASE ≠ BASE ACTUALIZADA` · `VENCIDO ≠ BAJA`.
+
+Estado por tramo al 24/10/2026, sin PII; la tabla de casos está en S0 §10:
+
+| Tramo | Estado |
+| --- | --- |
+| `PENDIENTE CONFIRMACION → CONFIRMADO JM` (Zelle, PayPal, Transferencia) | `VALIDADO` (6 casos reales) |
+| Camino financiero enlazado hasta `PROPUESTA CALCULADA` | `VALIDADO` |
+| Excepciones de identidad/tarifa no forzadas por `CONFIRMADO JM` | `VALIDADO` |
+| Hoja de medio de pago → `PAGOS [MES]` | `PARCIAL`; causa del caso no reflejado: `REQUIERE EVIDENCIA` |
+| Servicio → CONTROL → F.VENCIMIENTO → BASE GENERAL actualizada | `NO IMPLEMENTADO` como evidencia (no observado) |
+| Siguiente ciclo reproducible | `PARCIAL` |
+
 ## 6. Mapa de procesos
 
 | Proceso | Evidencia disponible | Estado |
 | --- | --- | --- |
 | Marketing y campañas | Existe una ruta de TiviPlay Marketing basada exclusivamente en fixtures | `PENDIENTE DE VALIDACIÓN` |
 | Captación y seguimiento comercial | `VENTAS 2026 (Tiviplay)` documenta prospectos, ventas y seguimiento | `PENDIENTE DE VALIDACIÓN` por vigencia y contrato E2E |
-| Venta, activación y reactivación | La fuente de ventas contiene conceptos, estados, planes y fechas; reglas históricas están dispersas | `PENDIENTE DE VALIDACIÓN` |
+| Venta, activación y reactivación | Tipos de ciclo ALTA y RECONEXIÓN y `ALTA PENDIENTE` definidos en S0 v0.3 (§5.4); gate de RECONEXIÓN y estructura viva de ventas de octubre abiertos | `PENDIENTE DE VALIDACIÓN` |
 | Facturación mensual | El dashboard reconoce familias de facturación y elegibilidad | `VALIDADO` para lectura analítica |
 | Registro de pagos | El dashboard reconoce movimientos por método, fecha, moneda y evidencia | `VALIDADO` para lectura analítica |
 | Conciliación | Emparejamiento exacto por cliente normalizado y periodo | `VALIDADO` para la implementación actual |
@@ -173,7 +238,7 @@ Fuente de gestión de pagos
 | Google Sheets | Fuentes tabulares oficiales iniciales | Decisión vigente al 2026-09-02 | `VALIDADO` como frontera oficial |
 | `GESTION_DIA_PAGOS_2026_TIVIPLAY` | Google Sheet autorizado de facturación, pagos y controles de créditos | Evidencia documentada al 2026-08-30 | `VALIDADO` para dashboard de pagos |
 | Snapshot privado de `GESTION_DIA_PAGOS_2026_TIVIPLAY` | Exportación Excel local de solo lectura | Verificado para el runtime del dashboard | `VALIDADO` como adaptador; no es fuente sustituta |
-| `VENTAS 2026 (Tiviplay)` | Google Sheet de ventas, activaciones, renovaciones, pagos y seguimiento | Última observación documental 2026-06-12 | `PENDIENTE DE VALIDACIÓN` actual |
+| `VENTAS 2026 (Tiviplay)` | Google Sheet de ventas, activaciones, renovaciones, pagos y seguimiento. Origen de eventos ALTA y RECONEXIÓN (S0 v0.3) | Usado como evidencia el 24/10/2026; estructura y semántica de las hojas de octubre no documentadas | `PENDIENTE DE VALIDACIÓN` actual |
 | `TIVIPLAY_FORMATO_GESTION_OPERATIVA` | Google Sheet de gestión diaria, apertura, cierre y resúmenes | Última observación documental 2026-06-12 | `PENDIENTE DE VALIDACIÓN` actual |
 | `Horario_TiviPlay_Junio2026_v3_FINAL_APROBADO` | Archivo de horario para junio de 2026 | Fuente aprobada para ese periodo | `VALIDADO` histórico; no vigente para septiembre |
 | Política de incentivos y condiciones para comisionar | Documentos referenciados en Drive/local | Fechas y versiones diferentes | `CONTRADICTORIO` en vigencia |
@@ -204,7 +269,7 @@ Fuente de gestión de pagos
 | Owner formal del submódulo TiviPlay | No localizado | `NO DOCUMENTADO` |
 | Owner de la fuente de ventas | No confirmado documentalmente | `PENDIENTE DE VALIDACIÓN` |
 | Owner de gestión operativa | No confirmado formalmente | `PENDIENTE DE VALIDACIÓN` |
-| Validador financiero de pagos | Requerido por el estándar, sin persona/rol formal confirmado para TiviPlay | `PENDIENTE DE VALIDACIÓN` |
+| Validador financiero de pagos | S0 asigna `CONFIRMADO JM` exclusivamente a Dirección (JM) | `VALIDADO` como rol; ejecutado en 6 casos reales el 24/10/2026 |
 | Responsable de conciliación y excepciones | Función necesaria en el dashboard, sin owner formal | `PENDIENTE DE VALIDACIÓN` |
 | Operaciones | Receptor corporativo posterior al Handoff | `VALIDADO` como rol general; asignación TiviPlay pendiente |
 | QA / aprobación de entrega | Requerido por el estándar corporativo | `VALIDADO` como gate; owner TiviPlay pendiente |
@@ -293,6 +358,7 @@ Las cifras operativas no se reproducen en este documento; deben consultarse en l
 | DEC-2026-08-26-008 | Estándar corporativo del ciclo de cliente y gates mínimos | `VALIDADO` |
 | DEC-2026-08-26-004 | Vista de TiviPlay Marketing basada en fixtures | `VALIDADO` con límite explícito |
 | DEC-2026-08-26-002 | Capa de aplicación canónica de la intranet | `VALIDADO` |
+| DEC-2026-10-24-018 | S0 v0.3 reconocido como contrato vigente para consolidación documental | `VALIDADO` como decisión documental |
 | DEC-2026-08-27-009 | Command Center técnico y fuente canónica JUM-OI-TECH-001 | `VALIDADO` |
 | DEC-2026-10-22-014 a DEC-2026-10-23-017 | URL por panel en configuración privada; regla de créditos G/COMPRA/J; publicación de la guía v1.2 y AT&T; cierre S3 y próxima prueba | `VALIDADO` como decisión de Dirección |
 
@@ -342,6 +408,16 @@ El orden futuro no implica autorización de implementación. Contexto debe aprob
 | Fórmulas de contacto, conversión, retención, churn y proyección no están consolidadas | `NO DOCUMENTADO` | Validar definición, campos, periodo y owner |
 | No existe política canónica de acceso y retención de datos TiviPlay en este repositorio | `NO DOCUMENTADO` | Definir governance antes de ampliar integraciones |
 | Marketing TiviPlay se representa con fixtures | `PENDIENTE DE VALIDACIÓN` | No tratar la vista como ejecución o medición real |
+| Causa de la diferencia de propagación hoja de medio → `PAGOS [MES]` (caso ZEL-2, 24/10) | `REQUIERE EVIDENCIA` | Diagnóstico por fila; no atribuir al motor ni corregir en silencio |
+| Causa del `SIN BASE` de un cliente existente en ruta de reconexión (caso ZEL-1) | `REQUIERE EVIDENCIA` | Contrastar llave `CLIENTE_KEY + TC` con la fila de BASE |
+| Estructura viva y semántica de las hojas de ventas y pendientes de octubre | `REQUIERE EVIDENCIA` | Documentar antes de usarlas como contrato |
+| Disposición física de vencidos en BASE GENERAL | `REQUIERE EVIDENCIA` | No elevar a regla sin evidencia |
+| Caso real completo hasta CONTROL y BASE GENERAL actualizada | `REQUIERE EVIDENCIA` | Observar sin automatizar |
+| Gate definitivo de RECONEXIÓN | `REQUIERE DECISIÓN` | Dirección |
+| Criterio operacional de BAJA | `REQUIERE DECISIÓN` | Dirección |
+| Responsable y escritura de las actualizaciones de BASE GENERAL | `REQUIERE DECISIÓN` | Dirección |
+| Precedencia de fechas técnicas si CONTROL y BASE GENERAL difieren | `REQUIERE DECISIÓN` | Dirección |
+| Pagador distinto del titular cuando afecte identidad | `REQUIERE DECISIÓN` | Dirección |
 
 ## 19. Tabla de evidencias y referencias
 
@@ -360,6 +436,9 @@ El orden futuro no implica autorización de implementación. Contexto debe aprob
 | Dependencias entre procesos | Mapa de fuentes y entregas entre áreas | `DEPENDENCY_MAP_v0.1.md` | 2026-06-12 | `PENDIENTE DE VALIDACIÓN` actual |
 | Brechas y contradicciones | Análisis documental inicial | `GAP_ANALYSIS_v0.1.md` | 2026-06-12 | `PENDIENTE DE VALIDACIÓN` actual |
 | Ownership general | Matriz con Operación pendiente | `00_GOVERNANCE/RESPONSIBILITY_MATRIX.md` | 2026-06-12 | `NO DOCUMENTADO` para TiviPlay |
+| Contrato operativo S0 v0.3 | Contrato vigente con Casos A/B, tipo de ciclo y evidencia del 24/10 | `03_AREAS/01_OPERACION/TIVIPLAY/01_CONTEXTO/TIVIPLAY_CONTRATO_OPERATIVO_S0_V0_2_2026-09-28.md` | 2026-10-24 | `VALIDADO` como contrato; operación `PARCIAL` |
+| Muestra real CONFIRMADO JM | 6 casos seudonimizados (ZEL/PAY/TRF), S0 §10 | Fuentes vivas de Dirección; sin PII en el repositorio | 2026-10-24 | Ver §5.4 |
+| Cierre iteración S3 | Estado funcional, backlog y riesgos | `08_RUNTIME/CHECKPOINT_S3_FREEZE_FUNCIONAL_TIVIPLAY_2026-10-23.md` | 2026-10-23 | `VALIDADO` como registro |
 
 ## Riesgos
 
