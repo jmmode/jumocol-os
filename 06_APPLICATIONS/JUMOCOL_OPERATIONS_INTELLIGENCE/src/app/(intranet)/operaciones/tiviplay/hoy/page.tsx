@@ -71,7 +71,7 @@ export default async function TiviplayHoyPage({ searchParams }: { searchParams: 
       <TiviplayNavigation />
 
       <div className="mt-6 space-y-5">
-        <CreditosHoyBlock data={credits} />
+        <CreditosHoyBlock data={credits} isAdmin={isAdmin} />
 
         {data ? (
           <p className="rounded-2xl border border-brand-border bg-brand-surface px-4 py-3 text-xs text-brand-muted">
