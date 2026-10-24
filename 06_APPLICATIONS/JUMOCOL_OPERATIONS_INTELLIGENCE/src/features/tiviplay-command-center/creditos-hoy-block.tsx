@@ -17,7 +17,7 @@ const STATE_HINT: Record<CreditState, string> = {
   EJECUTADO: "Ya registrado en CONTROL",
 };
 const PANEL_NAME = { P1: "Panel 1", P2: "Panel 2", P3: "Panel 3" } as const;
-const KPI_COLS: Array<[keyof Omit<CreditKpi, "avance">, string]> = [["programados", "Por otorgar mes"], ["otorgados", "Otorgados"], ["faltantes", "Faltantes"], ["hoy", "Hoy"]];
+const KPI_COLS: Array<[keyof Omit<CreditKpi, "avance">, string, string]> = [["programados", "Por otorgar", "Mes"], ["otorgados", "Otorgados", "Otorg."], ["faltantes", "Faltantes", "Faltan"], ["hoy", "Hoy", "Hoy"]];
 
 const fmt = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 const sortTasks = (tasks: CreditTask[]) => [...tasks].sort((a, b) => STATE_ORDER.indexOf(a.state) - STATE_ORDER.indexOf(b.state) || a.row - b.row);
@@ -53,7 +53,7 @@ function TaskItem({ t }: { t: CreditTask }) {
 function KpiCell({ value, sheet, showParity }: { value: number | undefined; sheet: number | undefined; showParity: boolean }) {
   const differs = showParity && sheet != null && value != null && sheet !== value;
   return (
-    <td className="px-3 py-2 text-right tabular-nums">
+    <td className="px-1.5 py-2 sm:px-3 text-right tabular-nums">
       {value ?? "—"}
       {differs ? <span className="block text-[10px] font-semibold text-status-warning">hoja: {sheet}</span> : null}
     </td>
@@ -82,7 +82,7 @@ function PanelSection({ p }: { p: PanelCredits }) {
         )}
         {p.pending.length ? (
           <details className="mt-3 rounded-xl border border-brand-border">
-            <summary className="cursor-pointer px-3 py-2 text-sm font-semibold">Pendientes de días anteriores · {p.pending.length}</summary>
+            <summary className="cursor-pointer px-1.5 py-2 sm:px-3 text-sm font-semibold">Pendientes de días anteriores · {p.pending.length}</summary>
             <ul className="divide-y divide-brand-border border-t border-brand-border px-3">{sortTasks(p.pending).map((t) => <TaskItem key={t.reference} t={t} />)}</ul>
           </details>
         ) : null}
@@ -118,23 +118,23 @@ export function CreditosHoyBlock({ data, isAdmin = false }: { data: CreditosHoy 
           </div>
 
           <div className="overflow-x-auto rounded-2xl border border-brand-border">
-            <table className="w-full min-w-[520px] text-sm">
-              <thead className="bg-brand-surface text-[10px] font-black uppercase tracking-[0.12em] text-brand-muted">
-                <tr><th className="px-3 py-2 text-left">Panel</th>{KPI_COLS.map(([, label]) => <th className="px-3 py-2 text-right" key={label}>{label}</th>)}<th className="px-3 py-2 text-right">Avance</th></tr>
+            <table className="w-full text-xs sm:text-sm">
+              <thead className="bg-brand-surface text-[9px] font-black uppercase tracking-[0.06em] text-brand-muted sm:text-[10px] sm:tracking-[0.12em]">
+                <tr><th className="px-1.5 py-2 sm:px-3 text-left">Panel</th>{KPI_COLS.map(([, label, short]) => <th className="px-1.5 py-2 sm:px-3 text-right" key={label}><span className="hidden sm:inline">{label}</span><span className="sm:hidden">{short}</span></th>)}<th className="px-1.5 py-2 sm:px-3 text-right"><span className="hidden sm:inline">Avance</span><span className="sm:hidden">%</span></th></tr>
               </thead>
               <tbody className="divide-y divide-brand-border">
                 {data.panels.map((p) => (
                   <tr key={p.panel}>
-                    <th className="px-3 py-2 text-left font-semibold">{PANEL_NAME[p.panel]}</th>
+                    <th className="px-1.5 py-2 sm:px-3 text-left font-semibold">{PANEL_NAME[p.panel]}</th>
                     {p.kpi ? KPI_COLS.map(([k]) => <KpiCell key={k} value={p.kpi![k]} sheet={p.sheetKpi?.[k]} showParity={isAdmin} />)
-                      : <td className="px-3 py-2 text-right text-xs font-bold text-status-warning" colSpan={4}>REVISAR · {p.reason}</td>}
-                    <td className="px-3 py-2 text-right tabular-nums text-brand-muted">{p.kpi?.avance != null ? `${p.kpi.avance}%` : "—"}</td>
+                      : <td className="px-1.5 py-2 sm:px-3 text-right text-xs font-bold text-status-warning" colSpan={4}>REVISAR · {p.reason}</td>}
+                    <td className="px-1.5 py-2 sm:px-3 text-right tabular-nums text-brand-muted">{p.kpi?.avance != null ? `${p.kpi.avance}%` : "—"}</td>
                   </tr>
                 ))}
                 <tr className="bg-brand-primary-dark font-semibold text-white">
-                  <th className="px-3 py-2 text-left">Total TiviPlay</th>
-                  {KPI_COLS.map(([k]) => <td className="px-3 py-2 text-right tabular-nums" key={k}>{data.kpi[k]}</td>)}
-                  <td className="px-3 py-2 text-right tabular-nums">{data.kpi.avance != null ? `${data.kpi.avance}%` : "—"}</td>
+                  <th className="px-1.5 py-2 sm:px-3 text-left">Total TiviPlay</th>
+                  {KPI_COLS.map(([k]) => <td className="px-1.5 py-2 sm:px-3 text-right tabular-nums" key={k}>{data.kpi[k]}</td>)}
+                  <td className="px-1.5 py-2 sm:px-3 text-right tabular-nums">{data.kpi.avance != null ? `${data.kpi.avance}%` : "—"}</td>
                 </tr>
               </tbody>
             </table>
