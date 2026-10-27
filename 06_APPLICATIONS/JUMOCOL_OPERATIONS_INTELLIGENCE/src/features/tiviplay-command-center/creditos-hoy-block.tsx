@@ -26,30 +26,37 @@ function Chip({ state }: { state: CreditState }) {
   return <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] ${STATE_CLASS[state]}`}>{CREDIT_STATE_LABEL[state]}</span>;
 }
 
-function TaskItem({ t }: { t: CreditTask }) {
+function TaskItem({ t, isAdmin = false }: { t: CreditTask; isAdmin?: boolean }) {
+  const actionable = t.state === "HABILITADO";
+  const blocked = t.state === "NO_HABILITADO" || t.state === "SIN_PAGAR";
+  const actionLabel = actionable ? "PAGÓ · DAR CRÉDITO" : blocked ? "NO HA PAGADO · NO DAR CRÉDITO" : t.state === "REQUIERE_REVISION" ? "REQUIERE DECISIÓN · ESCALAR" : "CRÉDITO EJECUTADO";
   return (
-    <li className="grid gap-1 py-3 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto] sm:items-start sm:gap-4">
-      <div className="min-w-0">
-        <p className="break-all font-mono text-sm font-semibold text-brand-text">{t.user}</p>
-        <p className="text-xs text-brand-muted">
-          {t.creditDate ? fmt(t.creditDate) : "Sin fecha"}{t.creditTime ? ` ${t.creditTime}` : ""} · TC {t.tc} · Crédito {t.credit ?? "—"} · {t.recharge || "Recarga sin dato"} · {t.advisor || "Sin asesor"}{t.origin ? ` · ${t.origin}` : ""}
-        </p>
+    <li className="py-3">
+      <div className={`flex flex-col gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${STATE_CLASS[t.state]}`}>
+        <div className="min-w-0">
+          <p className="break-all font-mono text-base font-black">{t.user}</p>
+          <p className="mt-0.5 text-xs font-semibold">{PANEL_NAME[t.panel]}{t.recharge ? ` · ${t.recharge}` : ""}{t.creditDate ? ` · ${fmt(t.creditDate)}` : ""}</p>
+        </div>
+        <div className="sm:text-right">
+          <p className="text-sm font-black uppercase tracking-[0.04em]">{actionLabel}</p>
+          {actionable ? <p className="mt-0.5 text-xs font-semibold">Otorgue el crédito en el panel y registre el nuevo vencimiento en CONTROL.</p> : null}
+        </div>
       </div>
-      <div className="min-w-0 text-xs text-brand-graphite">
-        <p>{t.reason}</p>
-        {t.newDue ? <p className="mt-0.5 text-brand-muted">F.VENCIMIENTO (H): {fmt(t.newDue)}</p> : null}
-        {t.baseSync ? <p className={`mt-0.5 font-semibold ${t.baseSync.state === "ACTUALIZADA" ? "text-status-success" : "text-status-warning"}`}>Base General: {t.baseSync.state === "ACTUALIZADA" ? "actualizada" : t.baseSync.state === "PENDIENTE" ? "pendiente de actualizar" : "sin verificar"} · {t.baseSync.detail}</p> : null}
-        {t.observation ? <p className="mt-0.5 text-brand-muted">Obs.: {t.observation}</p> : null}
-      </div>
-      <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
-        <Chip state={t.state} />
-        <span className="text-[11px] text-brand-muted">{STATE_HINT[t.state]}</span>
-        <span className="font-mono text-[10px] text-brand-muted">Fila {t.row}</span>
-      </div>
+      {isAdmin ? (
+        <details className="mt-1 px-2 text-[11px] text-brand-muted">
+          <summary className="cursor-pointer">Detalle de auditoría</summary>
+          <div className="mt-1 space-y-0.5">
+            <p>{t.reason}</p>
+            {t.newDue ? <p>F.VENCIMIENTO (H): {fmt(t.newDue)}</p> : null}
+            {t.baseSync ? <p>BASE GENERAL: {t.baseSync.state} · {t.baseSync.detail}</p> : null}
+            {t.observation ? <p>Observación: {t.observation}</p> : null}
+            <p>CONTROL fila {t.row} · TC {t.tc} · Crédito {t.credit ?? "—"}{t.advisor ? ` · Asesor ${t.advisor}` : ""}</p>
+          </div>
+        </details>
+      ) : null}
     </li>
   );
 }
-
 function KpiCell({ value, sheet, showParity }: { value: number | undefined; sheet: number | undefined; showParity: boolean }) {
   const differs = showParity && sheet != null && value != null && sheet !== value;
   return (
@@ -60,7 +67,7 @@ function KpiCell({ value, sheet, showParity }: { value: number | undefined; shee
   );
 }
 
-function PanelSection({ p }: { p: PanelCredits }) {
+function PanelSection({ p, isAdmin = false }: { p: PanelCredits; isAdmin?: boolean }) {
   const open = p.status !== "OK" || p.tasks.some((t) => t.state !== "EJECUTADO" || (t.baseSync && t.baseSync.state !== "ACTUALIZADA"));
   return (
     <details className="rounded-2xl border border-brand-border" open={open}>
@@ -78,12 +85,12 @@ function PanelSection({ p }: { p: PanelCredits }) {
         ) : p.tasks.length === 0 ? (
           <p className="text-sm text-brand-muted">Sin créditos con fecha de hoy en este panel.</p>
         ) : (
-          <ul className="divide-y divide-brand-border">{sortTasks(p.tasks).map((t) => <TaskItem key={t.reference} t={t} />)}</ul>
+          <ul className="divide-y divide-brand-border">{sortTasks(p.tasks).map((t) => <TaskItem key={t.reference} t={t} isAdmin={isAdmin} />)}</ul>
         )}
         {p.pending.length ? (
           <details className="mt-3 rounded-xl border border-brand-border">
             <summary className="cursor-pointer px-1.5 py-2 sm:px-3 text-sm font-semibold">Pendientes de días anteriores · {p.pending.length}</summary>
-            <ul className="divide-y divide-brand-border border-t border-brand-border px-3">{sortTasks(p.pending).map((t) => <TaskItem key={t.reference} t={t} />)}</ul>
+            <ul className="divide-y divide-brand-border border-t border-brand-border px-3">{sortTasks(p.pending).map((t) => <TaskItem key={t.reference} t={t} isAdmin={isAdmin} />)}</ul>
           </details>
         ) : null}
       </div>
@@ -97,7 +104,7 @@ export function CreditosHoyBlock({ data, isAdmin = false }: { data: CreditosHoy 
     <SectionCard
       eyebrow="Bloque 4"
       title="Créditos TiviPlay"
-      description="Fuente: hojas CONTROL P1/P2/P3 del mes (Google Sheets, solo lectura). Por otorgar = Σ TC, otorgados = Σ CREDITO, sin las filas COMPRA (inventario). La cola de hoy son las filas con FECHA (G) = hoy; la habilitación sigue el contrato S0 v0.3 §7.1 y H (F.VENCIMIENTO) se lleva a BASE GENERAL para cerrar el ciclo."
+      description="Cola operativa del día. Verde: otorgar crédito. Rojo: no otorgar. Amarillo: escalar. El sistema valida automáticamente la cobertura contra CONTROL y BASE GENERAL."
     >
       {!data ? (
         <p className="rounded-2xl border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-sm text-status-error">REQUIERE_REVISION: no fue posible leer las hojas CONTROL. No se muestra una cola sin fuente.</p>
@@ -117,7 +124,7 @@ export function CreditosHoyBlock({ data, isAdmin = false }: { data: CreditosHoy 
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-brand-border">
+          <div className={`${isAdmin ? "block" : "hidden"} overflow-x-auto rounded-2xl border border-brand-border`}>
             <table className="w-full text-xs sm:text-sm">
               <thead className="bg-brand-surface text-[9px] font-black uppercase tracking-[0.06em] text-brand-muted sm:text-[10px] sm:tracking-[0.12em]">
                 <tr><th className="px-1.5 py-2 sm:px-3 text-left">Panel</th>{KPI_COLS.map(([, label, short]) => <th className="px-1.5 py-2 sm:px-3 text-right" key={label}><span className="hidden sm:inline">{label}</span><span className="sm:hidden">{short}</span></th>)}<th className="px-1.5 py-2 sm:px-3 text-right"><span className="hidden sm:inline">Avance</span><span className="sm:hidden">%</span></th></tr>
@@ -142,9 +149,9 @@ export function CreditosHoyBlock({ data, isAdmin = false }: { data: CreditosHoy 
           {isAdmin && data.panels.some((p) => p.kpi && p.sheetKpi && KPI_COLS.some(([k]) => p.sheetKpi![k] != null && p.sheetKpi![k] !== p.kpi![k])) ? (
             <p className="text-xs text-status-warning">«hoja: X» indica que la celda resumen de la hoja difiere del cálculo sobre los datos. En «Hoy» la hoja compara G con TODAY(), pero G es texto con hora, por lo que su celda da 0.</p>
           ) : null}
-          <p className="text-[11px] text-brand-muted">El avance es operativo (otorgados / por otorgar); no es conciliación financiera.</p>
+          {isAdmin ? <p className="text-[11px] text-brand-muted">El avance es operativo (otorgados / por otorgar); no es conciliación financiera.</p> : null}
 
-          {data.totals.EJECUTADO ? (
+          {isAdmin && data.totals.EJECUTADO ? (
             <p className={`rounded-2xl border px-4 py-3 text-xs ${data.basePending ? "border-brand-yellow/50 bg-brand-yellow/10 text-status-warning" : "border-brand-green/40 bg-brand-green/10 text-status-success"}`}>
               Cierre del ciclo (H → BASE GENERAL): {data.basePending ? `${data.basePending} de ${data.totals.EJECUTADO} créditos ejecutados hoy todavía no tienen su nueva F.VENCIMIENTO en BASE GENERAL (o no se pudo verificar).` : `los ${data.totals.EJECUTADO} créditos ejecutados hoy ya tienen su nueva F.VENCIMIENTO en BASE GENERAL.`}
             </p>
@@ -154,7 +161,7 @@ export function CreditosHoyBlock({ data, isAdmin = false }: { data: CreditosHoy 
             <p className="rounded-2xl border border-brand-yellow/50 bg-brand-yellow/10 px-4 py-3 text-xs text-status-warning">No fue posible leer BASE GENERAL o las hojas de pago: los créditos pendientes quedan en REQUIERE_REVISION hasta poder verificar la habilitación.</p>
           ) : null}
 
-          {data.panels.map((p) => <PanelSection key={p.panel} p={p} />)}
+          {data.panels.map((p) => <PanelSection key={p.panel} p={p} isAdmin={isAdmin} />)}
         </div>
       )}
     </SectionCard>
