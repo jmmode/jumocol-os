@@ -12,6 +12,7 @@ const BASE = [
   ["1", "Ciro Dup", "1", "c@x", "Vencido", "", "PLAN 1 MES", "1", "0", "15", "-", "ZELLE", "DUP1", "pw", "PANEL 3", "", "01-06-26", "01-07-26", "-90", "CIRO DUP"],
   ["1", "Ciro Dup 2", "1", "c@x", "Vencido", "", "PLAN 1 MES", "1", "0", "15", "-", "ZELLE", "DUP1", "pw", "PANEL 3", "", "01-06-26", "01-07-26", "-90", "CIRO DUP 2"],
   ["1", "Dora Vieja", "1", "d@x", "Vencido", "", "PLAN 1 MES", "1", "0", "15", "-", "ZELLE", "DORA1", "pw", "PANEL 1", "", "01-03-26", "01-04-26", "-180", "DORA VIEJA"],
+  ["1", "Pago Sin Control", "1", "psc@x", "Por vencer", "", "PLAN 1 MES", "1", "0", "15", "-", "ZELLE", "PSC1", "pw", "PANEL 2", "2026-10-15", "09-10-26", "09-11-26", "31", "PAGO SIN CONTROL"],
 ];
 const CARTERA = [
   ["", "PAGOS OCTUBRE 2026"], ["", "nota"],
@@ -29,6 +30,7 @@ const ZELLE = [
   ["1", "Beto Paz", "$15", "03-10-26", "Heidy", "FACTURACIÓN", "", "CONFIRMADO JM", "BETO PAZ", "1", "4", "USD", "15", "03-10-26", "3/11/2026", "25", "Por vencer", "VALIDADO", "SIN CAMBIO"],
   ["1", "Nuevo Cliente", "$70", "07-10-26", "Jorge", "VENTA", "", "CONFIRMADO JM", "NUEVO CLIENTE", "0", "", "USD", "70", "", "", "", "", "REQUIERE DECISIÓN", "PENDIENTE ENLACE"],
   ["1", "Pend Venta", "$10", "08-10-26", "Heidy", "VENTA", "", "PENDIENTE CONFIRMACION", "PEND VENTA", "0", "", "USD", "10"],
+  ["1", "Pago Sin Control", "$15", "09-10-26", "Jorge", "FACTURACIÓN", "", "CONFIRMADO JM", "PAGO SIN CONTROL", "1", "8", "USD", "15", "09-10-26", "09-11-2026", "31", "Al dia", "VALIDADO", "SIN CAMBIO"],
 ];
 const P = (title: string, rows: unknown[][]) => [[title], ["TC", "ASESOR", "RECARGA", "USUARIO", "CONTRASEÑA", "PANEL", "FECHA", "ORIGEN", "CREDITO", "10", "OBSERVACIÓN"], ...rows];
 const P1 = P("P1", [
@@ -98,6 +100,10 @@ describe("Cola de servicio", () => {
     expect(svc("FUT1")?.state).toBe("PROGRAMADO");
     expect(svc("BETO1")?.state).toBe("INCONSISTENCIA_CREDITOS"); // CREDITO 1 pero saldo 10 → 7
     expect(JSON.stringify(model.service)).not.toContain('"s"');
+  });
+  it("crea tarea virtual para CONFIRMADO JM sin fila CONTROL y panel inequívoco", () => {
+    expect(svc("PSC1")).toMatchObject({ id: "TASK:ZELLE!8", panel: "P2", state: "CREDITO_PENDIENTE", row: 0 });
+    expect(svc("PSC1")?.nextAction).toMatch(/CREDITO \+ F.VENCIMIENTO/);
   });
 });
 
