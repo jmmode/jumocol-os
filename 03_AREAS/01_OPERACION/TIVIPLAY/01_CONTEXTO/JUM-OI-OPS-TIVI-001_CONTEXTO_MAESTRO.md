@@ -1,7 +1,8 @@
 # JUM-OI-OPS-TIVI-001 - Contexto Maestro de TiviPlay
 
 **Versión:** 0.2 (nació como 0.1 con corte 2026-09-02)  
-**Estado:** DRAFT — IN REVIEW; §5.4 consolida el contrato lógico del ciclo según S0 v0.3 vigente  
+**Estado:** DRAFT — IN REVIEW  
+**Nota de versión 0.2:** §5.4 consolida el contrato lógico del ciclo según S0 v0.3 vigente  
 **Fecha de corte:** 2026-10-24  
 **Módulo:** Operaciones  
 **Submódulo:** TiviPlay  

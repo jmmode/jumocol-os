@@ -550,8 +550,9 @@ export function buildSyncModel(input: {
       }
       if (balance != null && recharge) prevBalance = balance;
       const next: Record<ServiceState, string> = {
-        SERVICIO_HOY: paid ? "Aplicar crédito hoy" : "Vence hoy: verificar pago antes de renovar",
-        CREDITO_PENDIENTE: paid ? `Aplicar crédito en ${panel}` : "Verificar pago / decidir renovación",
+        // Caso A o Caso B habilitan el crédito (S0 v0.3 §7.1); solo sin cobertura se pide verificar el pago.
+        SERVICIO_HOY: financiallyEnabled ? "Aplicar crédito hoy" : "Vence hoy: verificar pago antes de renovar",
+        CREDITO_PENDIENTE: financiallyEnabled ? `Aplicar crédito en ${panel}` : "Verificar pago / decidir renovación",
         PROGRAMADO: `Servicio programado ${date ?? ""}`.trim(),
         CREDITO_APLICADO: "Esperar CONFIRMADO JM del pago",
         SERVICIO_VALIDADO: "Listo para match con Base",
