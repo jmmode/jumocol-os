@@ -46,6 +46,12 @@ Separaciones obligatorias:
 
 `F.PRÓXIMO PAGO ≠ F.VENCIMIENTO`
 
+`CONFIRMADO JM ≠ CICLO CERRADO`
+
+`AMARILLO = CICLO ABIERTO`
+
+`VERDE = CICLO E2E CERRADO Y VALIDADO`
+
 ---
 
 ## 3. Flujo operacional
@@ -186,6 +192,22 @@ Estado final:
 
 `VALIDADO`
 
+### 7.1 Semáforo canónico de cierre
+
+El color de la fila en `BASE GENERAL` representa el estado integral del ciclo y no una etapa aislada.
+
+**AMARILLO — CICLO ABIERTO:** el cliente permanece amarillo mientras exista cualquier acción pendiente del ciclo, incluyendo pago/confirmación financiera, crédito técnico o propagación del nuevo vencimiento hacia BASE GENERAL. Un `CONFIRMADO JM` por sí solo no cambia el ciclo a verde.
+
+**VERDE — CICLO CERRADO:** la fila puede pasar a verde únicamente cuando se cumpla el gate E2E completo: habilitación financiera válida por Caso A o Caso B + crédito real ejecutado + nuevo `F.VENCIMIENTO` registrado en CONTROL + nuevo `F.VENCIMIENTO` reflejado en BASE GENERAL + ausencia de excepción pendiente.
+
+Por tanto:
+
+`CONFIRMADO JM + CRÉDITO PENDIENTE → AMARILLO`
+
+`PAGO/COBERTURA VALIDADA + CRÉDITO EJECUTADO + F.VENCIMIENTO CONTROL + BASE ACTUALIZADA + SIN EXCEPCIÓN → VERDE`
+
+El semáforo es evidencia visual del cierre operacional E2E; no debe derivarse únicamente del estado financiero ni de `ESTADO = Al dia`.
+
 La actualización automática nunca debe sustituir la ejecución real del crédito ni fabricar evidencia.
 
 ---
@@ -229,7 +251,8 @@ Un ciclo de renovación queda `VALIDADO` únicamente cuando:
 - [x] el asesor ejecutó el crédito real;
 - [x] CONTROL registra `CREDITO` y nuevo `F.VENCIMIENTO`;
 - [x] BASE GENERAL refleja el nuevo `F.VENCIMIENTO`;
-- [x] no existe excepción pendiente para ese ciclo.
+- [x] no existe excepción pendiente para ese ciclo;
+- [x] el semáforo de BASE GENERAL puede representar el ciclo como `VERDE`.
 
 Si falta ejecución técnica:
 
@@ -252,7 +275,8 @@ Durante la validación operacional del 26/10/2026 se comprobó con casos reales 
 - Zelle, PayPal y Transferencia pueden propagar `CONFIRMADO JM` hacia `PAGOS OCTUBRE 2026`;
 - cuando CONTROL contiene crédito ejecutado y nuevo `F.VENCIMIENTO`, BASE GENERAL puede recibir la actualización;
 - cuando existe pago confirmado pero CONTROL no contiene crédito ejecutado, el cliente debe permanecer `PENDIENTE DE CRÉDITO`;
-- un registro programado en CONTROL no debe interpretarse por sí solo como crédito ejecutado.
+- un registro programado en CONTROL no debe interpretarse por sí solo como crédito ejecutado;
+- el formato histórico de BASE GENERAL contiene reglas visuales parciales que no representan por sí mismas el cierre E2E; el semáforo canónico queda definido por el gate integral de este documento.
 
 La Dirección confirmó adicionalmente que clientes con cobertura previamente pagada —por ejemplo anual— pueden requerir créditos técnicos durante meses en los que no tienen una transacción en `PAGOS [MES]`. Su habilitación debe resolverse mediante Caso B.
 
@@ -262,7 +286,7 @@ La Dirección confirmó adicionalmente que clientes con cobertura previamente pa
 
 A partir de esta versión, la lógica canónica es:
 
-> CONTROL gobierna la agenda técnica. La habilitación financiera puede provenir del pago confirmado del ciclo actual (Caso A) o de cobertura previamente pagada vigente (Caso B). La intranet informa al asesor si puede otorgar el crédito. El asesor ejecuta el crédito y registra la evidencia en CONTROL. Solo entonces el sistema actualiza BASE GENERAL y concluye el ciclo.
+> CONTROL gobierna la agenda técnica. La habilitación financiera puede provenir del pago confirmado del ciclo actual (Caso A) o de cobertura previamente pagada vigente (Caso B). La intranet informa al asesor si puede otorgar el crédito. El asesor ejecuta el crédito y registra la evidencia en CONTROL. Solo entonces el sistema actualiza BASE GENERAL y concluye el ciclo. Mientras el ciclo esté abierto, su semáforo es AMARILLO; únicamente un ciclo E2E completamente cerrado y sin excepción puede representarse en VERDE.
 
 **Estado:** `VALIDADO`
 
