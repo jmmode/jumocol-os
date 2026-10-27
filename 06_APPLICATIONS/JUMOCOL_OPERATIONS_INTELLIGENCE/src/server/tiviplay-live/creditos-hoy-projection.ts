@@ -275,9 +275,27 @@ function projectPanel(panel: PanelId, sheet: string | null, rows: unknown[][] | 
     };
 
     if (isPastPending) {
-      pending.push({ ...fields, basis: null, baseSync: null, ...(origin === "SIN PAGAR"
-        ? { state: "SIN_PAGAR" as const, reason: "ORIGEN «Sin Pagar»: pendiente de gestión de pago; no ejecutar sin habilitación." }
-        : { state: "REQUIERE_REVISION" as const, reason: `Crédito programado para ${creditDate} sin registro en ${columnLetter(c.credit)} (CREDITO).` }) });
+      // Un crédito vencido sin ejecución no es, por sí solo, una excepción.
+      // Se evalúa con el mismo gate financiero Caso A / Caso B que la cola de hoy.
+      let pastResult: Pick<CreditTask, "state" | "basis" | "reason">;
+      if (origin === "SIN PAGAR") {
+        pastResult = { state: "SIN_PAGAR", basis: null, reason: "ORIGEN «Sin Pagar»: pendiente de gestión de pago; no ejecutar sin habilitación." };
+      } else if (rawDue && !newDue) {
+        pastResult = { state: "REQUIERE_REVISION", basis: null, reason: "F.VENCIMIENTO registrada no es una fecha válida. Acción: corregir F.VENCIMIENTO en CONTROL." };
+      } else if (tc === 0) {
+        pastResult = newDue && origin
+          ? { state: "EJECUTADO", basis: null, reason: `Movimiento sin consumo de crédito (TC 0, ${fields.origin}): nuevo vencimiento ${newDue}.` }
+          : { state: "REQUIERE_REVISION", basis: null, reason: "TC 0 sin evidencia suficiente. Acción: confirmar si corresponde crédito o movimiento sin consumo y completar ORIGEN/F.VENCIMIENTO." };
+      } else {
+        const other = otherPanelInObservation(fields.observation, panel);
+        pastResult = other
+          ? { state: "REQUIERE_REVISION", basis: null, reason: `La observación indica Panel ${other}. Acción: confirmar el panel correcto y corregir CONTROL/BASE GENERAL.` }
+          : financial(fields, creditDate, baseIndex, confirmed, financeOk);
+        if (pastResult.state === "REQUIERE_REVISION") {
+          pastResult = { ...pastResult, reason: `${pastResult.reason} Acción: corregir el dato indicado y volver a validar.` };
+        }
+      }
+      pending.push({ ...fields, ...pastResult, baseSync: pastResult.state === "EJECUTADO" && newDue ? baseSync(fields.user, newDue, baseIndex) : null });
       continue;
     }
 
