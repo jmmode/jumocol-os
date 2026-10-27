@@ -29,7 +29,7 @@ function Chip({ state }: { state: CreditState }) {
 function TaskItem({ t, isAdmin = false }: { t: CreditTask; isAdmin?: boolean }) {
   const actionable = t.state === "HABILITADO";
   const blocked = t.state === "NO_HABILITADO" || t.state === "SIN_PAGAR";
-  const actionLabel = actionable ? "PAGÓ · DAR CRÉDITO" : blocked ? "NO HA PAGADO · NO DAR CRÉDITO" : t.state === "REQUIERE_REVISION" ? "REQUIERE DECISIÓN · ESCALAR" : "CRÉDITO EJECUTADO";
+  const actionLabel = actionable ? "PAGÓ · DAR CRÉDITO" : blocked ? "NO HA PAGADO · NO DAR CRÉDITO" : t.state === "REQUIERE_REVISION" ? "REQUIERE DECISIÓN" : "CRÉDITO EJECUTADO";
   return (
     <li className="py-3">
       <div className={`flex flex-col gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${STATE_CLASS[t.state]}`}>
@@ -40,6 +40,8 @@ function TaskItem({ t, isAdmin = false }: { t: CreditTask; isAdmin?: boolean }) 
         <div className="sm:text-right">
           <p className="text-sm font-black uppercase tracking-[0.04em]">{actionLabel}</p>
           {actionable ? <p className="mt-0.5 text-xs font-semibold">Otorgue el crédito en el panel y registre el nuevo vencimiento en CONTROL.</p> : null}
+          {blocked ? <p className="mt-0.5 text-xs font-semibold">No otorgue crédito. Gestionar/confirmar pago antes de ejecutar.</p> : null}
+          {t.state === "REQUIERE_REVISION" ? <p className="mt-0.5 max-w-xl text-xs font-semibold">{t.reason}</p> : null}
         </div>
       </div>
       {isAdmin ? (
