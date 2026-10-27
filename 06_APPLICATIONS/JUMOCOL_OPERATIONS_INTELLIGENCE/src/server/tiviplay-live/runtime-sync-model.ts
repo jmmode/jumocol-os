@@ -564,6 +564,52 @@ export function buildSyncModel(input: {
       });
     }
   });
+  // P0 S4 (26/10/2026): un CONFIRMADO JM válido no puede desaparecer entre FINANCIERO y SERVICIO
+  // solo porque CONTROL todavía no tenga una fila precargada. Generamos una tarea VIRTUAL read-only:
+  // el operador ejecuta la renovación y registra la evidencia real en CONTROL. Nunca se simula CREDITO ni F.VENCIMIENTO.
+  // PANEL 3M / aliases no se enrutan automáticamente: D4 sigue en REQUIERE DECISIÓN.
+  const serviceUsers = new Set(service.map((s) => s.usuario).filter(Boolean));
+  const exactPanel = (raw: string): ServiceItem["panel"] | null => {
+    const p = canon(raw);
+    if (p === "PANEL 1" || p === "P1") return "P1";
+    if (p === "PANEL 2" || p === "P2") return "P2";
+    if (p === "PANEL 3" || p === "P3") return "P3";
+    return null;
+  };
+  for (const f of financial) {
+    if (f.state !== "CONFIRMADO_JM" || f.identity.status !== "IDENTIFICADO" || !f.identity.baseRow || !f.usuario || serviceUsers.has(f.usuario)) continue;
+    const b = base.byRow.get(f.identity.baseRow);
+    if (!b) continue;
+    const panel = exactPanel(b.values[fk("PANEL")]);
+    if (!panel) {
+      decisions.push(`Servicio pendiente ${f.id}: PANEL "${b.values[fk("PANEL")] || "vacío"}" sin routing aprobado (D4).`);
+      continue;
+    }
+    const sheet = panelTitles[Number(panel.slice(1)) - 1];
+    if (!sheet) {
+      decisions.push(`Servicio pendiente ${f.id}: no existe CONTROL ${panel} de ${month}.`);
+      continue;
+    }
+    service.push({
+      id: `TASK:${f.id}`,
+      sheet,
+      row: 0,
+      panel,
+      usuario: f.usuario,
+      client: f.client,
+      recharge: "—",
+      creditsApplied: null,
+      creditsRequired: "REQUIERE DECISIÓN",
+      date: f.date,
+      advisor: f.advisor,
+      state: "CREDITO_PENDIENTE",
+      reasons: [`Pago CONFIRMADO JM (${f.paymentRef || f.id}); falta ejecutar renovación y registrar evidencia en ${sheet}.`],
+      nextAction: `Aplicar crédito en ${panel} y registrar CREDITO + F.VENCIMIENTO en ${sheet}`,
+      identity: f.identity,
+    });
+    serviceUsers.add(f.usuario);
+  }
+
   decisions.push("Créditos requeridos por recarga: no existe tabla vigente (ej. agosto: 12 MESES = 9 créditos). Se muestran créditos aplicados y la coherencia con el saldo.");
   decisions.push("F.VENCIMIENTO nueva tras renovación: el contrato exige actualizarla, pero no define la regla de cálculo. No se incluye en el preview.");
   decisions.push("REPROGRAMADO: ninguna fuente registra un campo de compromiso/reprogramación; el estado queda sin asignar hasta definir el campo.");
