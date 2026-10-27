@@ -22,11 +22,11 @@ import { canon, clean, parseDate, type PanelId } from "@/server/tiviplay-live/ru
 export type CreditState = "HABILITADO" | "NO_HABILITADO" | "SIN_PAGAR" | "REQUIERE_REVISION" | "EJECUTADO";
 
 export const CREDIT_STATE_LABEL: Record<CreditState, string> = {
-  HABILITADO: "HABILITADO",
-  NO_HABILITADO: "NO HABILITADO",
-  SIN_PAGAR: "SIN PAGAR",
-  REQUIERE_REVISION: "REQUIERE_REVISION",
-  EJECUTADO: "EJECUTADO",
+  HABILITADO: "AL DÍA · HABILITADO PARA CRÉDITO",
+  NO_HABILITADO: "PENDIENTE DE PAGO",
+  SIN_PAGAR: "PENDIENTE DE PAGO",
+  REQUIERE_REVISION: "REQUIERE DECISIÓN",
+  EJECUTADO: "CRÉDITO EJECUTADO",
 };
 
 export type CreditTask = {
