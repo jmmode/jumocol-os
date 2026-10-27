@@ -147,7 +147,7 @@ describe("operator creation", () => {
 });
 
 describe("server policy and transport", () => {
-  it.each(["/administracion/usuarios", "/administracion/auditoria", "/finanzas-contabilidad", "/tecnologia-ia", "/marketing-comercial", "/operaciones/tiviplay/pagos", "/operaciones/tiviplay/dashboard", "/api/admin/users", "/api/admin/documents", "/administracion/biblioteca", "/api/operations/tiviplay/payments/refresh"])("denies an operator direct access to %s", route => {
+  it.each(["/administracion/usuarios", "/administracion/auditoria", "/finanzas-contabilidad", "/tecnologia-ia", "/marketing-comercial", "/operaciones/tiviplay/pagos", "/operaciones/tiviplay/dashboard", "/api/admin/users", "/api/admin/documents", "/api/admin/tiviplay/decisions", "/administracion/biblioteca", "/api/operations/tiviplay/payments/refresh"])("denies an operator direct access to %s", route => {
     expect(allowed("OPERADOR", route)).toBe(false);
     expect(allowed("OPERADOR", route, "POST")).toBe(false);
   });

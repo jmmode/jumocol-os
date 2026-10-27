@@ -3,9 +3,9 @@ import "server-only";
 import { selectRuntimeSheets, type PanelId } from "@/server/tiviplay-live/runtime-read-model";
 import { batchReadSheets, getSheetsAccessToken, getTiviplaySpreadsheetId, readSheetMetadata } from "@/server/tiviplay-live/sheets-client";
 
-import { projectCreditosHoy, type CreditosHoy } from "./creditos-hoy-projection";
+import { projectCreditosHoy, type CreditosHoy, type CycleDecision } from "./creditos-hoy-projection";
 
-export type { CreditosHoy, CreditTask, PanelCredits, CreditState } from "./creditos-hoy-projection";
+export type { CreditosHoy, CreditTask, PanelCredits, CreditState, CycleDecision } from "./creditos-hoy-projection";
 
 /**
  * Bloque 4 de HOY: CRÉDITOS DE HOY. LEE → CLASIFICA → PRESENTA; nunca escribe.
@@ -13,7 +13,7 @@ export type { CreditosHoy, CreditTask, PanelCredits, CreditState } from "./credi
  * con el selector de Runtime, de modo que noviembre/diciembre no requieren cambios de código.
  * Cliente compartido con scope spreadsheets.readonly. Un fallo de lectura se muestra como REQUIERE_REVISION.
  */
-export async function getCreditosHoy(targetMonth: string, today: string): Promise<CreditosHoy> {
+export async function getCreditosHoy(targetMonth: string, today: string, decisions: CycleDecision[] = []): Promise<CreditosHoy> {
   const controls: Record<PanelId, { sheet: string | null; rows: unknown[][] | null }> = {
     P1: { sheet: null, rows: null }, P2: { sheet: null, rows: null }, P3: { sheet: null, rows: null },
   };
@@ -45,5 +45,5 @@ export async function getCreditosHoy(targetMonth: string, today: string): Promis
   } catch {
     readError = "No fue posible leer el libro de Google Sheets.";
   }
-  return projectCreditosHoy({ today, targetMonth, controls, base, payments, readError });
+  return projectCreditosHoy({ today, targetMonth, controls, base, payments, readError, decisions });
 }

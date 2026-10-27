@@ -119,7 +119,7 @@ describe("Créditos TiviPlay (CONTROL P1/P2/P3 · KPI · cola de hoy · S0 v0.3 
     expect(byUser(out, "USRD")).toMatchObject({ state: "NO_HABILITADO" });
     expect(byUser(out, "MOV").reason).toMatch(/Panel 1/);
     expect(byUser(out, "USRC").reason).toMatch(/excede la cobertura/);
-    expect(byUser(out, "USRE").reason).toMatch(/contradicción de panel/);
+    expect(byUser(out, "USRE").reason).toMatch(/BASE GENERAL \(fila 7\) indica Panel 1/);
     expect(byUser(out, "NOEXISTE").reason).toMatch(/no existe/);
     expect(byUser(out, "DUP").reason).toMatch(/2 veces/);
   });

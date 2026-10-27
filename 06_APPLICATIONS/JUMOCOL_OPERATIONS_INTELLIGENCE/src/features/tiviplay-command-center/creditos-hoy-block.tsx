@@ -1,5 +1,6 @@
 import { SectionCard } from "@/features/tiviplay-payments/dashboard-charts";
-import { CREDIT_STATE_LABEL, type CreditKpi, type CreditState, type CreditTask, type CreditosHoy, type PanelCredits } from "@/server/tiviplay-live/creditos-hoy-projection";
+import { CREDIT_STATE_LABEL, CYCLE_STEP_LABEL, EXCEPTION_TITLE, type CreditKpi, type CreditState, type CreditTask, type CreditosHoy, type CycleItem, type CycleStep, type PanelCredits } from "@/server/tiviplay-live/creditos-hoy-projection";
+import { CycleExceptionCard } from "./cycle-exception-card";
 
 const STATE_ORDER: CreditState[] = ["HABILITADO", "REQUIERE_REVISION", "SIN_PAGAR", "NO_HABILITADO", "EJECUTADO"];
 const STATE_CLASS: Record<CreditState, string> = {
@@ -41,7 +42,7 @@ function TaskItem({ t, isAdmin = false }: { t: CreditTask; isAdmin?: boolean }) 
           <p className="text-sm font-black uppercase tracking-[0.04em]">{actionLabel}</p>
           {actionable ? <p className="mt-0.5 text-xs font-semibold">Otorgue el crédito en el panel y registre el nuevo vencimiento en CONTROL.</p> : null}
           {blocked ? <p className="mt-0.5 text-xs font-semibold">No otorgue crédito. Gestionar/confirmar pago antes de ejecutar.</p> : null}
-          {t.state === "REQUIERE_REVISION" ? <p className="mt-0.5 max-w-xl text-xs font-semibold">{t.reason}</p> : null}
+          {t.state === "REQUIERE_REVISION" ? <p className="mt-0.5 max-w-xl text-xs font-semibold">{t.exception ? `Escalado a Dirección: ${t.exception.title}` : t.reason}</p> : null}
         </div>
       </div>
       {isAdmin ? (
@@ -101,7 +102,62 @@ function PanelSection({ p, isAdmin = false }: { p: PanelCredits; isAdmin?: boole
 }
 
 /** Bloque 4 de HOY: resumen de créditos del mes y cola diaria por panel (solo lectura; el crédito se ejecuta en el panel). */
-export function CreditosHoyBlock({ data, isAdmin = false }: { data: CreditosHoy | null; isAdmin?: boolean }) {
+const STEP_ORDER: CycleStep[] = ["DIRECCION", "PAGO", "CREDITO", "VENCIMIENTO", "BASE", "PLAN", "CERRADO"];
+
+function CycleRow({ it }: { it: CycleItem }) {
+  const green = it.color === "VERDE";
+  return (
+    <li className={`rounded-lg border px-3 py-2 text-xs ${green ? "border-brand-green/40 bg-brand-green/10" : "border-brand-yellow/50 bg-brand-yellow/10"}`}>
+      <span className={`font-black ${green ? "text-status-success" : "text-status-warning"}`}>{green ? "VERDE · CICLO CERRADO" : "AMARILLO · CICLO ABIERTO"}</span>{" "}
+      <span className="font-mono font-bold">{it.user}</span> · {PANEL_NAME[it.panel]} · fila {it.row}{it.creditDate ? ` · ${fmt(it.creditDate)}` : ""}
+      <span className="block text-brand-text">{CYCLE_STEP_LABEL[it.step]}: {it.cause}{it.owner !== "—" ? ` · Responsable: ${it.owner}` : ""}</span>
+    </li>
+  );
+}
+
+/** Semáforo E2E del mes (solo Dirección): VERDE = ciclo cerrado; AMARILLO = ciclo abierto, con la causa y el responsable. */
+function CycleSection({ data, query }: { data: CreditosHoy; query: string }) {
+  const c = data.cycle;
+  const found = query ? c.items.filter((i) => i.user.toLowerCase() === query.toLowerCase()) : [];
+  return (
+    <section className="space-y-3 rounded-2xl border border-brand-border px-4 py-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-brand-muted">Cierre de ciclo del mes · {data.targetMonth}</p>
+          <p className="mt-1 text-lg font-semibold">
+            <span className="text-status-success">{c.totals.VERDE} verdes</span> · <span className="text-status-warning">{c.totals.AMARILLO} amarillos</span>
+          </p>
+          <p className="text-[11px] text-brand-muted">Verde solo con habilitación (Caso A/B o excepción aprobada) + crédito en CONTROL + F.VENCIMIENTO en CONTROL + la misma fecha en BASE GENERAL + sin excepción. CONFIRMADO JM no basta.</p>
+        </div>
+        <form className="flex items-end gap-2 text-xs" method="get">
+          <label className="flex flex-col gap-1">Ver ciclo de un USUARIO<input className="rounded-lg border px-2 py-1 font-mono" defaultValue={query} maxLength={40} name="ciclo" /></label>
+          <button className="rounded-lg border px-3 py-1.5 font-bold" type="submit">Buscar</button>
+        </form>
+      </div>
+      {query ? (
+        found.length ? <ul className="space-y-1.5">{found.map((it) => <CycleRow it={it} key={it.reference} />)}</ul>
+          : <p className="text-xs text-status-warning">{query}: no tiene filas de crédito en CONTROL de {data.targetMonth}.</p>
+      ) : null}
+      <div className="flex flex-wrap gap-2 text-xs">
+        {STEP_ORDER.map((s) => <span className={`rounded-xl border px-3 py-1.5 font-bold ${s === "CERRADO" ? "border-brand-green/40 text-status-success" : "border-brand-yellow/50 text-status-warning"}`} key={s}>{CYCLE_STEP_LABEL[s]} · {c.bySteps[s]}</span>)}
+      </div>
+      <div>
+        <p className="text-sm font-semibold">Decisiones pendientes de Dirección · {c.exceptions.length}</p>
+        {c.exceptions.length ? (
+          <ul className="mt-2 space-y-2">{c.exceptions.map((ex) => <CycleExceptionCard ex={ex} key={ex.subject} kindLabel={EXCEPTION_TITLE[ex.kind]} />)}</ul>
+        ) : <p className="mt-1 text-xs text-brand-muted">Sin excepciones pendientes.</p>}
+      </div>
+      {STEP_ORDER.filter((s) => s !== "DIRECCION" && s !== "CERRADO" && c.bySteps[s]).map((s) => (
+        <details className="rounded-xl border border-brand-border" key={s}>
+          <summary className="cursor-pointer px-3 py-2 text-sm font-semibold">Amarillos · {CYCLE_STEP_LABEL[s]} · {c.bySteps[s]}</summary>
+          <ul className="space-y-1.5 border-t border-brand-border px-3 py-2">{c.items.filter((i) => i.step === s).slice(0, 300).map((it) => <CycleRow it={it} key={it.reference} />)}</ul>
+        </details>
+      ))}
+    </section>
+  );
+}
+
+export function CreditosHoyBlock({ data, isAdmin = false, cycleQuery = "" }: { data: CreditosHoy | null; isAdmin?: boolean; cycleQuery?: string }) {
   return (
     <SectionCard
       eyebrow="Bloque 4"
@@ -162,6 +218,8 @@ export function CreditosHoyBlock({ data, isAdmin = false }: { data: CreditosHoy 
           {data.financeSource !== "OK" ? (
             <p className="rounded-2xl border border-brand-yellow/50 bg-brand-yellow/10 px-4 py-3 text-xs text-status-warning">No fue posible leer BASE GENERAL o las hojas de pago: los créditos pendientes quedan en REQUIERE_REVISION hasta poder verificar la habilitación.</p>
           ) : null}
+
+          {isAdmin ? <CycleSection data={data} query={cycleQuery} /> : null}
 
           {data.panels.map((p) => <PanelSection key={p.panel} p={p} isAdmin={isAdmin} />)}
         </div>

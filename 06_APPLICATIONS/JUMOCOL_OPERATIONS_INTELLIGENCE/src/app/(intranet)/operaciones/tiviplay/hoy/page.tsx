@@ -10,6 +10,7 @@ import { requirePage } from "@/server/auth/access";
 import { audit } from "@/server/auth/store";
 import { getPendingConfirmadoJm, type PendingSource } from "@/server/tiviplay-live/confirmado-jm";
 import { getCreditosHoy, type CreditosHoy } from "@/server/tiviplay-live/creditos-hoy";
+import { listCycleDecisions } from "@/server/tiviplay-live/cycle-decisions";
 import { CreditosHoyBlock } from "@/features/tiviplay-command-center/creditos-hoy-block";
 import { type HoyException, type TiviplayHoy } from "@/server/tiviplay-live/hoy-projection";
 import { getTiviplayHoyLive } from "@/server/tiviplay-live/monthly-close";
@@ -28,9 +29,9 @@ const th = "px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.12e
 const td = "px-3 py-2 align-top text-xs text-brand-text";
 const blocked = "rounded-2xl border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-sm text-status-error";
 
-export default async function TiviplayHoyPage({ searchParams }: { searchParams: Promise<{ month?: string; semana?: string }> }) {
+export default async function TiviplayHoyPage({ searchParams }: { searchParams: Promise<{ month?: string; semana?: string; ciclo?: string }> }) {
   const identity = await requirePage("/operaciones/tiviplay/hoy");
-  const { month, semana } = await searchParams;
+  const { month, semana, ciclo } = await searchParams;
   const today = bogotaToday();
   const targetMonth = month && /^\d{4}-\d{2}$/.test(month) ? month : process.env.TIVIPLAY_TARGET_MONTH ?? today.slice(0, 7);
   // Semana operativa actual según el propio motor; solo aplica si hoy cae en el mes objetivo.
@@ -42,7 +43,7 @@ export default async function TiviplayHoyPage({ searchParams }: { searchParams: 
   const [result, pendingResult, creditsResult] = await Promise.allSettled([
     getTiviplayHoyLive(targetMonth),
     isAdmin ? getPendingConfirmadoJm(targetMonth, today) : Promise.resolve(null),
-    getCreditosHoy(targetMonth, today),
+    getCreditosHoy(targetMonth, today, listCycleDecisions()),
   ]);
   const credits: CreditosHoy | null = creditsResult.status === "fulfilled" ? creditsResult.value : null;
   const data: TiviplayHoy | null = result.status === "fulfilled" ? result.value : null;
@@ -71,7 +72,7 @@ export default async function TiviplayHoyPage({ searchParams }: { searchParams: 
       <TiviplayNavigation />
 
       <div className="mt-6 space-y-5">
-        <CreditosHoyBlock data={credits} isAdmin={isAdmin} />
+        <CreditosHoyBlock data={credits} isAdmin={isAdmin} cycleQuery={isAdmin ? (ciclo ?? "").trim().slice(0, 40) : ""} />
 
         {data ? (
           <p className="rounded-2xl border border-brand-border bg-brand-surface px-4 py-3 text-xs text-brand-muted">
