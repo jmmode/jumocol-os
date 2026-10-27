@@ -13,6 +13,7 @@ const BASE = [
   ["1", "Ciro Dup 2", "1", "c@x", "Vencido", "", "PLAN 1 MES", "1", "0", "15", "-", "ZELLE", "DUP1", "pw", "PANEL 3", "", "01-06-26", "01-07-26", "-90", "CIRO DUP 2"],
   ["1", "Dora Vieja", "1", "d@x", "Vencido", "", "PLAN 1 MES", "1", "0", "15", "-", "ZELLE", "DORA1", "pw", "PANEL 1", "", "01-03-26", "01-04-26", "-180", "DORA VIEJA"],
   ["1", "Pago Sin Control", "1", "psc@x", "Por vencer", "", "PLAN 1 MES", "1", "0", "15", "-", "ZELLE", "PSC1", "pw", "PANEL 2", "2026-10-15", "09-10-26", "09-11-26", "31", "PAGO SIN CONTROL"],
+  ["1", "Anual Cubierto", "1", "annual@x", "Al dia", "", "PLAN 12 MESES", "1", "0", "120", "-", "ZELLE", "ANUAL1", "pw", "PANEL 1", "2026-10-10", "01-01-26", "01-01-27", "67", "ANUAL CUBIERTO"],
 ];
 const CARTERA = [
   ["", "PAGOS OCTUBRE 2026"], ["", "nota"],
@@ -38,6 +39,7 @@ const P1 = P("P1", [
   ["1", "JORGE", "LIBERADO", "LIB1", "s", "x", "2026-10-03\n10:00", "Promoción", "0", "9"],
   ["", "", "", "HOY1", "s", "x", "2026-10-09\n10:00"],
   ["", "", "", "FUT1", "s", "x", "2026-10-20\n10:00"],
+  ["", "", "", "ANUAL1", "s", "x", "2026-10-10\n10:00"],
 ]);
 const P2 = P("P2", [["1", "JORGE", "1 MES", "\tNEW1", "s", "x", "2026-10-07\n10:00", "Venta", "1", "9"]]);
 const P3 = P("P3", [
@@ -101,9 +103,13 @@ describe("Cola de servicio", () => {
     expect(svc("BETO1")?.state).toBe("INCONSISTENCIA_CREDITOS"); // CREDITO 1 pero saldo 10 → 7
     expect(JSON.stringify(model.service)).not.toContain('"s"');
   });
-  it("crea tarea virtual para CONFIRMADO JM sin fila CONTROL y panel inequívoco", () => {
-    expect(svc("PSC1")).toMatchObject({ id: "TASK:ZELLE!8", panel: "P2", state: "CREDITO_PENDIENTE", row: 0 });
-    expect(svc("PSC1")?.nextAction).toMatch(/CREDITO \+ F.VENCIMIENTO/);
+  it("CONTROL es la agenda canónica: no crea tareas virtuales desde FINANCIERO", () => {
+    expect(svc("PSC1")).toBeUndefined();
+  });
+  it("Caso B: cobertura previamente pagada habilita crédito sin pago del mes", () => {
+    expect(svc("ANUAL1")).toMatchObject({ panel: "P1", state: "CREDITO_PENDIENTE" });
+    expect(svc("ANUAL1")?.reasons.join(" ")).toMatch(/Caso B: cobertura vigente/);
+    expect(svc("ANUAL1")?.nextAction).toMatch(/Aplicar crédito/);
   });
 });
 
