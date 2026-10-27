@@ -110,7 +110,8 @@ function CycleRow({ it }: { it: CycleItem }) {
     <li className={`rounded-lg border px-3 py-2 text-xs ${green ? "border-brand-green/40 bg-brand-green/10" : "border-brand-yellow/50 bg-brand-yellow/10"}`}>
       <span className={`font-black ${green ? "text-status-success" : "text-status-warning"}`}>{green ? "VERDE · CICLO CERRADO" : "AMARILLO · CICLO ABIERTO"}</span>{" "}
       <span className="font-mono font-bold">{it.user}</span> · {PANEL_NAME[it.panel]} · fila {it.row}{it.creditDate ? ` · ${fmt(it.creditDate)}` : ""}
-      <span className="block text-brand-text">{CYCLE_STEP_LABEL[it.step]}: {it.cause}{it.owner !== "—" ? ` · Responsable: ${it.owner}` : ""}</span>
+      <span className="block text-brand-text">{it.step === "CERRADO" ? it.cause : `${CYCLE_STEP_LABEL[it.step]}: ${it.cause}`}{it.owner !== "—" ? ` · Responsable: ${it.owner}` : ""}</span>
+      <span className="block text-[11px] text-brand-muted">Habilitación: {it.basis === "A" ? "Caso A (pago del ciclo confirmado)" : it.basis === "B" ? "Caso B (cobertura previa vigente)" : it.basis === "E" ? "excepción aprobada por Dirección" : "sin habilitación"}{it.newDue ? ` · F.VENCIMIENTO CONTROL ${fmt(it.newDue)}` : ""}{it.baseSync?.baseDue ? ` · BASE ${fmt(it.baseSync.baseDue)}` : ""}</span>
     </li>
   );
 }
@@ -119,6 +120,8 @@ function CycleRow({ it }: { it: CycleItem }) {
 function CycleSection({ data, query }: { data: CreditosHoy; query: string }) {
   const c = data.cycle;
   const found = query ? c.items.filter((i) => i.user.toLowerCase() === query.toLowerCase()) : [];
+  const own = new Set(found.flatMap((i) => (i.exception ? [i.exception.subject] : [])));
+  const cards = [...c.exceptions.filter((e) => own.has(e.subject)), ...c.exceptions.filter((e) => !own.has(e.subject))];
   return (
     <section className="space-y-3 rounded-2xl border border-brand-border px-4 py-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -144,7 +147,7 @@ function CycleSection({ data, query }: { data: CreditosHoy; query: string }) {
       <div>
         <p className="text-sm font-semibold">Decisiones pendientes de Dirección · {c.exceptions.length}</p>
         {c.exceptions.length ? (
-          <ul className="mt-2 space-y-2">{c.exceptions.map((ex) => <CycleExceptionCard ex={ex} key={ex.subject} kindLabel={EXCEPTION_TITLE[ex.kind]} />)}</ul>
+          <ul className="mt-2 space-y-2">{cards.map((ex) => <CycleExceptionCard ex={ex} key={ex.subject} kindLabel={EXCEPTION_TITLE[ex.kind]} />)}</ul>
         ) : <p className="mt-1 text-xs text-brand-muted">Sin excepciones pendientes.</p>}
       </div>
       {STEP_ORDER.filter((s) => s !== "DIRECCION" && s !== "CERRADO" && c.bySteps[s]).map((s) => (
