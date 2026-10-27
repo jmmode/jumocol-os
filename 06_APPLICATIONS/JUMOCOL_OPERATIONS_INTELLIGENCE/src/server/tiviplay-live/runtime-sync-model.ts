@@ -500,15 +500,28 @@ export function buildSyncModel(input: {
       const identity = identify(base, usuario, "");
       const baseRow = identity.baseRow ? base.byRow.get(identity.baseRow) : undefined;
       const fins = (identity.baseRow ? financialByBaseRow.get(identity.baseRow) : undefined) ?? financialByUser.get(usuario) ?? [];
+      // Habilitación financiera canónica (26/10/2026):
+      // Caso A = pago del ciclo actual CONFIRMADO JM.
+      // Caso B = cobertura previamente pagada: F.PRÓXIMO PAGO posterior a la fecha técnica
+      // y cliente inequívocamente identificado en BASE GENERAL.
       const paid = fins.some((f) => f.state === "CONFIRMADO_JM");
+      const nextPayment = parseDate(baseRow?.values[fk("F.PRÓXIMO PAGO")]);
+      const coveredByBase = identity.status === "IDENTIFICADO" && !!nextPayment && !!date && nextPayment > date;
+      const financiallyEnabled = paid || coveredByBase;
+      const coverageReason = paid
+        ? "Caso A: pago del ciclo actual CONFIRMADO JM"
+        : coveredByBase
+          ? `Caso B: cobertura vigente hasta ${baseRow?.values[fk("F.PRÓXIMO PAGO")]}`
+          : "";
       const reasons: string[] = [];
       let state: ServiceState;
       const repeated = seen.get(usuario);
       seen.set(usuario, i + 1);
 
       if (!recharge) {
-        state = date === today ? "SERVICIO_HOY" : (date && date < today) || paid ? "CREDITO_PENDIENTE" : "PROGRAMADO";
-        if (state === "CREDITO_PENDIENTE" && !paid) reasons.push("Fecha de servicio vencida sin pago confirmado");
+        state = date === today ? "SERVICIO_HOY" : (date && date < today) || financiallyEnabled ? "CREDITO_PENDIENTE" : "PROGRAMADO";
+        if (financiallyEnabled && coverageReason) reasons.push(coverageReason);
+        if (state === "CREDITO_PENDIENTE" && !financiallyEnabled) reasons.push("Fecha de servicio vencida sin cobertura financiera habilitante");
       } else if (/LIBERADO/.test(recharge)) {
         state = "REQUIERE_DECISION";
         reasons.push(`LIBERADO (${at(r, h.col("ORIGEN")) || "sin origen"}): confirmar excepción aprobada`);
@@ -529,10 +542,10 @@ export function buildSyncModel(input: {
         } else if (identity.status === "AMBIGUO") {
           state = "REQUIERE_DECISION";
           reasons.push(identity.detail);
-        } else state = paid ? "SERVICIO_VALIDADO" : "CREDITO_APLICADO";
+        } else state = financiallyEnabled ? "SERVICIO_VALIDADO" : "CREDITO_APLICADO";
+        if (state === "SERVICIO_VALIDADO" && coverageReason) reasons.push(coverageReason);
         if (state === "CREDITO_APLICADO") {
-          const next = parseDate(baseRow?.values[fk("F.PRÓXIMO PAGO")]);
-          reasons.push(next && date && next > date ? `Sin pago del mes; BASE indica ciclo pagado hasta ${baseRow?.values[fk("F.PRÓXIMO PAGO")]}` : "Crédito aplicado sin pago CONFIRMADO JM enlazado");
+          reasons.push("Crédito aplicado sin cobertura financiera habilitante");
         }
       }
       if (balance != null && recharge) prevBalance = balance;
@@ -564,51 +577,9 @@ export function buildSyncModel(input: {
       });
     }
   });
-  // P0 S4 (26/10/2026): un CONFIRMADO JM válido no puede desaparecer entre FINANCIERO y SERVICIO
-  // solo porque CONTROL todavía no tenga una fila precargada. Generamos una tarea VIRTUAL read-only:
-  // el operador ejecuta la renovación y registra la evidencia real en CONTROL. Nunca se simula CREDITO ni F.VENCIMIENTO.
-  // PANEL 3M / aliases no se enrutan automáticamente: D4 sigue en REQUIERE DECISIÓN.
-  const serviceUsers = new Set(service.map((s) => s.usuario).filter(Boolean));
-  const exactPanel = (raw: string): ServiceItem["panel"] | null => {
-    const p = canon(raw);
-    if (p === "PANEL 1" || p === "P1") return "P1";
-    if (p === "PANEL 2" || p === "P2") return "P2";
-    if (p === "PANEL 3" || p === "P3") return "P3";
-    return null;
-  };
-  for (const f of financial) {
-    if (f.state !== "CONFIRMADO_JM" || f.identity.status !== "IDENTIFICADO" || !f.identity.baseRow || !f.usuario || serviceUsers.has(f.usuario)) continue;
-    const b = base.byRow.get(f.identity.baseRow);
-    if (!b) continue;
-    const panel = exactPanel(b.values[fk("PANEL")]);
-    if (!panel) {
-      decisions.push(`Servicio pendiente ${f.id}: PANEL "${b.values[fk("PANEL")] || "vacío"}" sin routing aprobado (D4).`);
-      continue;
-    }
-    const sheet = panelTitles[Number(panel.slice(1)) - 1];
-    if (!sheet) {
-      decisions.push(`Servicio pendiente ${f.id}: no existe CONTROL ${panel} de ${month}.`);
-      continue;
-    }
-    service.push({
-      id: `TASK:${f.id}`,
-      sheet,
-      row: 0,
-      panel,
-      usuario: f.usuario,
-      client: f.client,
-      recharge: "—",
-      creditsApplied: null,
-      creditsRequired: "REQUIERE DECISIÓN",
-      date: f.date,
-      advisor: f.advisor,
-      state: "CREDITO_PENDIENTE",
-      reasons: [`Pago CONFIRMADO JM (${f.paymentRef || f.id}); falta ejecutar renovación y registrar evidencia en ${sheet}.`],
-      nextAction: `Aplicar crédito en ${panel} y registrar CREDITO + F.VENCIMIENTO en ${sheet}`,
-      identity: f.identity,
-    });
-    serviceUsers.add(f.usuario);
-  }
+  // Regla canónica 26/10/2026: CONTROL P1/P2/P3 es la agenda técnica.
+  // No se crean tareas virtuales desde FINANCIERO. Un pago confirmado sin fila CONTROL
+  // no autoriza a inventar una tarea técnica; debe resolverse como excepción de agenda/routing.
 
   decisions.push("Créditos requeridos por recarga: no existe tabla vigente (ej. agosto: 12 MESES = 9 créditos). Se muestran créditos aplicados y la coherencia con el saldo.");
   decisions.push("F.VENCIMIENTO nueva tras renovación: el contrato exige actualizarla, pero no define la regla de cálculo. No se incluye en el preview.");
