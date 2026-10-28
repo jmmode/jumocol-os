@@ -89,6 +89,8 @@ export type CreditosHoy = {
   basePending: number;
   financeSource: "OK" | "REQUIERE_REVISION";
   cycle: CycleSummary;
+  /** Créditos disponibles (hoja USUARIOS LIBERADOS, ESTADO = DISPONIBLE). null = no se pudo leer o la estructura cambió. */
+  available: AvailableCredit[] | null;
 };
 
 export type CreditosHoyInput = {
@@ -101,7 +103,36 @@ export type CreditosHoyInput = {
   readError?: string;
   /** Decisiones de Dirección sobre excepciones (orden cronológico; la última por asunto gana). */
   decisions?: CycleDecision[];
+  /**
+   * USUARIOS LIBERADOS (libro VENTAS 2026) leída sin la columna D (CONTRASEÑA): cada fila es
+   * [A LINE_ID, C USUARIO, E PANEL, F F.VENCIMIENTO, G ESTADO]. null/ausente = lectura fallida.
+   */
+  released?: unknown[][] | null;
 };
+
+export type AvailableCredit = { row: number; lineId: string | null; user: string; panel: string; due: string };
+
+const RELEASED_HEADER = ["LINE_ID", "USUARIO", "PANEL", "F.VENCIMIENTO", "ESTADO"];
+
+/**
+ * Inventario de créditos disponibles: solo filas con ESTADO = DISPONIBLE. La hoja es la fuente de verdad;
+ * aquí no se guarda ni se modifica nada. Si los encabezados no coinciden con la estructura vigente, devuelve null
+ * (no se muestra un inventario leído con columnas equivocadas).
+ */
+export function projectAvailableCredits(rows: unknown[][] | null | undefined): AvailableCredit[] | null {
+  if (!rows) return null;
+  const cell = (r: unknown[] | undefined, i: number) => String(r?.[i] ?? "").replace(/\s+/g, " ").trim();
+  const header = rows.findIndex((r) => RELEASED_HEADER.every((h, i) => cell(r, i).toUpperCase() === h));
+  if (header < 0) return null;
+  const out: AvailableCredit[] = [];
+  rows.slice(header + 1).forEach((r, i) => {
+    if (cell(r, 4).toUpperCase() !== "DISPONIBLE") return;
+    const user = String(r?.[1] ?? "").replace(/\s+/g, "");
+    if (!user) return;
+    out.push({ row: header + i + 2, lineId: cell(r, 0) || null, user, panel: cell(r, 2).toUpperCase(), due: cell(r, 3) });
+  });
+  return out.sort((a, b) => a.panel.localeCompare(b.panel) || a.due.localeCompare(b.due));
+}
 
 const PANELS: PanelId[] = ["P1", "P2", "P3"];
 
@@ -636,5 +667,5 @@ export function projectCreditosHoy(input: CreditosHoyInput): CreditosHoy {
   }
   const read = panels.flatMap((p) => (p.kpi ? [p.kpi] : []));
   const kpi = kpiOf(read.reduce((a, k) => a + k.programados, 0), read.reduce((a, k) => a + k.otorgados, 0), read.reduce((a, k) => a + k.hoy, 0));
-  return { date: input.today, targetMonth: input.targetMonth, panels, totals, kpi, basePending, financeSource: ctx.financeOk ? "OK" : "REQUIERE_REVISION", cycle: summarizeCycles(panels) };
+  return { date: input.today, targetMonth: input.targetMonth, panels, totals, kpi, basePending, financeSource: ctx.financeOk ? "OK" : "REQUIERE_REVISION", cycle: summarizeCycles(panels), available: projectAvailableCredits(input.released) };
 }

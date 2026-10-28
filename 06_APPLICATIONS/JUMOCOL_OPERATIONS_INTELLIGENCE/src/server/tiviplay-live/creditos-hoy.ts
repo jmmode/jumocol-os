@@ -1,7 +1,7 @@
 import "server-only";
 
 import { selectRuntimeSheets, type PanelId } from "@/server/tiviplay-live/runtime-read-model";
-import { batchReadSheets, getSheetsAccessToken, getTiviplaySpreadsheetId, readSheetMetadata } from "@/server/tiviplay-live/sheets-client";
+import { batchReadRanges, batchReadSheets, getSheetsAccessToken, getTiviplaySalesSpreadsheetId, getTiviplaySpreadsheetId, quoteSheet, readSheetMetadata } from "@/server/tiviplay-live/sheets-client";
 
 import { projectCreditosHoy, type CreditosHoy, type CycleDecision } from "./creditos-hoy-projection";
 
@@ -45,5 +45,22 @@ export async function getCreditosHoy(targetMonth: string, today: string, decisio
   } catch {
     readError = "No fue posible leer el libro de Google Sheets.";
   }
-  return projectCreditosHoy({ today, targetMonth, controls, base, payments, readError, decisions });
+  const released = await readReleasedUsers();
+  return projectCreditosHoy({ today, targetMonth, controls, base, payments, readError, decisions, released });
+}
+
+/**
+ * USUARIOS LIBERADOS (libro VENTAS 2026): A LINE_ID · C USUARIO · E PANEL · F F.VENCIMIENTO · G ESTADO.
+ * Nunca se solicitan B (ASESOR), D (CONTRASEÑA) ni H (OBSERVACIONES). Un fallo aquí no afecta la cola de créditos.
+ */
+async function readReleasedUsers(): Promise<unknown[][] | null> {
+  try {
+    const sheet = quoteSheet("USUARIOS LIBERADOS");
+    const token = await getSheetsAccessToken();
+    const [a, c, efg] = await batchReadRanges(getTiviplaySalesSpreadsheetId(), token, [`${sheet}!A1:A3000`, `${sheet}!C1:C3000`, `${sheet}!E1:G3000`]);
+    const n = Math.max(a.length, c.length, efg.length);
+    return Array.from({ length: n }, (_, i) => [a[i]?.[0] ?? "", c[i]?.[0] ?? "", efg[i]?.[0] ?? "", efg[i]?.[1] ?? "", efg[i]?.[2] ?? ""]);
+  } catch {
+    return null;
+  }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { addMonths, planMonths, projectCreditosHoy, type CreditosHoyInput } from "./creditos-hoy-projection";
+import { addMonths, planMonths, projectAvailableCredits, projectCreditosHoy, type CreditosHoyInput } from "./creditos-hoy-projection";
 
 // Datos sintéticos con la forma real de CONTROL: título en fila 1, encabezado en fila 2, contraseña en E,
 // datos y, debajo, el bloque resumen «⬅️ …» (que nunca es una cuenta). Sin datos de clientes reales.
@@ -158,5 +158,49 @@ describe("Créditos TiviPlay (CONTROL P1/P2/P3 · KPI · cola de hoy · S0 v0.3 
     expect(planMonths("PLAN 12 MESES + 2")).toBe(14);
     expect(planMonths("SIN ASIGNAR")).toBeNull();
     expect(addMonths("2026-10-31", 1)).toBe("2026-11-30");
+  });
+});
+
+describe("Créditos disponibles (USUARIOS LIBERADOS · ESTADO = DISPONIBLE) — datos sintéticos", () => {
+  // Filas tal como las entrega el lector: [A LINE_ID, C USUARIO, E PANEL, F F.VENCIMIENTO, G ESTADO]. D (CONTRASEÑA) nunca se lee.
+  const sheet = [
+    ["USUARIOS LIBERADOS"],
+    ["LINE_ID", "USUARIO", "PANEL", "F.VENCIMIENTO", "ESTADO"],
+    ["", "SINT-VENCIDO", "PANEL 3", "2026-10-23", "VENCIDO"],
+    ["", "SINT-USADO", "PANEL 3", "2026-11-01", "Liberado venta SINT-X"],
+    ["900111", "SINT-DISP-1", "PANEL 3", "2026-11-21", "DISPONIBLE"],
+    ["", "\tSINT-DISP-2 ", "panel 1", "2026-11-08", " disponible "],
+  ];
+
+  it("muestra solo ESTADO = DISPONIBLE, con LINE_ID cuando existe, USUARIO, PANEL y F.VENCIMIENTO", () => {
+    const list = projectAvailableCredits(sheet)!;
+    expect(list).toEqual([
+      { row: 6, lineId: null, user: "SINT-DISP-2", panel: "PANEL 1", due: "2026-11-08" },
+      { row: 5, lineId: "900111", user: "SINT-DISP-1", panel: "PANEL 3", due: "2026-11-21" },
+    ]);
+    expect(list.some((a) => a.user === "SINT-VENCIDO" || a.user === "SINT-USADO")).toBe(false);
+  });
+
+  it("no expone CONTRASEÑA: el registro solo tiene LINE_ID, USUARIO, PANEL y F.VENCIMIENTO (+ fila)", () => {
+    for (const a of projectAvailableCredits(sheet)!) expect(Object.keys(a).sort()).toEqual(["due", "lineId", "panel", "row", "user"]);
+  });
+
+  it("cuando la hoja deja de decir DISPONIBLE, la siguiente lectura ya no lo muestra", () => {
+    const next = sheet.map((r) => (r[1] === "SINT-DISP-1" ? [...r.slice(0, 4), "Liberado venta SINT-Y"] : r));
+    expect(projectAvailableCredits(next)!.map((a) => a.user)).toEqual(["SINT-DISP-2"]);
+  });
+
+  it("lectura fallida o encabezados distintos → null (REQUIERE_REVISION), sin inventario inventado", () => {
+    expect(projectAvailableCredits(null)).toBeNull();
+    expect(projectAvailableCredits([["ASESOR", "USUARIO", "CONTRASEÑA", "PANEL", "FECHA"], ["", "X", "PANEL 1", "2026-11-01", "DISPONIBLE"]])).toBeNull();
+  });
+
+  it("la cola de créditos no cambia al agregar el inventario", () => {
+    const withInventory = projectCreditosHoy(input({ released: sheet }));
+    const { available, ...queue } = withInventory;
+    const { available: none, ...baseline } = projectCreditosHoy(input());
+    expect(queue).toEqual(baseline);
+    expect(none).toBeNull();
+    expect(available).toHaveLength(2);
   });
 });

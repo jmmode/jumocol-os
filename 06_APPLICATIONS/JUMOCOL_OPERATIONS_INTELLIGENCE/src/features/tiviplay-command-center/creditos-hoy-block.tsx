@@ -1,5 +1,5 @@
 import { SectionCard } from "@/features/tiviplay-payments/dashboard-charts";
-import { CREDIT_STATE_LABEL, CYCLE_STEP_LABEL, EXCEPTION_TITLE, type CreditKpi, type CreditState, type CreditTask, type CreditosHoy, type CycleItem, type CycleStep, type PanelCredits } from "@/server/tiviplay-live/creditos-hoy-projection";
+import { CREDIT_STATE_LABEL, CYCLE_STEP_LABEL, EXCEPTION_TITLE, type AvailableCredit, type CreditKpi, type CreditState, type CreditTask, type CreditosHoy, type CycleItem, type CycleStep, type PanelCredits } from "@/server/tiviplay-live/creditos-hoy-projection";
 import { CycleExceptionCard } from "./cycle-exception-card";
 
 const STATE_ORDER: CreditState[] = ["HABILITADO", "REQUIERE_REVISION", "SIN_PAGAR", "NO_HABILITADO", "EJECUTADO"];
@@ -160,6 +160,42 @@ function CycleSection({ data, query }: { data: CreditosHoy; query: string }) {
   );
 }
 
+/** Inventario de créditos disponibles (USUARIOS LIBERADOS, ESTADO = DISPONIBLE). Solo lectura; sin contraseñas. */
+function AvailableCredits({ items }: { items: AvailableCredit[] | null }) {
+  return (
+    <section className="rounded-2xl border border-brand-green/40 bg-brand-green/5 px-4 py-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-xs font-black uppercase tracking-[0.12em] text-status-success">Créditos disponibles{items ? ` · ${items.length}` : ""}</h3>
+        <p className="text-[11px] text-brand-muted">Fuente: VENTAS 2026 · USUARIOS LIBERADOS</p>
+      </div>
+      <p className="mt-1 text-sm font-semibold text-brand-text">Antes de otorgar un crédito nuevo, verifica y utiliza primero los créditos disponibles.</p>
+      {items == null ? (
+        <p className="mt-2 text-xs text-status-warning">REQUIERE_REVISION: no fue posible leer USUARIOS LIBERADOS (o sus encabezados cambiaron). Verifica la hoja antes de otorgar.</p>
+      ) : items.length === 0 ? (
+        <p className="mt-2 text-xs text-brand-muted">No hay créditos con ESTADO = DISPONIBLE.</p>
+      ) : (
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full text-xs sm:text-sm">
+            <thead className="text-[10px] font-black uppercase tracking-[0.1em] text-brand-muted">
+              <tr><th className="px-2 py-1 text-left">LINE_ID</th><th className="px-2 py-1 text-left">Usuario</th><th className="px-2 py-1 text-left">Panel</th><th className="px-2 py-1 text-left">F.Vencimiento</th></tr>
+            </thead>
+            <tbody className="divide-y divide-brand-border">
+              {items.map((a) => (
+                <tr key={a.row}>
+                  <td className="px-2 py-1 font-mono">{a.lineId ?? "—"}</td>
+                  <td className="px-2 py-1 font-mono">{a.user}</td>
+                  <td className="px-2 py-1">{a.panel}</td>
+                  <td className="px-2 py-1 tabular-nums">{/^\d{4}-\d{2}-\d{2}$/.test(a.due) ? fmt(a.due) : a.due || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function CreditosHoyBlock({ data, isAdmin = false, cycleQuery = "" }: { data: CreditosHoy | null; isAdmin?: boolean; cycleQuery?: string }) {
   return (
     <SectionCard
@@ -223,6 +259,8 @@ export function CreditosHoyBlock({ data, isAdmin = false, cycleQuery = "" }: { d
           ) : null}
 
           {isAdmin ? <CycleSection data={data} query={cycleQuery} /> : null}
+
+          <AvailableCredits items={data.available} />
 
           {data.panels.map((p) => <PanelSection key={p.panel} p={p} isAdmin={isAdmin} />)}
         </div>

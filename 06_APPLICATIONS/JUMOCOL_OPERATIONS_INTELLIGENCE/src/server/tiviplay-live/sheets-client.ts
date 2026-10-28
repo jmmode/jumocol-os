@@ -72,3 +72,14 @@ export async function batchReadSheets(spreadsheetId: string, token: string, titl
   });
   return out;
 }
+
+/** Lee rangos A1 explícitos (values:batchGet). Permite omitir columnas sensibles en lugar de leer la hoja completa. */
+export async function batchReadRanges(spreadsheetId: string, token: string, ranges: string[]) {
+  const params = new URLSearchParams({ valueRenderOption: "FORMATTED_VALUE", majorDimension: "ROWS" });
+  for (const r of ranges) params.append("ranges", r);
+  const payload = await sheetsFetch<{ valueRanges?: Array<{ values?: unknown[][] }> }>(
+    `${API}/${encodeURIComponent(spreadsheetId)}/values:batchGet?${params.toString()}`,
+    token,
+  );
+  return ranges.map((_, i) => payload.valueRanges?.[i]?.values ?? []);
+}
