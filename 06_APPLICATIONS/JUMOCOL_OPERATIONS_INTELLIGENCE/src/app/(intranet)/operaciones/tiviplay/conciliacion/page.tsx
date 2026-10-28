@@ -7,8 +7,8 @@ import { TiviplayNavigation } from "@/features/tiviplay-command-center/tiviplay-
 import { SectionCard } from "@/features/tiviplay-payments/dashboard-charts";
 import { requirePage } from "@/server/auth/access";
 import { audit } from "@/server/auth/store";
-import { getReconciliation, isApplied, loadDataset, locateRow, readBaseLive } from "@/server/tiviplay-live/conciliacion";
-import { PANEL_LABEL, type CaseView } from "@/server/tiviplay-live/conciliacion-model";
+import { getReconciliation, isApplied, loadDataset, locateRow, readBaseLive, readReleasedLive } from "@/server/tiviplay-live/conciliacion";
+import { findReleasedRow, PANEL_LABEL, RELEASED_SHEET, releasedSheetRow, type CaseView, type TaskKind } from "@/server/tiviplay-live/conciliacion-model";
 
 export const metadata: Metadata = { title: "TiviPlay · Conciliación de servicio" };
 export const dynamic = "force-dynamic";
@@ -18,6 +18,13 @@ const KIND: Record<CaseView["kind"], string> = {
   EXCEDE: "Panel por encima del crédito registrado",
   IDENTIDAD: "USUARIO compartido por clientes distintos",
   FECHA: "F.VENCIMIENTO BASE sin respaldo",
+};
+const TASK_KIND: Record<TaskKind, string> = {
+  LIBERAR: "Liberación de línea residual",
+  REGISTRAR_BASE: "Registrar en BASE",
+  CREDENCIAL: "Credenciales",
+  APLICAR_CREDITO: "Aplicar crédito",
+  LOCALIZAR: "Localizar servicio",
 };
 const PAGE = 40;
 const blocked = "rounded-2xl border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-sm text-status-error";
@@ -30,7 +37,7 @@ export default async function ConciliacionPage({ searchParams }: { searchParams:
   const query = (q ?? "").trim().toUpperCase().slice(0, 40);
   const limit = Math.min(Math.max(Number(n) || PAGE, PAGE), 1000);
   const dataset = loadDataset();
-  const [data, live] = await Promise.all([Promise.resolve(getReconciliation(dataset)), readBaseLive()]);
+  const [data, live, releasedRows] = await Promise.all([Promise.resolve(getReconciliation(dataset)), readBaseLive(), readReleasedLive()]);
   audit(identity.id, "tiviplay-conciliacion", "read", data ? "SUCCESS" : "UNAVAILABLE");
 
   const client = (username: string, rows: number[] = []) => { const n = locateRow(live, username, rows[0]); return n ? live?.get(n)?.client || null : null; };
@@ -114,10 +121,23 @@ export default async function ConciliacionPage({ searchParams }: { searchParams:
           <SectionCard
             eyebrow="Asesor"
             title="Cola operacional"
-            description="Tareas exactas: cliente, USERNAME, panel que se conserva y panel que se libera. EJECUTADO registra responsable y hora, cierra la tarea y deja la línea DISPONIBLE."
+            description={`Organizada por tipo de tarea. Cada liberación trae USERNAME, panel a liberar, LINE_ID, panel a conservar, acción exacta y la fila preparada para ${RELEASED_SHEET}. EJECUTADO registra responsable y hora y solo entonces la línea pasa a DISPONIBLE.`}
           >
             {openTasks.length === 0 ? <p className="text-sm text-brand-muted">Sin tareas abiertas.</p> : (
-              <ul className="space-y-3">{openTasks.slice(0, limit).map((t) => <ReconTaskRow client={client(t.username, rowsOf(t.username))} key={t.id} t={t} />)}</ul>
+              (Object.keys(TASK_KIND) as TaskKind[]).map((kind) => {
+                const all = openTasks.filter((t) => t.kind === kind);
+                if (!all.length) return null;
+                return (
+                  <div className="mb-5" key={kind}>
+                    <h3 className="mb-2 text-xs font-black uppercase tracking-[0.1em] text-status-warning">{TASK_KIND[kind]} · {all.length}</h3>
+                    <ul className="space-y-3">{all.slice(0, limit).map((t) => (
+                      <ReconTaskRow client={client(t.username, rowsOf(t.username))} key={t.id} t={t}
+                        prepared={releasedSheetRow(t, identity.name)} released={findReleasedRow(releasedRows, t)} releasedReadable={releasedRows != null} />
+                    ))}</ul>
+                    {all.length > limit ? <Link className="text-xs font-bold underline" href={`?${new URLSearchParams({ ...(ver ? { ver } : {}), ...(q ? { q } : {}), n: String(limit + PAGE) })}`} prefetch={false}>Ver más</Link> : null}
+                  </div>
+                );
+              })
             )}
             <p className="mt-3 text-xs text-brand-muted">{openTasks.length} abiertas · {doneTasks.length} ejecutadas.</p>
           </SectionCard>

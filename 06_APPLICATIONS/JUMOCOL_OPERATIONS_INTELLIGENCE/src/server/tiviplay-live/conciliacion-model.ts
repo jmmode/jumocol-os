@@ -232,3 +232,31 @@ export function validateDecision(c: ReconCase | undefined, option: string, finge
   } else if (supersedes != null) return "No hay decisión previa que corregir.";
   return null;
 }
+
+// ── USUARIOS LIBERADOS (libro VENTAS 2026, hoja existente) ────────────────────────────────────────────────
+// Columnas de la hoja: B ASESOR · C USUARIO · D CONTRASEÑA · E PANEL · F FECHA (vence la línea) · G ESTADO · H LINE_ID.
+// La intranet solo lee C, E, F, G y H: la contraseña (D) nunca se lee, se muestra ni se copia desde aquí.
+export const RELEASED_SHEET = "USUARIOS LIBERADOS";
+export const RELEASED_ADVISORS = ["Jorge", "Manuela", "Julian", "Danna", "Heidy"] as const;
+
+export type ReleasedRow = { row: number; username: string; panel: string; date: string; status: string; lineId: string };
+
+/** Fila preparada para USUARIOS LIBERADOS a partir de una tarea LIBERAR. CONTRASEÑA queda vacía: la copia el Asesor desde el panel. */
+export function releasedSheetRow(task: Pick<AdvisorTask, "kind" | "username" | "line">, advisorName = "") {
+  if (task.kind !== "LIBERAR" || !task.line) return null;
+  const first = advisorName.trim().split(/\s+/)[0]?.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase() ?? "";
+  const advisor = RELEASED_ADVISORS.find((a) => a.toLowerCase() === first) ?? "";
+  return { advisor, username: task.username, password: "", panel: PANEL_LABEL[task.line.panel], date: task.line.expiration, status: "DISPONIBLE", lineId: task.line.lineId };
+}
+
+const normU = (v: string) => v.normalize("NFKC").replace(/\s+/g, "").toUpperCase();
+
+/** Fila de USUARIOS LIBERADOS que corresponde a la tarea: mismo PANEL y, si la fila trae LINE_ID, el mismo LINE_ID; si no, mismo USUARIO y misma FECHA (evita confundirla con liberaciones anteriores del mismo USUARIO). */
+export function findReleasedRow(rows: ReleasedRow[] | null, task: Pick<AdvisorTask, "username" | "line">) {
+  if (!rows || !task.line) return null;
+  const panel = PANEL_LABEL[task.line.panel];
+  const candidates = rows.filter((r) => normU(r.panel) === normU(panel));
+  return candidates.find((r) => r.lineId.trim() === task.line!.lineId)
+    ?? candidates.find((r) => !r.lineId.trim() && normU(r.username) === normU(task.username) && r.date === task.line!.expiration)
+    ?? null;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { classifyMultipanel, projectReconciliation, residualTaskId, validateDecision, type Panel, type ReconCase, type ReconDataset } from "./conciliacion-model";
+import { classifyMultipanel, findReleasedRow, projectReconciliation, releasedSheetRow, residualTaskId, validateDecision, type Panel, type ReconCase, type ReconDataset } from "./conciliacion-model";
 
 // Regresión de la regla de vigencia: EXISTENCIA MULTIPANEL ≠ ACTIVIDAD MULTIPANEL. Datos sintéticos.
 const CUT = "2026-10-27";
@@ -83,5 +83,22 @@ describe("Motor multipanel: regla de vigencia contra el corte", () => {
     // Tras decidir P3: se liberan P1 (vigente descartada) y P2 (vencida).
     const decided = projectReconciliation({ cut: CUT, generatedAt: "x", cases: [c], tasks: [], services: [] }, [{ id: 1, caseId: c.id, fingerprint: "fp", option: "KEEP_P3", by: "julian", at: "t", supersedes: null, reason: null }], []);
     expect(releases(decided).sort()).toEqual([`P1:${ID.P1}`, `P2:${ID.P2}`]);
+  });
+});
+
+describe("USUARIOS LIBERADOS: fila preparada y localización (datos sintéticos)", () => {
+  const task = { kind: "LIBERAR" as const, username: "SINTETICO9", line: { panel: "P3" as const, row: 19, lineId: "900777", expiration: "2026-11-21", lastConnection: null } };
+  it("prepara la fila sin contraseña y con PANEL + LINE_ID", () => {
+    expect(releasedSheetRow(task, "Jorge Asesor")).toEqual({ advisor: "Jorge", username: "SINTETICO9", password: "", panel: "PANEL 3", date: "2026-11-21", status: "DISPONIBLE", lineId: "900777" });
+    expect(releasedSheetRow(task, "Dirección")?.advisor).toBe("");
+    expect(releasedSheetRow({ kind: "CREDENCIAL", username: "X" }, "Jorge")).toBeNull();
+  });
+  it("encuentra la fila por PANEL + LINE_ID; sin LINE_ID exige USUARIO y FECHA; ignora liberaciones antiguas", () => {
+    const old = { row: 5, username: "sintetico9", panel: "PANEL 3", date: "2026-09-01", status: "VENCIDO", lineId: "" };
+    expect(findReleasedRow([old], task)).toBeNull();
+    expect(findReleasedRow([old, { ...old, row: 9, date: "2026-11-21", status: "DISPONIBLE" }], task)?.row).toBe(9);
+    expect(findReleasedRow([{ ...old, row: 12, username: "OTRO", lineId: "900777" }], task)?.row).toBe(12);
+    expect(findReleasedRow([{ ...old, row: 12, panel: "PANEL 1", lineId: "900777" }], task)).toBeNull();
+    expect(findReleasedRow(null, task)).toBeNull();
   });
 });

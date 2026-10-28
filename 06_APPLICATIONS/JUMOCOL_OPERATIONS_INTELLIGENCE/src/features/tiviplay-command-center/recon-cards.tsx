@@ -2,7 +2,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { PANEL_LABEL, type CaseView, type TaskView } from "@/server/tiviplay-live/conciliacion-model";
+import { PANEL_LABEL, RELEASED_SHEET, type CaseView, type ReleasedRow, type TaskView } from "@/server/tiviplay-live/conciliacion-model";
+
+type PreparedRow = { advisor: string; username: string; password: string; panel: string; date: string; status: string; lineId: string };
 
 const button = "rounded-lg border px-3 py-1.5 text-xs font-black uppercase tracking-[0.06em] disabled:opacity-40";
 
@@ -82,7 +84,7 @@ export function ReconCaseCard({ c, client, cut }: { c: CaseView; client: string 
 }
 
 /** Tarea del Asesor: exactamente qué hacer, y solo EJECUTADO / NO SE PUEDE. */
-export function ReconTaskRow({ t, client }: { t: TaskView; client: string | null }) {
+export function ReconTaskRow({ t, client, prepared, released, releasedReadable }: { t: TaskView; client: string | null; prepared?: PreparedRow | null; released?: ReleasedRow | null; releasedReadable?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -97,18 +99,79 @@ export function ReconTaskRow({ t, client }: { t: TaskView; client: string | null
     else { setMessage(action === "EJECUTADO" ? "Registrado. Reevaluando…" : "Impedimento registrado."); setBlocking(false); router.refresh(); }
   }
 
+  async function copyRow() {
+    if (!prepared) return;
+    // Orden de columnas B..H de la hoja. CONTRASEÑA (D) va vacía: se copia desde el panel, nunca desde la intranet.
+    const tsv = [prepared.advisor, prepared.username, "", prepared.panel, prepared.date, prepared.status, prepared.lineId].join("\t");
+    try { await navigator.clipboard.writeText(tsv); setMessage(`Fila copiada. Péguela en la columna B de ${RELEASED_SHEET} y escriba la CONTRASEÑA desde el panel.`); }
+    catch { setMessage("No se pudo copiar automáticamente: use la fila mostrada."); }
+  }
+
   const last = t.events[t.events.length - 1];
+  const field = "rounded-lg border border-brand-border px-3 py-2";
+  const label = "text-[10px] font-black uppercase tracking-[0.1em] text-brand-muted";
+  const statusClass = t.status === "EJECUTADO" ? "text-status-success" : t.status === "NO_SE_PUEDE" ? "text-status-error" : "text-status-warning";
   return (
     <li className="rounded-xl border border-brand-border px-4 py-3 text-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="font-semibold">{t.title}</p>
-        <p className={`text-[10px] font-black uppercase tracking-[0.1em] ${t.status === "EJECUTADO" ? "text-status-success" : t.status === "NO_SE_PUEDE" ? "text-status-error" : "text-status-warning"}`}>{t.status.replace(/_/g, " ")}</p>
+        <p className={`text-[10px] font-black uppercase tracking-[0.1em] ${statusClass}`}>{t.status.replace(/_/g, " ")}</p>
       </div>
-      <p className="mt-1 text-xs">Cliente: <strong>{client ?? "ver BASE"}</strong> · USERNAME <span className="font-mono">{t.username}</span>
-        {t.keepPanel ? <> · conservar <strong>{PANEL_LABEL[t.keepPanel]}</strong></> : null}
-        {t.releasePanel ? <> · liberar <strong>{PANEL_LABEL[t.releasePanel]}</strong></> : null}</p>
-      <p className="mt-1 text-xs">{t.instruction}</p>
+      {t.kind === "LIBERAR" && t.line && t.releasePanel && t.keepPanel ? (
+        <>
+          <p className="mt-1 text-xs">Cliente: <strong>{client ?? "ver BASE"}</strong></p>
+          <dl className="mt-2 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+            <div className={field}><dt className={label}>USERNAME</dt><dd className="font-mono font-semibold">{t.username}</dd></div>
+            <div className={`${field} border-brand-red/40`}><dt className={label}>Panel a liberar</dt><dd className="font-semibold">{PANEL_LABEL[t.releasePanel]}</dd></div>
+            <div className={`${field} border-brand-red/40`}><dt className={label}>LINE_ID</dt><dd className="font-mono font-semibold">{t.line.lineId}</dd></div>
+            <div className={`${field} border-brand-green/50`}><dt className={label}>Panel a conservar</dt><dd className="font-semibold">{PANEL_LABEL[t.keepPanel]}</dd></div>
+          </dl>
+          <div className="mt-2 grid gap-2 text-xs lg:grid-cols-2">
+            <div className={field}><p className={label}>Acción exacta</p>
+              <ol className="mt-1 list-decimal space-y-0.5 pl-4">
+                <li>En <strong>{PANEL_LABEL[t.releasePanel]}</strong>, abrir la línea <strong className="font-mono">ID {t.line.lineId}</strong> (USERNAME <span className="font-mono">{t.username}</span>, vence {t.line.expiration}) y liberarla.</li>
+                <li>No tocar la línea de <strong>{PANEL_LABEL[t.keepPanel]}</strong>: es el servicio del cliente.</li>
+                <li>Registrar la línea en la hoja <strong>{RELEASED_SHEET}</strong> con la fila preparada abajo (la CONTRASEÑA se toma del panel).</li>
+                <li>Marcar <strong>EJECUTADO</strong>. Si no se puede, <strong>NO SE PUEDE</strong> con el motivo.</li>
+              </ol>
+            </div>
+            <div className={field}><p className={label}>Resultado esperado</p>
+              <p className="mt-1">El cliente queda solo en {PANEL_LABEL[t.keepPanel]}. La línea {PANEL_LABEL[t.releasePanel]} · ID {t.line.lineId} queda libre en el panel y registrada en {RELEASED_SHEET}; al marcar EJECUTADO pasa a <strong>DISPONIBLE</strong> en la intranet. Mientras la tarea esté PENDIENTE, la línea no es DISPONIBLE.</p>
+            </div>
+          </div>
+          {prepared ? (
+            <div className={`mt-2 ${field} text-xs`}>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className={label}>Fila preparada · {RELEASED_SHEET}</p>
+                <p className={`text-[10px] font-black uppercase tracking-[0.1em] ${released ? "text-status-success" : "text-status-warning"}`}>
+                  {!releasedReadable ? "Hoja no legible: verificar manualmente" : released ? `Registrada en la fila ${released.row} (${released.status || "sin estado"})` : "Aún no registrada en la hoja"}
+                </p>
+              </div>
+              <div className="mt-1 overflow-x-auto">
+                <table className="min-w-full text-left">
+                  <thead><tr className={label}>{["B ASESOR", "C USUARIO", "D CONTRASEÑA", "E PANEL", "F FECHA", "G ESTADO", "H LINE_ID"].map((h) => <th className="pr-3" key={h}>{h}</th>)}</tr></thead>
+                  <tbody><tr className="font-mono">
+                    <td className="pr-3">{prepared.advisor || "(su nombre)"}</td><td className="pr-3">{prepared.username}</td>
+                    <td className="pr-3 font-sans text-brand-muted">desde el panel</td><td className="pr-3">{prepared.panel}</td>
+                    <td className="pr-3">{prepared.date}</td><td className="pr-3">{prepared.status}</td><td className="pr-3">{prepared.lineId}</td>
+                  </tr></tbody>
+                </table>
+              </div>
+              {t.status !== "EJECUTADO" ? <button className={`${button} mt-2 border-brand-border`} onClick={copyRow} type="button">Copiar fila (sin contraseña)</button> : null}
+              <p className="mt-1 text-[11px] text-brand-muted">Pegar solo después de liberar la línea en el panel. ESTADO DISPONIBLE en la hoja significa línea ya liberada.</p>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <p className="mt-1 text-xs">Cliente: <strong>{client ?? "ver BASE"}</strong> · USERNAME <span className="font-mono">{t.username}</span>
+            {t.keepPanel ? <> · conservar <strong>{PANEL_LABEL[t.keepPanel]}</strong></> : null}
+            {t.releasePanel ? <> · liberar <strong>{PANEL_LABEL[t.releasePanel]}</strong></> : null}</p>
+          <p className="mt-1 text-xs"><span className={label}>Acción exacta </span>{t.instruction}</p>
+        </>
+      )}
       <p className="mt-1 text-[11px] text-brand-muted">Motivo / evidencia: {t.evidence}</p>
+      <p className="mt-1 text-[11px]"><span className={label}>Estado </span><strong className={statusClass}>{t.status.replace(/_/g, " ")}</strong></p>
       {last ? <p className="mt-1 text-[11px] text-brand-muted">Último registro: {last.action.replace(/_/g, " ")} · {last.by} · {new Date(last.at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}{last.note ? ` · ${last.note}` : ""}</p> : null}
       {t.status !== "EJECUTADO" ? (
         <div className="mt-2 flex flex-wrap items-end gap-2">
@@ -120,6 +183,7 @@ export function ReconTaskRow({ t, client }: { t: TaskView; client: string | null
               <button className={`${button} border-brand-border`} disabled={busy || note.trim().length < 5} onClick={() => report("NO_SE_PUEDE")} type="button">Registrar</button>
             </>
           ) : null}
+          {t.kind === "LIBERAR" && releasedReadable && !released ? <p className="text-[11px] text-status-warning">Antes de EJECUTADO, registre la línea en {RELEASED_SHEET}.</p> : null}
         </div>
       ) : null}
       {message ? <p aria-live="polite" className="mt-1 text-xs font-semibold">{message}</p> : null}
