@@ -512,7 +512,9 @@ El orden futuro no implica autorización de implementación. Contexto debe aprob
 | Secciones históricas fuera del contrato (ventas en excepción, DESACTIVADOS por mes, RESELLER NC) y sus totales con rangos desplazados | `REQUIERE DECISIÓN` | Decidir si se archivan, se incorporan al contrato o se corrigen |
 | Ficha `Al dia` dentro del historial DESACTIVADOS de BASE GENERAL | `REQUIERE DECISIÓN` | No reincorporada: su celda `T` contiene texto y `F. PRÓXIMO PAGO` es anterior a hoy; definir el contenido correcto de `T`/`REFERIDO` antes de reclasificar |
 | Ficha de S6 sin `F. PRÓXIMO PAGO` (cuenta duplicada TC = 0 de un cliente activo) | `REQUIERE DECISIÓN` | Decidir si se marca como duplicado/baja; no se infiere fecha |
-| Dos pagos de ZELLE (SEPT) enlazados a fichas TC = 0 | `HALLAZGO — AUDITORÍA FINANCIERA` | Entrada del gate financiero; no se cambia TC sin auditoría |
+| Dos pagos de ZELLE (SEPT) enlazados a fichas TC = 0 | `NO CRÍTICO` (gate financiero, DEC-2026-10-28-023) | Vencen en 2027; el ADD-ON con TC = 0 es la representación habitual; queda pendiente la identidad compartida de la venta en excepción |
+| Gate financiero octubre: pagos de octubre sin reflejo en `F. PRÓXIMO PAGO` y ventas sin ficha | `BLOQUEADO` (NO APTO, DEC-2026-10-28-023) | 4 bloqueadores P0 en CHECKPOINT_S5, sección «Gate financiero final» |
+| Fichas 45 y 48 con bloque de fórmulas ajeno en `W:AF` (la regla visual `CONFIRMADO JM` depende de él) | `REQUIERE DECISIÓN` | Restaurar las fórmulas de sistema y definir si la regla visual debe leer `AL` (confirmación) |
 
 ## 19. Tabla de evidencias y referencias
 

@@ -843,6 +843,7 @@ export function buildRuntimeReadModel(input: {
       last: col("F.ULTIMO PAGO"),
       next: col("F. PRÓXIMO PAGO", "F.PRÓXIMO PAGO"),
       key: col("CLIENTE_KEY"),
+      t: col("T"),
     };
     const seen = new Map<string, number>();
     for (let i = bh + 1; i < base.length; i++) {
@@ -869,7 +870,12 @@ export function buildRuntimeReadModel(input: {
       if (seen.has(key)) clientErrors.push({ row: i + 1, type: "FICHA_DUPLICADA", detail: `${name} (también fila ${seen.get(key)})` });
       else seen.set(key, i + 1);
 
-      const status = canon(at(row, c.status)) || "SIN ESTADO";
+      const rawStatus = canon(at(row, c.status)) || "SIN ESTADO";
+      // ESTADO es fórmula sobre T (= F. PRÓXIMO PAGO − hoy). Si T no es un número (p. ej. texto pegado en la celda),
+      // el semáforo de la hoja no está demostrado: no se cuenta como activo ni como vencido.
+      const tValue = at(row, c.t);
+      const status = ACTIVE.has(rawStatus) && c.t != null && tValue !== "" && !/^-?[\d.,]+$/.test(tValue) ? "ESTADO NO DEMOSTRADO" : rawStatus;
+      if (status === "ESTADO NO DEMOSTRADO") clientErrors.push({ row: i + 1, type: "ESTADO_NO_DEMOSTRADO", detail: `${name}: ESTADO «${at(row, c.status)}» con T no numérico` });
       clientStates[status] = (clientStates[status] ?? 0) + 1;
       if (ACTIVE.has(status)) {
         active += 1;
@@ -877,7 +883,7 @@ export function buildRuntimeReadModel(input: {
         const plan = canon(at(row, c.canonicalPlan) || at(row, c.plan)) || "SIN PLAN";
         plans.set(plan, (plans.get(plan) ?? 0) + 1);
       } else if (status === "VENCIDO") inactive += 1;
-      else clientErrors.push({ row: i + 1, type: "ESTADO_NO_RECONOCIDO", detail: `${name}: "${at(row, c.status)}"` });
+      else if (status !== "ESTADO NO DEMOSTRADO") clientErrors.push({ row: i + 1, type: "ESTADO_NO_RECONOCIDO", detail: `${name}: "${at(row, c.status)}"` });
 
       const cartera = carteraByKey.get(key) ?? null;
       const lp = lastPaymentByKey.get(key);

@@ -107,11 +107,12 @@ describe("paneles", () => {
 });
 
 describe("read model integrado", () => {
-  const base = [[" ", "GESTION"], ["TC", "CLIENTE", "TELEFONO", "CORREO", "ESTADO", "OBSERVACIONES", "PLAN ACTIVO", "PANTALLAS", "CELULAR", "USD", "COP", "MÉTODO DE PAGO", "USUARIO", "CONTRASEÑA", "PANEL", "F.VENCIMIENTO", "F.ULTIMO PAGO", "F. PRÓXIMO PAGO"],
+  const base = [[" ", "GESTION"], ["TC", "CLIENTE", "TELEFONO", "CORREO", "ESTADO", "OBSERVACIONES", "PLAN ACTIVO", "PANTALLAS", "CELULAR", "USD", "COP", "MÉTODO DE PAGO", "USUARIO", "CONTRASEÑA", "PANEL", "F.VENCIMIENTO", "F.ULTIMO PAGO", "F. PRÓXIMO PAGO", "T"],
     ["1", "Ana", "555", "a@x", "Al dia", "", "PLAN 1 MES", "1", "0", "25", "-", "ZELLE", "u", "pw", "PANEL 3", "", "01-10-26", "01-11-26"],
     ["1", "Luis", "555", "l@x", "Vencido", "", "PLAN 1 MES", "1", "0", "15", "-", "ZELLE", "u", "pw", "PANEL 3", "", "02-09-26", "02-10-26"],
     ["1", "Vieja", "555", "v@x", "Vencido", "", "PLAN 1 MES", "1", "0", "15", "-", "ZELLE", "u", "pw", "PANEL 3", "", "02-01-26", "02-02-26"],
     ["0", "Baja", "555", "b@x", "Vencido", "", "PLAN 1 MES", "1", "0", "15", "-", "ZELLE", "u", "pw", "PANEL 3", "", "02-09-26", "02-10-26"],
+    ["1", "Falso", "555", "f@x", "Al dia", "", "PLAN 1 MES", "1", "0", "15", "-", "ZELLE", "u", "pw", "PANEL 3", "", "08-07-26", "08-08-26", "Texto pegado"],
     ["", "CLIENTES VENCIDOS · ESTADO = VENCIDO"],
     ["1", "TOTAL MIRA +", "", "", "", "", "", "", "", "70", "", "", "", "", "", "", "01-10-26", "01-11-26"],
     ["1", "ACTIVOS TIVIPLAY (AL DIA + POR VENCER)", "", "", "Al dia", "", "", "", "", "25", "", "", "", "", "", "", "01-10-26", "01-11-26"]];
@@ -147,7 +148,8 @@ describe("read model integrado", () => {
   });
 
   it("clientes activos/desactivados y ficha sin datos sensibles", () => {
-    expect(model.clients).toMatchObject({ inScope: 2, active: 1, inactive: 1, excludedTc0: 1 });
+    expect(model.clients).toMatchObject({ inScope: 3, active: 1, inactive: 1, excludedTc0: 1 });
+    expect(model.clients.errors.map((e) => e.type)).toContain("ESTADO_NO_DEMOSTRADO");
     const luis = model.clientIndex.find((c) => c.name === "Luis");
     expect(luis?.balance.USD).toBe(15);
     expect(JSON.stringify(model.clientIndex)).not.toMatch(/555|@x|"pw"/);

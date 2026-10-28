@@ -93,4 +93,33 @@ Ambos pagos están confirmados, pero su ficha tiene TC = 0, así que no entran e
 
 **REQUIERE DECISIÓN (no bloquea):** la ficha «Al dia» del historial DESACTIVADOS (celda `T` con texto) y la ficha duplicada TC = 0 de S6 sin `F. PRÓXIMO PAGO`.
 
-**NEXT ACTION:** `AUDITORÍA FINANCIERA FINAL → APTO/NO APTO MOTOR MENSUAL`.
+**NEXT ACTION (cumplida 28/10/2026):** auditoría financiera final → resultado abajo.
+
+## Gate financiero final octubre 2026 (28/10/2026)
+
+**Resultado:** `NO APTO PARA MOTOR MENSUAL` (DEC-2026-10-28-023). El motor es técnicamente estable: la simulación en memoria para noviembre da 100 fichas, 0 duplicados y 0 fechas inválidas. Pero hay pagos de octubre que cambian ese universo y no están reflejados en `F. PRÓXIMO PAGO`.
+
+**Universo auditado:** 130 operaciones de octubre (ZELLE 101 · PAYPAL 14 · TRANSF 15). 117 CONFIRMADO JM, 10 pendientes de confirmación o revisión y 3 facturas PayPal sin cobro. Además: PAGOS OCTUBRE 2026 (148 fichas), CONTROL (OCT) P1/P2/P3 (782 filas de ciclo) y los pagos de junio a septiembre como trazabilidad.
+
+**Trazabilidad de los 117 confirmados:** 60 correctos (enlazados y con `F. PRÓXIMO PAGO` igual o posterior a la propuesta del pago); 47 incompletos (tarifa pendiente con fecha coherente, sin ficha enlazable o con dos fichas candidatas); 10 inconsistentes (la fecha de BASE contradice el pago confirmado).
+
+**Bloqueadores P0 (cambian el universo de noviembre):**
+1. Cinco fichas con plan de 1 mes pagado en octubre siguen con `F. PRÓXIMO PAGO` en octubre (filas BASE 5, 770, 771, 786 y 802): quedarían fuera de PAGOS NOVIEMBRE. Causa: tarifa del pago sin validar (3 en COP o con monto menor que el del plan) o el pago tiene dos fichas candidatas.
+2. Una ficha (fila 21) pagó plan anual el 17/10, pero `F. PRÓXIMO PAGO` sigue en noviembre: se le cobraría.
+3. Dos pagos pendientes de CONFIRMADO JM cambian la pertenencia a noviembre según la decisión (ZELLE (OCT) filas 101 y 102).
+4. Cuatro ventas de octubre confirmadas, de 1 mes, sin ficha en BASE GENERAL (ZELLE (OCT) 64 y 95, PAYPAL (OCT) 8, TRANSF (OCT) 6): no entrarían en noviembre.
+
+**Excepciones «Decisión de Dirección»:** 194 ítems / 186 excepciones, reprocesados:
+
+| Categoría | Excepciones (ítems) | Contenido |
+| --- | --- | --- |
+| A · Determinístico | 99 (100) | Cobertura explicada por un pago registrado; duplicado con una sola ficha operativa o ficha ADD-ON; extensión con cobertura financiera vigente |
+| B · Acción operativa | 35 (35) | Altas pendientes de BASE (18); tareas de crédito en el panel equivocado, con panel real ya fijado por la conciliación del 27/10 (17) |
+| C · Dato inconsistente | 29 (35) | USUARIO a un carácter de una ficha de BASE (13); cobertura sin pago que la explique (9); reactivación o ficha duplicada (7) |
+| D · Decisión real de Dirección | 23 (24) | Tarifa distinta de la del plan (6); dos fichas operativas distintas con el mismo USUARIO (12); extensión sin crédito ni cobertura (5) |
+
+**Categorías amarillas:** Pago / cobertura 26 (16 créditos ejecutados sin habilitación financiera: riesgo de cobro, no del motor); Crédito por ejecutar 23 (19 programados a futuro, operativo); F.VENCIMIENTO en CONTROL 73 (72 de CONTROL (OCT) P1, que registra en `FECHA` la fecha de vencimiento: dato); Propagación a BASE 41 (back office; 5 están en el universo de noviembre); Plan en BASE 0. Antes y después de la corrección, los mismos valores.
+
+**No críticos:** los dos pagos TC = 0 de septiembre vencen en abril y octubre de 2027 (sin efecto en octubre ni noviembre; el ADD-ON con TC = 0 es la representación habitual de los ADD-ON); la ficha S5 sin `F. PRÓXIMO PAGO` (el motor la omite sin reportarla); las filas 45 y 48 tienen en `W:AF` un bloque de fórmulas ajeno, del que depende la regla visual `CONFIRMADO JM` (REQUIERE DECISIÓN); el falso «Al dia» del historial ya no cuenta como activo en la intranet (735 → 734).
+
+**NEXT ACTION:** resolver los 4 bloqueadores P0 y repetir la simulación del motor para noviembre; con universo estable → `EJECUTAR MOTOR MENSUAL → CIERRE OCTUBRE → GENERAR PAGOS NOVIEMBRE → AUDITAR RESULTADO`.
