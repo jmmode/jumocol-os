@@ -147,7 +147,7 @@ describe("operator creation", () => {
 });
 
 describe("server policy and transport", () => {
-  it.each(["/administracion/usuarios", "/administracion/auditoria", "/finanzas-contabilidad", "/tecnologia-ia", "/marketing-comercial", "/operaciones/tiviplay/pagos", "/operaciones/tiviplay/dashboard", "/api/admin/users", "/api/admin/documents", "/api/admin/tiviplay/decisions", "/administracion/biblioteca", "/api/operations/tiviplay/payments/refresh"])("denies an operator direct access to %s", route => {
+  it.each(["/administracion/usuarios", "/administracion/auditoria", "/finanzas-contabilidad", "/tecnologia-ia", "/marketing-comercial", "/operaciones/tiviplay/pagos", "/operaciones/tiviplay/dashboard", "/api/admin/users", "/api/admin/documents", "/api/admin/tiviplay/decisions", "/api/admin/tiviplay/conciliacion/decision", "/api/admin/tiviplay/conciliacion/base-sync", "/administracion/biblioteca", "/api/operations/tiviplay/payments/refresh"])("denies an operator direct access to %s", route => {
     expect(allowed("OPERADOR", route)).toBe(false);
     expect(allowed("OPERADOR", route, "POST")).toBe(false);
   });
@@ -158,6 +158,12 @@ describe("server policy and transport", () => {
     expect(allowed("OPERADOR", "/api/operations/tiviplay/monthly-close")).toBe(true);
     expect(allowed("OPERADOR", "/api/operations/tiviplay/monthly-close", "POST")).toBe(false);
     expect(allowed("OPERADOR", "/api/operations/tiviplay/confirmado-jm", "POST")).toBe(false);
+  });
+  it("the advisor reads the reconciliation queue and may only report task execution (EJECUTADO / NO SE PUEDE)", () => {
+    expect(allowed("OPERADOR", "/operaciones/tiviplay/conciliacion")).toBe(true);
+    expect(allowed("OPERADOR", "/api/operations/tiviplay/conciliacion/task", "POST")).toBe(true);
+    expect(allowed("OPERADOR", "/api/operations/tiviplay/conciliacion/task", "DELETE")).toBe(false);
+    expect(allowed("OPERADOR", "/api/admin/tiviplay/conciliacion/decision", "POST")).toBe(false);
   });
   it("requires exact configured Origin and rejects HTTP on LAN", () => {
     process.env.JUMOCOL_APP_ORIGIN = "https://intranet.example.test";

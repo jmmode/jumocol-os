@@ -9,6 +9,7 @@ import { LIBRARY_SECTIONS } from "@/server/documents/curation";
 const LINKS = [
   { href: "/operaciones/tiviplay/manuales", label: "Manuales y procesos" },
   { href: "/operaciones/tiviplay/hoy", label: "HOY" },
+  { href: "/operaciones/tiviplay/conciliacion", label: "Conciliación" },
   { href: "/operaciones/tiviplay", label: "Command Center" },
   { href: "/operaciones/tiviplay/contexto", label: "Contexto" },
   { href: "/operaciones/tiviplay/runtime", label: "Runtime Operativo" },
