@@ -94,7 +94,7 @@ export function recordTaskEvent(actor: Identity, input: Record<string, string>, 
   audit(actor.id, `tiviplay-recon-task:${taskId}`, action, "SUCCESS");
 }
 
-export type BaseLiveRow = { client: string; panel: string; due: string | null };
+export type BaseLiveRow = { client: string; username: string; panel: string; due: string | null; duplicate?: boolean };
 
 /** Normaliza fechas formateadas de Sheets (yyyy-mm-dd, dd-mm-yy, dd/mm/yyyy) a yyyy-mm-dd. */
 export function normalizeSheetDate(value: string): string | null {
@@ -114,11 +114,14 @@ export async function readBaseLive(): Promise<Map<number, BaseLiveRow> | null> {
   try {
     const { batchReadSheets, getSheetsAccessToken, getTiviplaySpreadsheetId } = await import("@/server/tiviplay-live/sheets-client");
     const token = await getSheetsAccessToken();
-    const sheets = await batchReadSheets(getTiviplaySpreadsheetId(), token, ["BASE GENERAL"], "P", 4000);
+    const sheets = await batchReadSheets(getTiviplaySpreadsheetId(), token, ["BASE GENERAL"], "AP", 4000);
     const out = new Map<number, BaseLiveRow>();
     (sheets["BASE GENERAL"] ?? []).forEach((r, i) => {
       const client = String(r?.[1] ?? "").trim();
-      out.set(i + 1, { client, panel: String(r?.[14] ?? "").trim(), due: normalizeSheetDate(String(r?.[15] ?? "")) });
+      out.set(i + 1, {
+        client, username: normUser(String(r?.[12] ?? "")), panel: String(r?.[14] ?? "").trim(), due: normalizeSheetDate(String(r?.[15] ?? "")),
+        duplicate: String(r?.[41] ?? "").startsWith("DUPLICADO DEPURADO"),
+      });
     });
     return out;
   } catch {
@@ -126,9 +129,24 @@ export async function readBaseLive(): Promise<Map<number, BaseLiveRow> | null> {
   }
 }
 
-/** ¿El cambio exigido ya está en la fuente? (verificado por relectura, no por intención). */
-export function isApplied(update: { row: number; field: string; to: string }, live: Map<number, BaseLiveRow> | null) {
-  const row = live?.get(update.row);
+const normUser = (v: string) => v.normalize("NFKC").replace(/\s+/g, "").toUpperCase();
+
+/**
+ * Fila viva de un USUARIO. BASE GENERAL recibe inserciones del equipo: el número de fila del corte es solo una pista.
+ * Se usa la fila de la pista si aún es de ese USUARIO; si no, la única fila no marcada como duplicado con ese USUARIO.
+ */
+export function locateRow(live: Map<number, BaseLiveRow> | null, username: string, hint?: number) {
+  if (!live) return null;
+  const u = normUser(username);
+  if (hint && live.get(hint)?.username === u && !live.get(hint)?.duplicate) return hint;
+  const rows = [...live.entries()].filter(([, r]) => r.username === u && !r.duplicate).map(([n]) => n);
+  return rows.length === 1 ? rows[0] : null;
+}
+
+/** ¿El cambio exigido ya está en la fuente? (verificado por relectura, localizando la fila por USUARIO, no por intención). */
+export function isApplied(update: { row: number; field: string; to: string; username?: string }, live: Map<number, BaseLiveRow> | null) {
+  const n = update.username ? locateRow(live, update.username, update.row) : update.row;
+  const row = n ? live?.get(n) : undefined;
   if (!row) return false;
   if (update.field === "PANEL") return row.panel.toUpperCase() === update.to.toUpperCase();
   if (update.field === "F.VENCIMIENTO") return row.due === update.to;

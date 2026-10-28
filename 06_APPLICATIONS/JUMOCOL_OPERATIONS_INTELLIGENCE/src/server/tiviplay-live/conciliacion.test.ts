@@ -4,7 +4,7 @@ import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { db, type Identity } from "@/server/auth/store";
-import { listReconDecisions, getReconciliation, isApplied, normalizeSheetDate, recordReconDecision, recordTaskEvent } from "./conciliacion";
+import { listReconDecisions, getReconciliation, isApplied, locateRow, normalizeSheetDate, recordReconDecision, recordTaskEvent } from "./conciliacion";
 import { residualTaskId, type ReconDataset } from "./conciliacion-model";
 
 // Datos sintéticos: ningún cliente, usuario ni línea real.
@@ -99,9 +99,18 @@ describe("Conciliación de servicio: decisión → BASE → LIBERAR → DISPONIB
     expect(normalizeSheetDate("2026-11-20")).toBe("2026-11-20");
     expect(normalizeSheetDate("20-11-26")).toBe("2026-11-20");
     expect(normalizeSheetDate("20/11/2026")).toBe("2026-11-20");
-    const live = new Map([[5, { client: "Cliente sintético", panel: "PANEL 3", due: "2026-11-20" }]]);
+    const live = new Map([[5, { client: "Cliente sintético", username: "SINTETICO1", panel: "PANEL 3", due: "2026-11-20" }]]);
     expect(isApplied({ row: 5, field: "F.VENCIMIENTO", to: "2026-11-20" }, live)).toBe(true);
     expect(isApplied({ row: 5, field: "PANEL", to: "PANEL 1" }, live)).toBe(false);
     expect(isApplied({ row: 5, field: "PANEL", to: "PANEL 3" }, null)).toBe(false);
+    // El equipo insertó una fila: el USUARIO bajó de la fila 5 a la 6. La cola lo encuentra por USUARIO.
+    const shifted = new Map([
+      [5, { client: "Otro", username: "OTRO1", panel: "PANEL 1", due: "2026-01-01" }],
+      [6, { client: "Cliente sintético", username: "SINTETICO1", panel: "PANEL 3", due: "2026-11-20" }],
+      [7, { client: "Cliente sintético", username: "SINTETICO1", panel: "PANEL 1", due: "2025-01-01", duplicate: true }],
+    ]);
+    expect(locateRow(shifted, "sintetico1", 5)).toBe(6);
+    expect(isApplied({ row: 5, field: "F.VENCIMIENTO", to: "2026-11-20", username: "SINTETICO1" }, shifted)).toBe(true);
+    expect(isApplied({ row: 5, field: "F.VENCIMIENTO", to: "2026-11-20" }, shifted)).toBe(false);
   });
 });

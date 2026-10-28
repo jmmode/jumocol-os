@@ -7,7 +7,7 @@ import { TiviplayNavigation } from "@/features/tiviplay-command-center/tiviplay-
 import { SectionCard } from "@/features/tiviplay-payments/dashboard-charts";
 import { requirePage } from "@/server/auth/access";
 import { audit } from "@/server/auth/store";
-import { getReconciliation, isApplied, loadDataset, readBaseLive } from "@/server/tiviplay-live/conciliacion";
+import { getReconciliation, isApplied, loadDataset, locateRow, readBaseLive } from "@/server/tiviplay-live/conciliacion";
 import { PANEL_LABEL, type CaseView } from "@/server/tiviplay-live/conciliacion-model";
 
 export const metadata: Metadata = { title: "TiviPlay · Conciliación de servicio" };
@@ -33,7 +33,7 @@ export default async function ConciliacionPage({ searchParams }: { searchParams:
   const [data, live] = await Promise.all([Promise.resolve(getReconciliation(dataset)), readBaseLive()]);
   audit(identity.id, "tiviplay-conciliacion", "read", data ? "SUCCESS" : "UNAVAILABLE");
 
-  const client = (rows: number[]) => (live ? rows.map((r) => live.get(r)?.client).find(Boolean) ?? null : null);
+  const client = (username: string, rows: number[] = []) => { const n = locateRow(live, username, rows[0]); return n ? live?.get(n)?.client || null : null; };
   const syncPending = data?.baseSync.filter((s) => !isApplied(s, live)) ?? [];
   const syncApplied = (data?.baseSync.length ?? 0) - syncPending.length;
   const rowsOf = (username: string) => data?.cases.find((c) => c.username === username)?.baseRows ?? [];
@@ -101,7 +101,7 @@ export default async function ConciliacionPage({ searchParams }: { searchParams:
                     return (
                       <div className="mb-5" key={kind}>
                         <h3 className="mb-2 text-xs font-black uppercase tracking-[0.1em] text-status-warning">{KIND[kind]} · {shown.filter((c) => c.kind === kind).length}</h3>
-                        <ul className="space-y-3">{list.map((c) => <ReconCaseCard c={c} client={client(c.baseRows)} cut={data.cut} key={c.id} />)}</ul>
+                        <ul className="space-y-3">{list.map((c) => <ReconCaseCard c={c} client={client(c.username, c.baseRows)} cut={data.cut} key={c.id} />)}</ul>
                       </div>
                     );
                   })}
@@ -117,7 +117,7 @@ export default async function ConciliacionPage({ searchParams }: { searchParams:
             description="Tareas exactas: cliente, USERNAME, panel que se conserva y panel que se libera. EJECUTADO registra responsable y hora, cierra la tarea y deja la línea DISPONIBLE."
           >
             {openTasks.length === 0 ? <p className="text-sm text-brand-muted">Sin tareas abiertas.</p> : (
-              <ul className="space-y-3">{openTasks.slice(0, limit).map((t) => <ReconTaskRow client={client(rowsOf(t.username))} key={t.id} t={t} />)}</ul>
+              <ul className="space-y-3">{openTasks.slice(0, limit).map((t) => <ReconTaskRow client={client(t.username, rowsOf(t.username))} key={t.id} t={t} />)}</ul>
             )}
             <p className="mt-3 text-xs text-brand-muted">{openTasks.length} abiertas · {doneTasks.length} ejecutadas.</p>
           </SectionCard>
@@ -133,7 +133,7 @@ export default async function ConciliacionPage({ searchParams }: { searchParams:
               {!live ? <p className={blocked}>No fue posible releer BASE GENERAL: la cola no puede validarse.</p> : null}
               {syncPending.length === 0 ? <p className="text-sm text-brand-muted">Sin cambios pendientes{syncApplied ? ` · ${syncApplied} aplicados y validados por relectura` : ""}.</p> : (
                 <>
-                  <ul className="space-y-1 text-xs">{syncPending.map((s) => <li key={`${s.caseId}-${s.field}-${s.row}`}>Fila {s.row} · {s.username} · {s.field}: {s.from || "(vacío)"} → <strong>{s.to}</strong></li>)}</ul>
+                  <ul className="space-y-1 text-xs">{syncPending.map((s) => <li key={`${s.caseId}-${s.field}-${s.row}`}>Fila {locateRow(live, s.username, s.row) ?? `${s.row} (verificar)`} · {s.username} · {s.field}: {s.from || "(vacío)"} → <strong>{s.to}</strong></li>)}</ul>
                   <p className="mt-2 text-xs text-brand-muted">{syncPending.length} pendientes · {syncApplied} aplicados y validados por relectura.</p>
                 </>
               )}
