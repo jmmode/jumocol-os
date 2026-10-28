@@ -855,6 +855,8 @@ export function buildRuntimeReadModel(input: {
         continue;
       }
       if (tc !== "1") continue;
+      // Filas de consolidación de las secciones (TOTAL …, ACTIVOS/VENCIDOS TIVIPLAY) no son fichas, aunque su TC sume 1.
+      if (/^(TOTAL|ACTIVOS TIVIPLAY|VENCIDOS TIVIPLAY)\b/.test(canon(name))) continue;
       totalRows += 1;
       const last = parseDate(at(row, c.last));
       const next = parseDate(at(row, c.next));
@@ -939,7 +941,7 @@ export function buildRuntimeReadModel(input: {
       },
       paymentsToConfirm: { value: { count: toConfirmCount, amount: toConfirm }, evidence: ev(source("PAGO"), "CONFIRMACION", "CONFIRMACION ≠ CONFIRMADO (pendiente, revisión o vacío)", "conteo y Σ por moneda") },
       decisionCases: { value: decisionCases, evidence: ev(carteraRole?.title ?? "—", "ESTADO_FINANCIERO / OBSERVACIONES", "REQUIERE DECISIÓN + SIN PAGO con señal de no renovación + filas desalineadas", "conteo") },
-      activeClients: { value: active, evidence: ev("BASE GENERAL", "TC / ESTADO / F.ULTIMO PAGO / F. PRÓXIMO PAGO", "TC=1, ESTADO ∈ {Al dia, Por vencer}, actividad ≥ 2026-06-01, todas las secciones (TiviPlay + MIRA+ + altas del mes; no es el TOTAL TIVIPLAY VIGENTE de la hoja)", "conteo") },
+      activeClients: { value: active, evidence: ev("BASE GENERAL", "TC / ESTADO / F.ULTIMO PAGO / F. PRÓXIMO PAGO", "TC=1, ESTADO ∈ {Al dia, Por vencer}, actividad ≥ 2026-06-01, todas las secciones (TiviPlay + MIRA+ + altas del mes); difiere de ACTIVOS TIVIPLAY de la hoja, que excluye MIRA+ y no filtra por actividad", "conteo") },
       inactiveClients: { value: inactive, evidence: ev("BASE GENERAL", "TC / ESTADO", "TC=1, ESTADO=Vencido (estado comercial; no es baja ni desactivación técnica), actividad ≥ 2026-06-01, todas las secciones", "conteo", "PARCIAL") },
       dailyTarget: { value: null, evidence: ev("—", "—", "Sin meta diaria definida en fuentes vigentes", "—", "REQUIERE_DECISION") },
       projection: { value: null, evidence: ev("—", "—", "Sin regla de proyección aprobada", "—", "REQUIERE_DECISION") },

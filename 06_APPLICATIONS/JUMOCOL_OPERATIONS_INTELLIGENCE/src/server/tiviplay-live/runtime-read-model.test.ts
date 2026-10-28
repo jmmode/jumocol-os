@@ -111,7 +111,10 @@ describe("read model integrado", () => {
     ["1", "Ana", "555", "a@x", "Al dia", "", "PLAN 1 MES", "1", "0", "25", "-", "ZELLE", "u", "pw", "PANEL 3", "", "01-10-26", "01-11-26"],
     ["1", "Luis", "555", "l@x", "Vencido", "", "PLAN 1 MES", "1", "0", "15", "-", "ZELLE", "u", "pw", "PANEL 3", "", "02-09-26", "02-10-26"],
     ["1", "Vieja", "555", "v@x", "Vencido", "", "PLAN 1 MES", "1", "0", "15", "-", "ZELLE", "u", "pw", "PANEL 3", "", "02-01-26", "02-02-26"],
-    ["0", "Baja", "555", "b@x", "Vencido", "", "PLAN 1 MES", "1", "0", "15", "-", "ZELLE", "u", "pw", "PANEL 3", "", "02-09-26", "02-10-26"]];
+    ["0", "Baja", "555", "b@x", "Vencido", "", "PLAN 1 MES", "1", "0", "15", "-", "ZELLE", "u", "pw", "PANEL 3", "", "02-09-26", "02-10-26"],
+    ["", "CLIENTES VENCIDOS · ESTADO = VENCIDO"],
+    ["1", "TOTAL MIRA +", "", "", "", "", "", "", "", "70", "", "", "", "", "", "", "01-10-26", "01-11-26"],
+    ["1", "ACTIVOS TIVIPLAY (AL DIA + POR VENCER)", "", "", "Al dia", "", "", "", "", "25", "", "", "", "", "", "", "01-10-26", "01-11-26"]];
   const cartera = [["", "PAGOS OCTUBRE"], ["", "nota"], ["TC", "CLIENTE", "ESTADO", "OBSERVACIONES", "PLAN ACTIVO", "USD", "COP", "MÉTODO DE PAGO", "PANEL", "F. PRÓXIMO PAGO", "FUENTE_FINANCIERA", "FILA_FUENTE", "FECHA_PAGO", "MONEDA_PAGO", "VALOR_PAGO", "ESTADO_FINANCIERO", "MOTIVO_GATE_FINANCIERO"],
     ["", "SEMANA 1"],
     ["1", "Ana", "Al dia", "", "PLAN 1 MES", "25", "-", "ZELLE", "PANEL 3", "01-10-26", "ZELLE", "4", "01-10-26", "USD", "25", "VALIDADO", ""],

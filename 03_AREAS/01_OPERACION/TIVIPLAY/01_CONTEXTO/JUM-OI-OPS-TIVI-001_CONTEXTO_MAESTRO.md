@@ -187,62 +187,88 @@ Estado por tramo al 24/10/2026, sin PII; la tabla de casos está en S0 §10:
 
 ### 5.5 Contrato canónico de BASE GENERAL
 
-Aprobado por Dirección el 28/10/2026 (DEC-2026-10-28-020). Es el contrato objetivo; la estructura viva auditada y sus brechas están al final de esta sección. No autoriza mover filas: ver «Dependencias `FILA_BASE`».
+Aprobado por Dirección el 28/10/2026 (DEC-2026-10-28-020; totales y normalización física DEC-2026-10-28-021). La hoja viva cumple este contrato desde la normalización del 28/10/2026 (estructura y conteos al final de esta sección).
 
-**Propósito.** BASE GENERAL (libro `GESTION_DIA_PAGOS_2026_TIVIPLAY`) es la fuente estructurada de la operación TiviPlay: una ficha por cliente/servicio con identidad (`USUARIO`, `PANEL`), ciclo comercial (`F.ULTIMO PAGO`, `F. PRÓXIMO PAGO`, `T`, `ESTADO`) y ciclo técnico (`F.VENCIMIENTO`). Encabezados en la fila 2; datos desde la fila 3.
+**Propósito.** BASE GENERAL (libro `GESTION_DIA_PAGOS_2026_TIVIPLAY`) es la fuente estructurada de la operación TiviPlay: una ficha por cliente/servicio con identidad (`USUARIO`, `PANEL`), ciclo comercial (`F.ULTIMO PAGO`, `F. PRÓXIMO PAGO`, `T`, `ESTADO`) y ciclo técnico (`F.VENCIMIENTO`). Título en la fila 1, encabezados en la fila 2.
 
-**Fechas.** `F. PRÓXIMO PAGO` gobierna el ciclo comercial (cobro, `T`, `ESTADO`, entrada a `PAGOS [MES]`). `F.VENCIMIENTO` gobierna el ciclo técnico del servicio (lo que muestra el panel; se actualiza desde CONTROL). Nunca se sustituyen entre sí.
+**Fechas.** `F. PRÓXIMO PAGO` gobierna el ciclo comercial (cobro, `T`, `ESTADO`, orden de secciones, entrada a `PAGOS [MES]`). `F.VENCIMIENTO` gobierna el ciclo técnico del servicio (lo que muestra el panel; se actualiza desde CONTROL). Nunca se sustituyen entre sí ni se usa `F.VENCIMIENTO` para ordenar.
 
-**Semáforo comercial.** `T = F. PRÓXIMO PAGO − hoy` (columna S). `ESTADO` (columna E, fórmula por fila) = `Al dia` si `T > 5`, `Por vencer` si `1 ≤ T ≤ 5`, `Vencido` si `T ≤ 0`. El color de toda la fila (A:AP) lo gobierna E mediante formato condicional; no se pinta a mano. `ESTADO ≠ confirmación financiera`.
+**Semáforo comercial (3 estados, únicos).** `T = F. PRÓXIMO PAGO − hoy` (columna S). `ESTADO` (columna E, fórmula por fila) = `Al dia` si `T > 5`, `Por vencer` si `1 ≤ T ≤ 5`, `Vencido` si `T ≤ 0`. El color de toda la fila (A:AP) lo gobierna E por formato condicional; no se pinta a mano. `ESTADO ≠ confirmación financiera`.
 
-**Seis secciones objetivo**
+**VENCIDO ≠ BAJA ≠ DESACTIVADO ≠ INACTIVO TÉCNICO.** `Vencido` es solo estado comercial. La baja requiere criterio aprobado (REQUIERE DECISIÓN, §18), la desactivación es un acto operativo registrado y el estado técnico solo se demuestra con el panel. Ningún consumidor (hoja, motor o intranet) rotula Vencido como «desactivado».
+
+**Seis secciones (pertenencia y orden)**
 
 | # | Sección | Pertenencia | Orden |
 | --- | --- | --- | --- |
-| 1 | CLIENTES ACTIVOS TIVIPLAY | TiviPlay con `ESTADO ∈ {Al dia, Por vencer}` | `F. PRÓXIMO PAGO` ascendente (más próximo primero) |
-| 2 | TOTAL CLIENTES TIVIPLAY | Fila de consolidación de la sección 1, verificable contra sus registros | — |
-| 3 | TOTAL CLIENTES MIRA+ | Bloque y consolidado de clientes Mira+ | — |
-| 4 | TOTAL GENERAL | `TIVIPLAY + MIRA+`, coherente con 2 y 3 | — |
-| 5 | REACTIVACIONES DEL MES EN CURSO | Reactivaciones del mes operacional vigente (sección temporal) | — |
-| 6 | CLIENTES VENCIDOS | `ESTADO = Vencido` | Vencimiento comercial (`F. PRÓXIMO PAGO`) más reciente primero |
+| S1 | CLIENTES ACTIVOS TIVIPLAY · AL DIA / POR VENCER | Fichas TiviPlay del corte con `ESTADO ∈ {Al dia, Por vencer}` | `F. PRÓXIMO PAGO` ascendente (más próximo primero) |
+| S2 | TOTAL TIVIPLAY | Universo TiviPlay completo: Al dia + Por vencer + Vencido + altas válidas del mes (S1 + S5 + S6). **No se rotula «activos»** | — |
+| S3 | TOTAL MIRA+ | Solo registros identificados como Mira+ en su bloque; no se infiere | — |
+| S4 | TOTAL GENERAL | `TOTAL TIVIPLAY + TOTAL MIRA+`, sin doble conteo | — |
+| S5 | ALTAS / REACTIVACIONES DEL MES EN CURSO | Altas del mes operacional vigente. `ALTA DEL MES ≠ REACTIVACIÓN DEMOSTRADA`: no se infiere reactivación | Orden de registro |
+| S6 | CLIENTES VENCIDOS | Fichas TiviPlay del corte con `ESTADO = Vencido` | Vencimiento comercial (`F. PRÓXIMO PAGO`) más reciente primero |
 
-**Ciclo mensual.** Al cierre mensual ejecutado: `REACTIVACIONES DEL MES + VENTAS VÁLIDAS DEL MES → SECCIÓN 1`, según el contrato S0 vigente. Antes del cierre no se mueven registros. El corte de BASE alimenta `PAGOS [MES+1]` por `F. PRÓXIMO PAGO` (§5.4 paso 10).
+Disposición física: los bloques de fichas (S1, S5, S6) van antes de las filas de consolidación porque S2 suma los tres; S3 y S4 cierran la zona operativa.
 
-**Relación con PAGOS.** Las hojas de medio (ZELLE/PAYPAL/TRANSF del mes) enlazan cada pago con su ficha por `CLIENTE_KEY + TC` → `ESTADO_ENLACE` y `FILA_BASE`. `PAGOS [MES]` toma de BASE las fichas cuyo `F. PRÓXIMO PAGO` cae en el mes (corte) y conserva `ORIGEN BASE` («BASE GENERAL!n») como evidencia del corte.
+**Consolidados (fórmulas por `ESTADO`, no por posición).** Como `ESTADO` es dinámico, los totales se calculan sobre los rangos de S1, S5 y S6 por la columna E, no por la sección donde está la fila:
 
-**VENCIDO ≠ BAJA ≠ DESACTIVADO TÉCNICAMENTE.** `Vencido` es solo estado comercial. La baja requiere criterio aprobado (REQUIERE DECISIÓN, §18) y la desactivación técnica solo se demuestra con el panel. Ningún consumidor (hoja, motor o intranet) debe rotular Vencido como «desactivado».
+| Fila | Indicador | Fórmula (columna A = TC; igual en J/K) |
+| --- | --- | --- |
+| Total S6 | TOTAL SECCIÓN CLIENTES VENCIDOS | `SUM(A_S6)` |
+| S2 | TOTAL TIVIPLAY | `SUM(A_S1, A_S5, A_S6)` |
+| — | ACTIVOS TIVIPLAY (AL DIA + POR VENCER) | `SUMIFS(A, E, "<>Vencido")` sobre S1, S5, S6 |
+| — | VENCIDOS TIVIPLAY (ESTADO = VENCIDO) | `SUMIFS(A, E, "Vencido")` sobre S1, S5, S6 |
+| S3 | TOTAL MIRA+ | `SUM(A_Mira)` |
+| S4 | TOTAL GENERAL (TIVIPLAY + MIRA+) | `TOTAL TIVIPLAY + TOTAL MIRA+` |
 
-**Relación BASE GENERAL ↔ intranet.** La intranet lee BASE en solo lectura y debe usar las mismas definiciones; si un indicador tiene otra definición, la declara en su evidencia. Matriz al 28/10/2026:
+Invariantes: `ACTIVOS + VENCIDOS = TOTAL TIVIPLAY`; `TOTAL TIVIPLAY ≠ ACTIVOS`; `VENCIDOS − TOTAL SECCIÓN VENCIDOS` = vencidos que están en S5 (altas del mes que ya vencieron) o que vencieron después de la normalización: diferencia temporal del mes, documentada, no oculta. Los totales suman `TC` (columna A); las fichas con `TC = 0` (cuentas sin cobro) cuentan como fila pero no en el total.
 
-| Indicador intranet | Regla | Valor intranet | Equivalente en BASE | Valor BASE | Diferencia |
+**Ciclo mensual.** Las secciones son una fotografía física a la fecha de normalización; `ESTADO` es vivo. Al cierre mensual ejecutado: S5 → S1/S6 según `ESTADO`, re-orden de S1 y S6 y nueva S5 vacía para el mes siguiente, según el contrato S0. Entre cierres, una ficha que cambia de estado no se mueve: los consolidados por `ESTADO` ya la cuentan bien. El corte de BASE alimenta `PAGOS [MES+1]` por `F. PRÓXIMO PAGO` (§5.4 paso 10).
+
+**Relación BASE ↔ PAGOS.** Las hojas de medio (ZELLE/PAYPAL/TRANSF del mes) enlazan cada pago con su ficha por `CLIENTE_KEY + TC` → `COINCIDENCIAS_BASE`, `ESTADO_ENLACE` y `FILA_BASE`. `PAGOS [MES]` toma de BASE las fichas cuyo `F. PRÓXIMO PAGO` cae en el mes (corte) y conserva `ORIGEN BASE` («BASE GENERAL!n») solo como evidencia histórica del corte.
+
+**Estrategia anti-posicional (definitiva).**
+- La posición de fila no es identidad. Identidad comercial: `CLIENTE_KEY + TC` (y `USUARIO` como llave operacional); identidad técnica: `PANEL + LINE_ID`. Nunca solo el nombre; nunca se inventa `LINE_ID`.
+- `FILA_BASE` es un puntero **calculado**: en las hojas de octubre `INDEX(FILTER(ROW(BASE!A), BASE!AF = CLIENTE_KEY, BASE!A = TC), 1)`; en las de septiembre (y ZELLE (OCT) desde la fila 1001) `MATCH(CLIENTE_KEY, BASE!AF$3:AF$n, 0) + 2`. Ambos se recalculan al mover filas. Regla: el rango del `MATCH` debe empezar en la fila 3 porque el `+2` es su desplazamiento; insertar filas justo en la fila 3 desplaza el inicio y rompe el puntero (incidente del 28/10/2026, corregido el mismo día).
+- Las fórmulas de pago leen `W`, `Y`, `Z`, `H` con `INDEX(…, FILA_BASE)`: siguen a la ficha porque `FILA_BASE` la sigue.
+- Las fichas deben permanecer dentro del rango buscado (hoy filas 3–1223; el rango se amplía solo con inserciones internas).
+- `ORIGEN BASE` («BASE GENERAL!n» en `PAGOS [MES]`, `PRELIMINAR`, `FLUJO 743 *`) es texto estático del corte: evidencia, no identidad; ningún consumidor (fórmula, motor o intranet) lo usa para localizar fichas. 64 de 96 punteros de PAGOS OCTUBRE ya estaban desalineados antes de normalizar. No se reescriben.
+- La intranet y la conciliación localizan por `USUARIO`/llave y calculan la fila en vivo; no persisten posiciones.
+- Toda reordenación futura: ensayo en copia, una operación de orden por llamada con relectura, y verificación de `FILA_BASE` (llave en la fila apuntada = `CLIENTE_KEY`, TC = 1, sin llaves duplicadas).
+
+**Relación BASE GENERAL ↔ intranet.** La intranet lee BASE en solo lectura, recorre todas las secciones por `TC`/`ESTADO` (independiente de la posición) y salta las filas de consolidación. Matriz al 28/10/2026 tras normalizar:
+
+| Indicador | Fuente | Regla | Resultado BASE | Resultado intranet | Conciliación |
 | --- | --- | --- | --- | --- | --- |
-| Runtime · Clientes activos | TC=1, ESTADO ∈ {Al dia, Por vencer}, actividad ≥ 2026-06-01, todas las secciones | 735 | Σ TC de A3:A778 (`TOTAL TIVIPLAY VIGENTE`, fila 811) | 745 | Definición distinta: BASE suma TC del bloque al corte 30/09 e incluye 46 Vencido; la intranet excluye Vencido e incluye 30 altas de octubre (filas 779–810), 3 Mira+ y 3 Al dia ubicados en secciones de vencidos/desactivados. Conciliación exacta: 699 + 30 + 3 + 3 = 735 |
-| Runtime · Clientes vencidos (antes «desactivados») | TC=1, ESTADO=Vencido, actividad ≥ 2026-06-01, todas las secciones | 208 | `TOTAL VENCIDOS PENDIENTES DE GESTIÓN` (fila 865) | 46 | Definición distinta: la intranet incluye 46+1 Vencido dentro del bloque activo, 1 Mira+, 110 de secciones DESACTIVADOS y 6 RESELLER. 47+1+44+110+6 = 208 |
-| Conciliación · Activos/Inactivos/Excepción | Servicio técnico por snapshots de panel | 713 / 1203 / 60 | — (estado técnico, no comercial) | — | Universo y semántica distintos (`F.VENCIMIENTO`, no `ESTADO`); no comparables |
-| Dashboard pagos (Excel) · Por vencer | Recalcula estado con la misma regla de semáforo (> 5 / 1–5 / ≤ 0) | instantánea Excel | ESTADO | — | Alineado al umbral aprobado el 28/10/2026 |
+| Activos | BASE E/A | BASE: `ACTIVOS TIVIPLAY` (S1+S5+S6, TC, ESTADO ≠ Vencido). Intranet: TC=1, ESTADO activo, actividad ≥ 2026-06-01, todas las secciones | 731 | 735 | 731 + 3 Mira+ al día + 1 ficha Al dia en historial DESACTIVADOS (REQUIERE DECISIÓN) = 735. Definición declarada en la evidencia del KPI |
+| Vencidos | BASE E/A | BASE: `VENCIDOS TIVIPLAY`. Intranet: «Clientes vencidos», TC=1, ESTADO=Vencido, actividad ≥ 2026-06-01, todas las secciones | 92 | 208 | La intranet suma además 1 Mira+, fichas Vencido de secciones DESACTIVADOS y RESELLER NC y excluye fichas sin actividad desde junio. Rotulado «vencidos», nunca «desactivados» |
+| Conciliación · Activos/Inactivos/Excepción | Snapshots de panel | Estado técnico (`F.VENCIMIENTO`) | — | 713 / 1203 / 60 | Universo y semántica técnica; no comparable con ESTADO |
+| Dashboard pagos (Excel) · Por vencer | ESTADO | Misma regla > 5 / 1–5 / ≤ 0 | — | instantánea | Alineado |
 
-**Dependencias `FILA_BASE` (por qué no se reordena físicamente).**
-- `FILA_BASE` de ZELLE/PAYPAL/TRANSF del mes es fórmula `FILTER(ROW('BASE GENERAL'!A$3:A$1219), …)`: se recalcula si las filas se mueven, pero solo busca hasta la fila 1219.
-- `ORIGEN BASE` en `PAGOS OCTUBRE 2026` es texto estático («BASE GENERAL!n») del corte 30/09: quedaría desalineado al mover filas.
-- Las fórmulas de las hojas de pago leen `W`, `Y`, `Z`, `H` de BASE con `INDEX(..., FILA_BASE)`.
-- El dataset de conciliación y la intranet usan el número de fila solo como pista y localizan por `USUARIO` (resistente a inserciones).
-- Hojas de auditoría/prueba históricas (`PRUEBA_CATALOGO_BASE`, `AUDITORIA_*`) no se han auditado por referencias de fila.
-Mientras estas dependencias no se validen, reordenar o mover filas está **BLOQUEADO**.
+Los KPI de la intranet no dependen de la posición de las filas: la normalización no cambia sus valores.
 
-**Estructura viva auditada (28/10/2026, 1678 filas).**
+**Estructura viva normalizada (28/10/2026).**
 
-| Filas | Contenido real | Sección objetivo | Hallazgo |
+| Filas | Sección | Contenido | Conteo al normalizar |
 | --- | --- | --- | --- |
-| 1–2 | Título + encabezados | — | B1 decía solo `GESTION_DIA_PAGOS_2026_TIVIPLAY`; corregido el 28/10/2026 a «BASE GENERAL · TIVIPLAY (libro …)» |
-| 3–778 | 775 fichas: 692 Al dia, 7 Por vencer, 46 Vencido (TC=1) + 30 TC=0; fila 345 es separador «SEPTIEMBRE» | 1 | Contiene Vencidos; orden por registro, no por `F. PRÓXIMO PAGO` (293 inversiones) |
-| 779–810 | 32 altas de octubre (30 con último pago en octubre): 29 Al dia, 1 Por vencer, 2 Vencido | 5 (de facto, sin título) | Sección temporal del mes sin identificar; mezcla ventas y reactivaciones |
-| 811 | `TOTAL TIVIPLAY VIGENTE` = SUM(A3:A778) = 745 | 2 | Cubre solo el corte 30/09; excluye las altas 779–810. Matemáticamente coherente con su rango |
-| 812–817 | CLIENTES DE MIRA+ (4: 3 Al dia, 1 Vencido) + `TOTAL MIRA +` = 4 | 3 | Coherente |
-| 818–865 | VENCIDOS / PENDIENTES DE GESTIÓN · CORTE 30/09/2026 (46: 44 Vencido, 2 Al dia) + total = 46 | 6 | 2 fichas Al dia fuera de sección; orden no descendente (26 inversiones) |
-| 866 | `TOTAL GENERAL (INCLUYE VENCIDOS)` = 811 + 817 + 865 = 795 | 4 | Coherente con su fórmula, pero la definición incluye vencidos; el contrato define `TIVIPLAY + MIRA+` |
-| 867–869 | VENTAS SEPTIEMBRE EN EXCEPCIÓN (1) y su total, fuera del total general | — | No contemplada en el contrato |
-| 870–1466 | DESACTIVADOS por mes (sep 2026 → ene) con totales históricos | — | No contemplada; varios totales con rangos desplazados (p. ej. fila 926 SUM(A746:A925), 1062 SUM(A618:A1043)) y títulos inconsistentes (927: B «JULIO» vs G «JUNIO»; 996: B «DESACTIVADOS MAYO» vs G «REACTIVACIONES MAYO») |
-| 1471–1678 | RESELLER NC (205 fichas Vencido) + total | — | No contemplada en el contrato |
+| 1–2 | — | Título + encabezados | — |
+| 3 | S1 (título) | CLIENTES ACTIVOS TIVIPLAY · AL DIA / POR VENCER | — |
+| 4–727 | S1 | Fichas ordenadas por `F. PRÓXIMO PAGO` ascendente | 724 filas: 717 Al dia, 7 Por vencer; Σ TC 701 |
+| 728 | S5 (título) | ALTAS / REACTIVACIONES DEL MES EN CURSO · OCTUBRE 2026 | — |
+| 729–760 | S5 | Altas de octubre en orden de registro | 32: 29 Al dia, 1 Por vencer, 2 Vencido; Σ TC 32 |
+| 761 | S6 (título) | CLIENTES VENCIDOS · más reciente primero | — |
+| 762–858 | S6 | Fichas Vencido, `F. PRÓXIMO PAGO` descendente | 97 Vencido; Σ TC 90 |
+| 859 | — | TOTAL SECCIÓN CLIENTES VENCIDOS | 90 |
+| 860 | S2 | TOTAL TIVIPLAY (AL DIA + POR VENCER + VENCIDO + ALTAS DEL MES) | 823 |
+| 861 | — | ACTIVOS TIVIPLAY (AL DIA + POR VENCER) | 731 |
+| 862 | — | VENCIDOS TIVIPLAY (ESTADO = VENCIDO) | 92 (= 90 de S6 + 2 de S5) |
+| 863–868 | S3 | CLIENTES DE MIRA+ (4: 3 Al dia, 1 Vencido) + TOTAL MIRA + | 4 |
+| 869 | S4 | TOTAL GENERAL (TIVIPLAY + MIRA+) | 827 = 823 + 4 |
+| 870 | — | Separador «SEPTIEMBRE» (trasladado desde el interior de S1) | — |
+| 871–873 | Fuera de contrato | VENTAS SEPTIEMBRE EN EXCEPCIÓN (1) + total, fuera del total general | sin cambios |
+| 874 → | Fuera de contrato | DESACTIVADOS por mes (historial) y RESELLER NC | sin cambios (desplazados +3 filas) |
+
+Hallazgos de datos que no se corrigieron (no se modifica información comercial para que «encaje»): una ficha con `ESTADO` escrito como texto y `F. PRÓXIMO PAGO` en texto (queda al final de S1); una ficha de S6 con `F. PRÓXIMO PAGO` vacía (fecha 0, queda al final de S6); una ficha Al dia dentro del historial DESACTIVADOS (REQUIERE DECISIÓN).
 
 ## 6. Mapa de procesos
 
@@ -471,16 +497,17 @@ El orden futuro no implica autorización de implementación. Contexto debe aprob
 | Causa de la diferencia de propagación hoja de medio → `PAGOS [MES]` (caso ZEL-2, 24/10) | `REQUIERE EVIDENCIA` | Diagnóstico por fila; no atribuir al motor ni corregir en silencio |
 | Causa del `SIN BASE` de un cliente existente en ruta de reconexión (caso ZEL-1) | `REQUIERE EVIDENCIA` | Contrastar llave `CLIENTE_KEY + TC` con la fila de BASE |
 | Estructura viva y semántica de las hojas de ventas y pendientes de octubre | `REQUIERE EVIDENCIA` | Documentar antes de usarlas como contrato |
-| Disposición física de vencidos en BASE GENERAL | `DOCUMENTADO` (§5.5, 28/10/2026) | Contrato: sección 6 «CLIENTES VENCIDOS»; la estructura viva aún no lo cumple |
+| Disposición física de vencidos en BASE GENERAL | `VALIDADO` (§5.5, 28/10/2026) | S6 «CLIENTES VENCIDOS» normalizada; re-orden en cada cierre mensual |
 | Caso real completo hasta CONTROL y BASE GENERAL actualizada | `REQUIERE EVIDENCIA` | Observar sin automatizar |
 | Gate definitivo de RECONEXIÓN | `REQUIERE DECISIÓN` | Dirección |
 | Criterio operacional de BAJA | `REQUIERE DECISIÓN` | Dirección |
 | Responsable y escritura de las actualizaciones de BASE GENERAL | `REQUIERE DECISIÓN` | Dirección |
 | Precedencia de fechas técnicas si CONTROL y BASE GENERAL difieren | `REQUIERE DECISIÓN` | Dirección |
 | Pagador distinto del titular cuando afecte identidad | `REQUIERE DECISIÓN` | Dirección |
-| Estructura viva de BASE GENERAL vs contrato de 6 secciones (§5.5): Vencidos dentro del bloque activo, altas del mes sin sección propia, orden no conforme | `BLOQUEADO` | Mover/ordenar filas solo tras auditar dependencias `FILA_BASE` / `ORIGEN BASE` |
-| Alcance de `TOTAL TIVIPLAY VIGENTE` (¿incluye las altas del mes en curso y los Vencidos del bloque?) y definición de `TOTAL GENERAL` (hoy incluye vencidos) | `REQUIERE DECISIÓN` | Dirección |
+| Estructura viva de BASE GENERAL vs contrato de 6 secciones (§5.5) | `VALIDADO` (28/10/2026, DEC-2026-10-28-021) | Dependencias `FILA_BASE` auditadas y verificadas tras mover filas; `ORIGEN BASE` es evidencia estática |
+| Alcance de TOTAL TIVIPLAY y definición de TOTAL GENERAL | `DECIDIDO` (DEC-2026-10-28-021) | TOTAL TIVIPLAY = universo (activos + vencidos + altas del mes); TOTAL GENERAL = TIVIPLAY + MIRA+ |
 | Secciones históricas fuera del contrato (ventas en excepción, DESACTIVADOS por mes, RESELLER NC) y sus totales con rangos desplazados | `REQUIERE DECISIÓN` | Decidir si se archivan, se incorporan al contrato o se corrigen |
+| Ficha `Al dia` dentro del historial DESACTIVADOS de BASE GENERAL | `REQUIERE DECISIÓN` | Confirmar si se reincorpora a S1 o es historial |
 
 ## 19. Tabla de evidencias y referencias
 
