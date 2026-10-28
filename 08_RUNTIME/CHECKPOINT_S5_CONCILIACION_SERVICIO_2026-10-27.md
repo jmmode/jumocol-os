@@ -70,3 +70,27 @@ Que Gerencia resuelva en la intranet los casos multipanel activos, empezando por
 - **Semáforo BASE (columna E):** sin cambio. `E = Al dia (T ≥ 30) / Por vencer (1–29) / Vencido (≤ 0)` con `T = F.PRÓXIMO PAGO − hoy` es la semántica comercial documentada (S0, Contexto Maestro, manual financiero). El color lo da el formato condicional de texto `Por vencer` (ámbar). Un servicio ACTIVO con próximo pago en 25 días es POR VENCER: estado comercial, no de servicio. **Superado el 28/10/2026:** Dirección aprobó `> 5 Al dia · 1–5 Por vencer · ≤ 0 Vencido` (DEC-2026-10-28-020); las 1605 fórmulas de E se actualizaron y la fila completa se colorea por E.
 - **Cola operacional:** la cola existente se agrupa por tipo de tarea (LIBERAR primero). La tarea LIBERAR muestra USERNAME, panel a liberar, LINE_ID, panel a conservar, acción exacta, resultado esperado y estado.
 - **USUARIOS LIBERADOS:** se reutiliza la hoja existente del libro VENTAS 2026 (B ASESOR · C USUARIO · D CONTRASEÑA · E PANEL · F FECHA · G ESTADO; se usa H para LINE_ID). La tarea trae la fila preparada (copiar sin contraseña) y la intranet verifica por relectura si ya está registrada (PANEL + LINE_ID; sin LINE_ID, USUARIO + FECHA). La columna D nunca se lee. La línea solo es DISPONIBLE en la intranet tras EJECUTADO.
+
+## Cierre técnico BASE GENERAL (28/10/2026)
+
+**Estado:** `VALIDADO — ESTRUCTURA BASE GENERAL + CONSOLIDADOS` (DEC-2026-10-28-021/022; contrato en Contexto Maestro §5.5).
+
+| Indicador | Valor al cierre |
+| --- | --- |
+| S1 Al dia / Por vencer | 724 fichas (717 / 7), orden `F. PRÓXIMO PAGO` ascendente sin inversiones |
+| S5 Altas del mes | 32 fichas (29 Al dia, 1 Por vencer, 2 Vencido) |
+| S6 Vencidos | 97 fichas, más reciente primero; la ficha sin fecha queda al final |
+| TOTAL TIVIPLAY / ACTIVOS / VENCIDOS | 823 / 731 / 92 |
+| TOTAL MIRA+ / TOTAL GENERAL | 4 / 827 |
+| Referencias `FILA_BASE` | 251/251 con llave coincidente |
+| Caso de control | Sin cambios de datos |
+
+**Entrada del gate financiero — `HALLAZGO — AUDITORÍA FINANCIERA`:**
+1. ZELLE (SEPT) fila 62 → BASE fila 872 (bloque «ventas en excepción», TC = 0): USD 82, 08/09/2026, CONFIRMADO JM, venta con identidad pendiente (usuario y correo compartidos con otra ficha).
+2. ZELLE (SEPT) fila 142 → BASE fila 654 (TC = 0): USD 72, 27/09/2026, CONFIRMADO JM, servicio ADD-ON.
+
+Ambos pagos están confirmados, pero su ficha tiene TC = 0, así que no entran en totales que suman TC. No se cambió TC ni dato financiero.
+
+**REQUIERE DECISIÓN (no bloquea):** la ficha «Al dia» del historial DESACTIVADOS (celda `T` con texto) y la ficha duplicada TC = 0 de S6 sin `F. PRÓXIMO PAGO`.
+
+**NEXT ACTION:** `AUDITORÍA FINANCIERA FINAL → APTO/NO APTO MOTOR MENSUAL`.

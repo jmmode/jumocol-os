@@ -268,7 +268,10 @@ Los KPI de la intranet no dependen de la posición de las filas: la normalizaci�
 | 871–873 | Fuera de contrato | VENTAS SEPTIEMBRE EN EXCEPCIÓN (1) + total, fuera del total general | sin cambios |
 | 874 → | Fuera de contrato | DESACTIVADOS por mes (historial) y RESELLER NC | sin cambios (desplazados +3 filas) |
 
-Hallazgos de datos que no se corrigieron (no se modifica información comercial para que «encaje»): una ficha con `ESTADO` escrito como texto y `F. PRÓXIMO PAGO` en texto (queda al final de S1); una ficha de S6 con `F. PRÓXIMO PAGO` vacía (fecha 0, queda al final de S6); una ficha Al dia dentro del historial DESACTIVADOS (REQUIERE DECISIÓN).
+**Estado del gate:** `VALIDADO — ESTRUCTURA BASE GENERAL + CONSOLIDADOS` (aceptado por Dirección el 28/10/2026). Cierre técnico de residuos el mismo día (DEC-2026-10-28-022):
+- Ficha de S1 con `F. PRÓXIMO PAGO` en texto: el texto venía de las columnas fuente `AH`/`AI` (fechas escritas como texto en celdas de fecha). Se normalizó solo el tipo (misma fecha, dd-mm-yy) y se restauraron las fórmulas estándar de `E` y `T`, que estaban como valores fijos. La ficha quedó en su posición de S1 por `F. PRÓXIMO PAGO`.
+- Regla visual `CONFIRMADO JM`: misma condición (`W = CONFIRMADO JM` y `ESTADO ∈ {Al dia, Por vencer}`), ahora sobre `A3:AM` por contenido (no por filas fijas), con prioridad detrás de las reglas de texto de `E` y delante de las de fila: la celda `E` conserva su semáforo y el resto de la fila se resalta.
+- `REQUIERE DECISIÓN` (no se movieron ni modificaron): (a) la ficha «Al dia» del historial DESACTIVADOS muestra Al dia solo porque su celda `T` contiene un texto en lugar de la fórmula; su `F. PRÓXIMO PAGO` es anterior a hoy, así que su estado vigente no se demuestra. (b) La ficha de S6 sin `F. PRÓXIMO PAGO` es la cuenta duplicada (TC = 0) de un cliente cuya cuenta activa es otra ficha; ninguna fuente fecha esta ficha y se mantiene al final de S6.
 
 ## 6. Mapa de procesos
 
@@ -507,7 +510,9 @@ El orden futuro no implica autorización de implementación. Contexto debe aprob
 | Estructura viva de BASE GENERAL vs contrato de 6 secciones (§5.5) | `VALIDADO` (28/10/2026, DEC-2026-10-28-021) | Dependencias `FILA_BASE` auditadas y verificadas tras mover filas; `ORIGEN BASE` es evidencia estática |
 | Alcance de TOTAL TIVIPLAY y definición de TOTAL GENERAL | `DECIDIDO` (DEC-2026-10-28-021) | TOTAL TIVIPLAY = universo (activos + vencidos + altas del mes); TOTAL GENERAL = TIVIPLAY + MIRA+ |
 | Secciones históricas fuera del contrato (ventas en excepción, DESACTIVADOS por mes, RESELLER NC) y sus totales con rangos desplazados | `REQUIERE DECISIÓN` | Decidir si se archivan, se incorporan al contrato o se corrigen |
-| Ficha `Al dia` dentro del historial DESACTIVADOS de BASE GENERAL | `REQUIERE DECISIÓN` | Confirmar si se reincorpora a S1 o es historial |
+| Ficha `Al dia` dentro del historial DESACTIVADOS de BASE GENERAL | `REQUIERE DECISIÓN` | No reincorporada: su celda `T` contiene texto y `F. PRÓXIMO PAGO` es anterior a hoy; definir el contenido correcto de `T`/`REFERIDO` antes de reclasificar |
+| Ficha de S6 sin `F. PRÓXIMO PAGO` (cuenta duplicada TC = 0 de un cliente activo) | `REQUIERE DECISIÓN` | Decidir si se marca como duplicado/baja; no se infiere fecha |
+| Dos pagos de ZELLE (SEPT) enlazados a fichas TC = 0 | `HALLAZGO — AUDITORÍA FINANCIERA` | Entrada del gate financiero; no se cambia TC sin auditoría |
 
 ## 19. Tabla de evidencias y referencias
 
