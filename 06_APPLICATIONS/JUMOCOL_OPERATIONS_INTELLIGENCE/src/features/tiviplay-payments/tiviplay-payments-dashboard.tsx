@@ -180,7 +180,7 @@ export function TiviplayPaymentsDashboard({ initialSnapshot }: { initialSnapshot
             <MetricCard detail="Identificadores seudonimizados únicos" label="Clientes únicos que pagaron" value={String(metrics.uniquePayingClients)} />
             <MetricCard detail="Solo pagos USD confirmados" label="Ticket promedio USD" value={formatCurrency(metrics.currencies.USD.ticketAverage, "USD")} />
             <MetricCard detail="Próximo pago a más de 29 días" label="Clientes al día" tone="green" value={String(metrics.clientsByStatus["Al día"])} />
-            <MetricCard detail="Entre 0 y 29 días" label="Clientes por vencer" tone="yellow" value={String(metrics.clientsByStatus["Por vencer"])} />
+            <MetricCard detail="Entre 1 y 5 días" label="Clientes por vencer" tone="yellow" value={String(metrics.clientsByStatus["Por vencer"])} />
             <MetricCard detail="Fecha superada sin renovación confirmada" label="Clientes vencidos" tone="red" value={String(metrics.clientsByStatus.Vencido)} />
             <MetricCard detail="Estado de cobranza, distinto de vencido" label="Pendientes de pago" tone="yellow" value={String(metrics.clientsByStatus["Pendiente de pago"])} />
             <MetricCard detail="Excluidos de clientes activos" label="Clientes desactivados" tone="red" value={String(metrics.clientsByStatus.Desactivado)} />

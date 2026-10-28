@@ -914,7 +914,7 @@ export function buildRuntimeReadModel(input: {
   decisions.push("Meta del día: ninguna hoja vigente define meta diaria (PAGOS del mes indica «NO META»). Definir meta para habilitar % cumplimiento vs meta.");
   decisions.push("Proyección de cierre: no existe regla de proyección aprobada.");
   decisions.push("Conversión de moneda: recaudo se reporta separado por USD / COP / CAD; no existe tasa oficial definida para consolidar en una sola moneda.");
-  decisions.push("Clientes desactivados: se usa ESTADO=Vencido en fichas TC=1 con actividad desde 2026-06-01. Confirmar si TC=0 equivale a baja definitiva.");
+  decisions.push("Clientes vencidos: ESTADO=Vencido en fichas TC=1 con actividad desde 2026-06-01, en todas las secciones de BASE GENERAL. VENCIDO ≠ BAJA ≠ DESACTIVADO TÉCNICAMENTE. Confirmar si TC=0 equivale a baja definitiva.");
 
   const source = (role: SheetRole["role"]) =>
     roles.filter((r) => r.role === role && ("month" in r ? r.month === currentMonth : true)).map((r) => r.title).join(", ") || "—";
@@ -939,8 +939,8 @@ export function buildRuntimeReadModel(input: {
       },
       paymentsToConfirm: { value: { count: toConfirmCount, amount: toConfirm }, evidence: ev(source("PAGO"), "CONFIRMACION", "CONFIRMACION ≠ CONFIRMADO (pendiente, revisión o vacío)", "conteo y Σ por moneda") },
       decisionCases: { value: decisionCases, evidence: ev(carteraRole?.title ?? "—", "ESTADO_FINANCIERO / OBSERVACIONES", "REQUIERE DECISIÓN + SIN PAGO con señal de no renovación + filas desalineadas", "conteo") },
-      activeClients: { value: active, evidence: ev("BASE GENERAL", "TC / ESTADO / F.ULTIMO PAGO / F. PRÓXIMO PAGO", "TC=1, ESTADO ∈ {Al dia, Por vencer}, actividad ≥ 2026-06-01", "conteo") },
-      inactiveClients: { value: inactive, evidence: ev("BASE GENERAL", "TC / ESTADO", "TC=1, ESTADO=Vencido, actividad ≥ 2026-06-01", "conteo", "PARCIAL") },
+      activeClients: { value: active, evidence: ev("BASE GENERAL", "TC / ESTADO / F.ULTIMO PAGO / F. PRÓXIMO PAGO", "TC=1, ESTADO ∈ {Al dia, Por vencer}, actividad ≥ 2026-06-01, todas las secciones (TiviPlay + MIRA+ + altas del mes; no es el TOTAL TIVIPLAY VIGENTE de la hoja)", "conteo") },
+      inactiveClients: { value: inactive, evidence: ev("BASE GENERAL", "TC / ESTADO", "TC=1, ESTADO=Vencido (estado comercial; no es baja ni desactivación técnica), actividad ≥ 2026-06-01, todas las secciones", "conteo", "PARCIAL") },
       dailyTarget: { value: null, evidence: ev("—", "—", "Sin meta diaria definida en fuentes vigentes", "—", "REQUIERE_DECISION") },
       projection: { value: null, evidence: ev("—", "—", "Sin regla de proyección aprobada", "—", "REQUIERE_DECISION") },
       byMethod: {

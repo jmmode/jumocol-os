@@ -68,6 +68,16 @@ const sale = (c: string) => model.sales.find((s) => s.client === c);
 const svc = (u: string) => model.service.find((s) => s.usuario === u);
 const sync = (c: string) => model.sync.find((s) => s.client === c);
 
+describe("estadoPorT · semáforo comercial aprobado 28/10/2026", () => {
+  it("> 5 Al dia · 1–5 Por vencer · ≤ 0 Vencido", () => {
+    expect(estadoPorT("2026-11-21", "2026-10-28")).toEqual({ t: 24, estado: "Al dia" });
+    expect(estadoPorT("2026-11-03", "2026-10-28")).toEqual({ t: 6, estado: "Al dia" });
+    expect(estadoPorT("2026-11-02", "2026-10-28")).toEqual({ t: 5, estado: "Por vencer" });
+    expect(estadoPorT("2026-10-29", "2026-10-28")).toEqual({ t: 1, estado: "Por vencer" });
+    expect(estadoPorT("2026-10-28", "2026-10-28")).toEqual({ t: 0, estado: "Vencido" });
+  });
+});
+
 describe("VENTAS (jun → hoy)", () => {
   it("excluye enero–mayo y hojas que no son ventas", () => {
     const sel = selectSalesSheets([{ title: "VENTAS_OCTUBRE" }, { title: "(5) VENTAS_MAYO" }, { title: "PENDIENTES OCTUBRE" }, { title: "(6) VENTAS_JUNIO" }], TODAY);

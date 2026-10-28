@@ -100,7 +100,7 @@ function ManagementView({ model }: { model: TiviplayRuntimeLive }) {
         <KpiCard label="Pagos por confirmar" kpi={g.paymentsToConfirm} value={formatNumber(g.paymentsToConfirm.value.count)} detail={formatMoney(g.paymentsToConfirm.value.amount)} tone="yellow" />
         <KpiCard label="Casos que requieren decisión" kpi={g.decisionCases} value={formatNumber(g.decisionCases.value)} detail="Tarifa/enlace, no renovación, filas con error" tone="yellow" />
         <KpiCard label="Clientes activos" kpi={g.activeClients} value={formatNumber(g.activeClients.value)} detail={`${model.clients.pendingRenewal} por vencer · ${model.clients.inScope} en ventana`} tone="blue" />
-        <KpiCard label="Clientes desactivados" kpi={g.inactiveClients} value={formatNumber(g.inactiveClients.value)} detail={`ESTADO=Vencido · TC=0 fuera de conteo: ${model.clients.excludedTc0}`} tone="red" />
+        <KpiCard label="Clientes vencidos" kpi={g.inactiveClients} value={formatNumber(g.inactiveClients.value)} detail={`ESTADO=Vencido (comercial, no es baja) · TC=0 fuera de conteo: ${model.clients.excludedTc0}`} tone="red" />
         <KpiCard label="Proyección de cierre" kpi={g.projection} value="—" detail="" />
       </div>
 

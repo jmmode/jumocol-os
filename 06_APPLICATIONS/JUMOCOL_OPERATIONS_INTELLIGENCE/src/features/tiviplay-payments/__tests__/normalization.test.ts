@@ -57,7 +57,12 @@ describe("normalización TiviPlay", () => {
 
   it("calcula estados de vencimiento y conserva pendiente/desactivado", () => {
     expect(calculateClientStatus("2026-03-10", "2026-02-02", "", false)).toBe("Al día");
-    expect(calculateClientStatus("2026-02-20", "2026-02-02", "", false)).toBe("Por vencer");
+    // Regla aprobada 28/10/2026: > 5 Al día · 1–5 Por vencer · ≤ 0 Vencido.
+    expect(calculateClientStatus("2026-02-20", "2026-02-02", "", false)).toBe("Al día");
+    expect(calculateClientStatus("2026-02-08", "2026-02-02", "", false)).toBe("Al día");
+    expect(calculateClientStatus("2026-02-07", "2026-02-02", "", false)).toBe("Por vencer");
+    expect(calculateClientStatus("2026-02-03", "2026-02-02", "", false)).toBe("Por vencer");
+    expect(calculateClientStatus("2026-02-02", "2026-02-02", "", false)).toBe("Vencido");
     expect(calculateClientStatus("2026-01-31", "2026-02-02", "", false)).toBe("Vencido");
     expect(calculateClientStatus("2026-01-31", "2026-02-02", "", true)).toBe("Al día");
     expect(calculateClientStatus(null, "2026-02-02", "pendiente de pago")).toBe("Pendiente de pago");

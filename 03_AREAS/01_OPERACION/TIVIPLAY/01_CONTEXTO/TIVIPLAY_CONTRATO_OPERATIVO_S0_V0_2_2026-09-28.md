@@ -47,9 +47,11 @@ Roles:
 
 `F.PRÓXIMO PAGO` gobierna la cuenta regresiva `T`:
 
--   `T >= 30` → AL DIA
--   `T 1–29` → POR VENCER
+-   `T > 5` → AL DIA
+-   `T 1–5` → POR VENCER
 -   `T <= 0` → VENCIDO
+
+> Actualizado el 28/10/2026 (DEC-2026-10-28-020). La versión anterior (`T >= 30` AL DIA, `1–29` POR VENCER) producía falsos amarillos en ciclos mensuales pagados. Contrato completo de BASE GENERAL: Contexto Maestro §5.5.
 
 `ESTADO` no equivale a confirmación financiera. Un cliente puede estar
 `AL DIA` y simultáneamente `PENDIENTE CONFIRMACIÓN`.

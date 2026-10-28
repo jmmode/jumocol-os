@@ -172,10 +172,10 @@ const count = <T extends string>(items: Array<{ state?: T; gate?: T }>, pick: (x
     return acc;
   }, {});
 
-/** Regla del contrato S0: T = días hasta F.PRÓXIMO PAGO; T ≥ 30 AL DIA, 1–29 POR VENCER, ≤ 0 VENCIDO. */
+/** Semáforo comercial de BASE GENERAL (aprobado por Dirección 28/10/2026): T = días hasta F.PRÓXIMO PAGO; T > 5 AL DIA, 1–5 POR VENCER, ≤ 0 VENCIDO. */
 export function estadoPorT(fProximo: string, today: string) {
   const t = Math.round((Date.parse(`${fProximo}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
-  return { t, estado: t >= 30 ? "Al dia" : t >= 1 ? "Por vencer" : "Vencido" };
+  return { t, estado: t > 5 ? "Al dia" : t >= 1 ? "Por vencer" : "Vencido" };
 }
 
 /* ---------------------------------------------------------- BASE GENERAL */

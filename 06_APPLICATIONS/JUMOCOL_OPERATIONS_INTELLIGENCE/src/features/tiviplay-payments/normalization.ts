@@ -214,9 +214,10 @@ export function calculateClientStatus(
   const reference = Date.parse(`${referenceDate}T00:00:00Z`);
   if (!Number.isFinite(next) || !Number.isFinite(reference)) return "Requiere revisión";
 
+  // Semáforo comercial de BASE GENERAL (aprobado 28/10/2026): > 5 días Al día · 1–5 Por vencer · ≤ 0 Vencido.
   const days = Math.round((next - reference) / 86_400_000);
-  if (days < 0) return hasConfirmedRenewal ? "Al día" : "Vencido";
-  if (days <= 29) return "Por vencer";
+  if (days <= 0) return hasConfirmedRenewal ? "Al día" : "Vencido";
+  if (days <= 5) return "Por vencer";
   return "Al día";
 }
 

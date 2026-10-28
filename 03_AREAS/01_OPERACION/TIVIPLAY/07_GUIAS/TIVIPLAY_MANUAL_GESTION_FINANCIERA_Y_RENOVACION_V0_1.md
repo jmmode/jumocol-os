@@ -174,7 +174,7 @@ La hoja calcula `CLIENTE_KEY` (el nombre en mayúsculas y sin espacios sobrantes
 
 | Columna | Qué ve el asesor |
 |---|---|
-| `ESTADO` / `T` | `Al dia` si `T ≥ 30`; `Por vencer` si `1–29`; `Vencido` si `≤ 0`. `T` son los días hasta la F.PRÓXIMO PAGO |
+| `ESTADO` / `T` | `Al dia` si `T > 5`; `Por vencer` si `1–5`; `Vencido` si `≤ 0` (regla vigente desde el 28/10/2026). `T` son los días hasta la F.PRÓXIMO PAGO. El color de toda la fila sigue a `ESTADO` |
 | `COINCIDENCIAS_FINANCIERAS`, `FUENTE_FINANCIERA`, `FILA_FUENTE` | Qué pago del mes se encontró y en qué hoja y fila |
 | `CONFIRMACION_FINANCIERA` | `SIN PAGO`, `PENDIENTE CONFIRMACION`, `CONFIRMADO JM`, `REQUIERE REVISIÓN` o `REQUIERE DECISIÓN` |
 | `GATE_FINANCIERO`, `MOTIVO_GATE_FINANCIERO` | `VALIDADO` = "PAGO CONFIRMADO + FECHA + TARIFA + PROPUESTA CALCULADA" |
