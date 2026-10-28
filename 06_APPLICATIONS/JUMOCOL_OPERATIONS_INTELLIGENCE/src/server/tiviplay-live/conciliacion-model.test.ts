@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { classifyMultipanel, findReleasedRow, projectReconciliation, releasedSheetRow, residualTaskId, validateDecision, type Panel, type ReconCase, type ReconDataset } from "./conciliacion-model";
+import { classifyMultipanel, findReleasedRow, parseReleasedRanges, projectReconciliation, RELEASED_COLUMNS, releasedSheetRow, releasedSheetTsv, residualTaskId, validateDecision, type Panel, type ReconCase, type ReconDataset } from "./conciliacion-model";
 
 // Regresión de la regla de vigencia: EXISTENCIA MULTIPANEL ≠ ACTIVIDAD MULTIPANEL. Datos sintéticos.
 const CUT = "2026-10-27";
@@ -86,19 +86,46 @@ describe("Motor multipanel: regla de vigencia contra el corte", () => {
   });
 });
 
-describe("USUARIOS LIBERADOS: fila preparada y localización (datos sintéticos)", () => {
+describe("USUARIOS LIBERADOS · contrato A..H (datos sintéticos)", () => {
   const task = { kind: "LIBERAR" as const, username: "SINTETICO9", line: { panel: "P3" as const, row: 19, lineId: "900777", expiration: "2026-11-21", lastConnection: null } };
-  it("prepara la fila sin contraseña y con PANEL + LINE_ID", () => {
-    expect(releasedSheetRow(task, "Jorge Asesor")).toEqual({ advisor: "Jorge", username: "SINTETICO9", password: "", panel: "PANEL 3", date: "2026-11-21", status: "DISPONIBLE", lineId: "900777" });
+
+  it("1 · la fila preparada sigue el orden A..H; D (CONTRASEÑA) y H (OBSERVACIONES) vacías; ESTADO = DISPONIBLE", () => {
+    const row = releasedSheetRow(task, "Jorge Asesor")!;
+    expect(row).toEqual({ lineId: "900777", advisor: "Jorge", username: "SINTETICO9", password: "", panel: "PANEL 3", date: "2026-11-21", status: "DISPONIBLE", observations: "" });
+    expect(releasedSheetTsv(row).split("\t")).toEqual(["900777", "Jorge", "SINTETICO9", "", "PANEL 3", "2026-11-21", "DISPONIBLE", ""]);
+    expect(RELEASED_COLUMNS).toEqual(["A LINE_ID", "B ASESOR", "C USUARIO", "D CONTRASEÑA", "E PANEL", "F F.VENCIMIENTO", "G ESTADO", "H OBSERVACIONES"]);
     expect(releasedSheetRow(task, "Dirección")?.advisor).toBe("");
     expect(releasedSheetRow({ kind: "CREDENCIAL", username: "X" }, "Jorge")).toBeNull();
   });
-  it("encuentra la fila por PANEL + LINE_ID; sin LINE_ID exige USUARIO y FECHA; ignora liberaciones antiguas", () => {
-    const old = { row: 5, username: "sintetico9", panel: "PANEL 3", date: "2026-09-01", status: "VENCIDO", lineId: "" };
-    expect(findReleasedRow([old], task)).toBeNull();
-    expect(findReleasedRow([old, { ...old, row: 9, date: "2026-11-21", status: "DISPONIBLE" }], task)?.row).toBe(9);
-    expect(findReleasedRow([{ ...old, row: 12, username: "OTRO", lineId: "900777" }], task)?.row).toBe(12);
-    expect(findReleasedRow([{ ...old, row: 12, panel: "PANEL 1", lineId: "900777" }], task)).toBeNull();
+
+  it("2/3/6 · LINE_ID se toma de A; H y D no se leen ni participan", () => {
+    // El lector solo entrega A, C y E:G (fila 1 título, fila 2 encabezados).
+    const a = [["USUARIOS LIBERADOS"], ["LINE_ID"], [""], ["900777"]];
+    const c = [[], ["USUARIO"], ["SINTETICO8"], ["SINTETICO9"]];
+    const efg = [[], ["PANEL", "F.VENCIMIENTO", "ESTADO"], ["PANEL 3", "2026-10-23", "VENCIDO"], ["PANEL 3", "2026-11-21", "DISPONIBLE"]];
+    const rows = parseReleasedRanges(a, c, efg);
+    expect(rows.map((r) => [r.row, r.lineId, r.username, r.status])).toEqual([[2, "LINE_ID", "USUARIO", "ESTADO"], [3, "", "SINTETICO8", "VENCIDO"], [4, "900777", "SINTETICO9", "DISPONIBLE"]]);
+    for (const r of rows) expect(Object.keys(r).sort()).toEqual(["date", "lineId", "panel", "row", "status", "username"]);
+    // Una nota en OBSERVACIONES nunca llega al modelo: no puede usarse como LINE_ID.
+    expect(rows.some((r) => r.lineId === "Liberado venta 900777")).toBe(false);
+  });
+
+  it("5 · registro nuevo con LINE_ID: se reconoce por PANEL + LINE_ID", () => {
+    const rows = [{ row: 12, lineId: "900777", username: "OTRO-USUARIO", panel: "PANEL 3", date: "2026-11-30", status: "DISPONIBLE" }];
+    expect(findReleasedRow(rows, task)?.row).toBe(12);
+    expect(findReleasedRow([{ ...rows[0], panel: "PANEL 1" }], task)).toBeNull();
+    // Mismo USUARIO pero otro LINE_ID: no es esta línea.
+    expect(findReleasedRow([{ ...rows[0], username: "SINTETICO9", lineId: "900888" }], task)).toBeNull();
+  });
+
+  it("4 · histórico sin LINE_ID: fallback USUARIO + PANEL; ambigüedad se desempata por fecha o no se elige", () => {
+    const legacy = { row: 9, lineId: "", username: "sintetico9", panel: "PANEL 3", date: "2026-11-21", status: "DISPONIBLE" };
+    expect(findReleasedRow([legacy], task)?.row).toBe(9);
+    expect(findReleasedRow([{ ...legacy, date: "2026-11-30" }], task)?.row).toBe(9);
+    const older = { ...legacy, row: 5, date: "2026-09-01", status: "VENCIDO" };
+    expect(findReleasedRow([older, legacy], task)?.row).toBe(9);
+    expect(findReleasedRow([older, { ...older, row: 6 }], task)).toBeNull();
+    expect(findReleasedRow([{ ...legacy, panel: "PANEL 1" }], task)).toBeNull();
     expect(findReleasedRow(null, task)).toBeNull();
   });
 });

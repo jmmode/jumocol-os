@@ -234,29 +234,60 @@ export function validateDecision(c: ReconCase | undefined, option: string, finge
 }
 
 // ── USUARIOS LIBERADOS (libro VENTAS 2026, hoja existente) ────────────────────────────────────────────────
-// Columnas de la hoja: B ASESOR · C USUARIO · D CONTRASEÑA · E PANEL · F FECHA (vence la línea) · G ESTADO · H LINE_ID.
-// La intranet solo lee C, E, F, G y H: la contraseña (D) nunca se lee, se muestra ni se copia desde aquí.
+// Contrato vigente: A LINE_ID · B ASESOR · C USUARIO · D CONTRASEÑA · E PANEL · F F.VENCIMIENTO · G ESTADO · H OBSERVACIONES.
+// La intranet solo lee A, C, E, F y G. D (CONTRASEÑA) nunca se lee, se muestra ni se copia; H (OBSERVACIONES) no es identificador.
 export const RELEASED_SHEET = "USUARIOS LIBERADOS";
 export const RELEASED_ADVISORS = ["Jorge", "Manuela", "Julian", "Danna", "Heidy"] as const;
+export const RELEASED_COLUMNS = ["A LINE_ID", "B ASESOR", "C USUARIO", "D CONTRASEÑA", "E PANEL", "F F.VENCIMIENTO", "G ESTADO", "H OBSERVACIONES"] as const;
 
 export type ReleasedRow = { row: number; username: string; panel: string; date: string; status: string; lineId: string };
 
-/** Fila preparada para USUARIOS LIBERADOS a partir de una tarea LIBERAR. CONTRASEÑA queda vacía: la copia el Asesor desde el panel. */
+/**
+ * Construye las filas de USUARIOS LIBERADOS desde los rangos leídos: A (LINE_ID), C (USUARIO) y E:G (PANEL, F.VENCIMIENTO, ESTADO).
+ * Cada rango empieza en la fila 1, de modo que el índice + 1 es la fila real de la hoja.
+ */
+export function parseReleasedRanges(a: unknown[][], c: unknown[][], efg: unknown[][], normalizeDate: (v: string) => string | null = () => null): ReleasedRow[] {
+  const out: ReleasedRow[] = [];
+  const t = (v: unknown) => String(v ?? "").trim();
+  for (let i = 0; i < Math.max(a.length, c.length, efg.length); i += 1) {
+    const username = t(c[i]?.[0]);
+    const panel = t(efg[i]?.[0]);
+    if (!username && !panel) continue;
+    const date = t(efg[i]?.[1]);
+    out.push({ row: i + 1, lineId: t(a[i]?.[0]), username, panel, date: normalizeDate(date) ?? date, status: t(efg[i]?.[2]) });
+  }
+  return out;
+}
+
+/** Fila preparada para USUARIOS LIBERADOS (orden A..H) a partir de una tarea LIBERAR. CONTRASEÑA (D) y OBSERVACIONES (H) quedan vacías. */
 export function releasedSheetRow(task: Pick<AdvisorTask, "kind" | "username" | "line">, advisorName = "") {
   if (task.kind !== "LIBERAR" || !task.line) return null;
-  const first = advisorName.trim().split(/\s+/)[0]?.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase() ?? "";
+  const first = advisorName.trim().split(/\s+/)[0]?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() ?? "";
   const advisor = RELEASED_ADVISORS.find((a) => a.toLowerCase() === first) ?? "";
-  return { advisor, username: task.username, password: "", panel: PANEL_LABEL[task.line.panel], date: task.line.expiration, status: "DISPONIBLE", lineId: task.line.lineId };
+  return { lineId: task.line.lineId, advisor, username: task.username, password: "", panel: PANEL_LABEL[task.line.panel], date: task.line.expiration, status: "DISPONIBLE", observations: "" };
+}
+
+/** Valores A..H de la fila preparada, separados por tabulador, para pegar desde la columna A. D va vacía. */
+export function releasedSheetTsv(row: NonNullable<ReturnType<typeof releasedSheetRow>>) {
+  return [row.lineId, row.advisor, row.username, "", row.panel, row.date, row.status, row.observations].join("\t");
 }
 
 const normU = (v: string) => v.normalize("NFKC").replace(/\s+/g, "").toUpperCase();
 
-/** Fila de USUARIOS LIBERADOS que corresponde a la tarea: mismo PANEL y, si la fila trae LINE_ID, el mismo LINE_ID; si no, mismo USUARIO y misma FECHA (evita confundirla con liberaciones anteriores del mismo USUARIO). */
+/**
+ * Fila de USUARIOS LIBERADOS que corresponde a la tarea LIBERAR.
+ * 1) Identidad preferida: PANEL + LINE_ID (columna A).
+ * 2) Registros históricos sin LINE_ID: USUARIO + PANEL. Si hay varios, se desempata por F.VENCIMIENTO de la línea;
+ *    si sigue ambiguo, no se elige ninguno. Una fila con otro LINE_ID nunca coincide por este camino.
+ */
 export function findReleasedRow(rows: ReleasedRow[] | null, task: Pick<AdvisorTask, "username" | "line">) {
   if (!rows || !task.line) return null;
-  const panel = PANEL_LABEL[task.line.panel];
-  const candidates = rows.filter((r) => normU(r.panel) === normU(panel));
-  return candidates.find((r) => r.lineId.trim() === task.line!.lineId)
-    ?? candidates.find((r) => !r.lineId.trim() && normU(r.username) === normU(task.username) && r.date === task.line!.expiration)
-    ?? null;
+  const line = task.line;
+  const candidates = rows.filter((r) => normU(r.panel) === normU(PANEL_LABEL[line.panel]));
+  const byId = candidates.find((r) => r.lineId.trim() !== "" && r.lineId.trim() === line.lineId);
+  if (byId) return byId;
+  const legacy = candidates.filter((r) => r.lineId.trim() === "" && normU(r.username) === normU(task.username));
+  if (legacy.length === 1) return legacy[0];
+  const sameDate = legacy.filter((r) => r.date === line.expiration);
+  return sameDate.length === 1 ? sameDate[0] : null;
 }

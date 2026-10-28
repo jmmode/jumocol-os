@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { audit, db, type Identity } from "@/server/auth/store";
 import {
-  projectReconciliation, RELEASED_SHEET, validateDecision,
+  parseReleasedRanges, projectReconciliation, RELEASED_SHEET, validateDecision,
   type ReconDataset, type ReleasedRow, type ReconDecision, type TaskAction, type TaskEvent,
 } from "@/server/tiviplay-live/conciliacion-model";
 
@@ -155,28 +155,15 @@ export function isApplied(update: { row: number; field: string; to: string; user
 
 /**
  * Lectura viva (solo lectura) de la hoja existente USUARIOS LIBERADOS (libro VENTAS 2026).
- * Solo se piden las columnas C (USUARIO) y E:H (PANEL, FECHA, ESTADO, LINE_ID): la columna D (CONTRASEÑA) nunca se solicita.
+ * Solo se piden A (LINE_ID), C (USUARIO) y E:G (PANEL, F.VENCIMIENTO, ESTADO): nunca B, D (CONTRASEÑA) ni H (OBSERVACIONES).
  */
 export async function readReleasedLive(): Promise<ReleasedRow[] | null> {
   try {
-    const { getSheetsAccessToken, getTiviplaySalesSpreadsheetId, quoteSheet } = await import("@/server/tiviplay-live/sheets-client");
+    const { batchReadRanges, getSheetsAccessToken, getTiviplaySalesSpreadsheetId, quoteSheet } = await import("@/server/tiviplay-live/sheets-client");
+    const sheet = quoteSheet(RELEASED_SHEET);
     const token = await getSheetsAccessToken();
-    const params = new URLSearchParams({ valueRenderOption: "FORMATTED_VALUE", majorDimension: "ROWS" });
-    params.append("ranges", `${quoteSheet(RELEASED_SHEET)}!C1:C3000`);
-    params.append("ranges", `${quoteSheet(RELEASED_SHEET)}!E1:H3000`);
-    const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(getTiviplaySalesSpreadsheetId())}/values:batchGet?${params}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-    if (!response.ok) return null;
-    const payload = (await response.json()) as { valueRanges?: Array<{ values?: unknown[][] }> };
-    const users = payload.valueRanges?.[0]?.values ?? [];
-    const rest = payload.valueRanges?.[1]?.values ?? [];
-    const out: ReleasedRow[] = [];
-    for (let i = 0; i < Math.max(users.length, rest.length); i += 1) {
-      const username = String(users[i]?.[0] ?? "").trim();
-      const [panel, date, status, lineId] = (rest[i] ?? []).map((v) => String(v ?? "").trim());
-      if (!username && !panel) continue;
-      out.push({ row: i + 1, username, panel: panel ?? "", date: normalizeSheetDate(date ?? "") ?? (date ?? ""), status: status ?? "", lineId: lineId ?? "" });
-    }
-    return out;
+    const [a, c, efg] = await batchReadRanges(getTiviplaySalesSpreadsheetId(), token, [`${sheet}!A1:A3000`, `${sheet}!C1:C3000`, `${sheet}!E1:G3000`]);
+    return parseReleasedRanges(a, c, efg, normalizeSheetDate);
   } catch {
     return null;
   }

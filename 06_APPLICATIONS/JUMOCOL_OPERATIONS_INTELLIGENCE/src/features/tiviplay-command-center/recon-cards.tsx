@@ -2,9 +2,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { PANEL_LABEL, RELEASED_SHEET, type CaseView, type ReleasedRow, type TaskView } from "@/server/tiviplay-live/conciliacion-model";
+import { PANEL_LABEL, RELEASED_COLUMNS, RELEASED_SHEET, releasedSheetTsv, type CaseView, type ReleasedRow, type TaskView } from "@/server/tiviplay-live/conciliacion-model";
 
-type PreparedRow = { advisor: string; username: string; password: string; panel: string; date: string; status: string; lineId: string };
+type PreparedRow = { lineId: string; advisor: string; username: string; password: string; panel: string; date: string; status: string; observations: string };
 
 const button = "rounded-lg border px-3 py-1.5 text-xs font-black uppercase tracking-[0.06em] disabled:opacity-40";
 
@@ -101,9 +101,8 @@ export function ReconTaskRow({ t, client, prepared, released, releasedReadable }
 
   async function copyRow() {
     if (!prepared) return;
-    // Orden de columnas B..H de la hoja. CONTRASEÑA (D) va vacía: se copia desde el panel, nunca desde la intranet.
-    const tsv = [prepared.advisor, prepared.username, "", prepared.panel, prepared.date, prepared.status, prepared.lineId].join("\t");
-    try { await navigator.clipboard.writeText(tsv); setMessage(`Fila copiada. Péguela en la columna B de ${RELEASED_SHEET} y escriba la CONTRASEÑA desde el panel.`); }
+    // Orden A..H de la hoja. CONTRASEÑA (D) va vacía: se copia desde el panel, nunca desde la intranet.
+    try { await navigator.clipboard.writeText(releasedSheetTsv(prepared)); setMessage(`Fila copiada. Péguela en la columna A de ${RELEASED_SHEET} y escriba la CONTRASEÑA (D) desde el panel.`); }
     catch { setMessage("No se pudo copiar automáticamente: use la fila mostrada."); }
   }
 
@@ -149,11 +148,11 @@ export function ReconTaskRow({ t, client, prepared, released, releasedReadable }
               </div>
               <div className="mt-1 overflow-x-auto">
                 <table className="min-w-full text-left">
-                  <thead><tr className={label}>{["B ASESOR", "C USUARIO", "D CONTRASEÑA", "E PANEL", "F FECHA", "G ESTADO", "H LINE_ID"].map((h) => <th className="pr-3" key={h}>{h}</th>)}</tr></thead>
+                  <thead><tr className={label}>{RELEASED_COLUMNS.map((h) => <th className="pr-3" key={h}>{h}</th>)}</tr></thead>
                   <tbody><tr className="font-mono">
-                    <td className="pr-3">{prepared.advisor || "(su nombre)"}</td><td className="pr-3">{prepared.username}</td>
+                    <td className="pr-3">{prepared.lineId}</td><td className="pr-3">{prepared.advisor || "(su nombre)"}</td><td className="pr-3">{prepared.username}</td>
                     <td className="pr-3 font-sans text-brand-muted">desde el panel</td><td className="pr-3">{prepared.panel}</td>
-                    <td className="pr-3">{prepared.date}</td><td className="pr-3">{prepared.status}</td><td className="pr-3">{prepared.lineId}</td>
+                    <td className="pr-3">{prepared.date}</td><td className="pr-3">{prepared.status}</td><td className="pr-3 font-sans text-brand-muted">(opcional)</td>
                   </tr></tbody>
                 </table>
               </div>
