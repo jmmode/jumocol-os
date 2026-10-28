@@ -86,8 +86,33 @@ export type ReconDecision = { id: number; caseId: string; fingerprint: string; o
 export type TaskAction = "EJECUTADO" | "NO_SE_PUEDE";
 export type TaskEvent = { id: number; taskId: string; action: TaskAction; by: string; at: string; note: string | null };
 
+export type MultipanelMode = "UNICA_VIGENTE" | "VARIAS_VIGENTES" | "TODAS_VENCIDAS_EVIDENCIA" | "TODAS_VENCIDAS_AMBIGUO";
+
+/**
+ * EXISTENCIA MULTIPANEL ≠ ACTIVIDAD MULTIPANEL. Regla de vigencia contra la fecha de corte:
+ * - una sola línea con EXPIRATION ≥ corte → canónica automática (las vencidas son residuales);
+ * - dos o más vigentes → Gerencia, solo entre las vigentes;
+ * - todas vencidas → canónica por la evidencia BASE/CONTROL/cobertura ya calculada (propuesta); sin ella, Gerencia.
+ * Last Connection es complementaria y no interviene en la regla.
+ */
+export function classifyMultipanel(c: ReconCase, cut: string): { mode: MultipanelMode; keep: Panel | null; options: ReconOption[] } {
+  const vigentes = c.lines.filter((l) => l.expiration >= cut);
+  const keepOf = (id: string | null) => c.options.find((o) => o.id === id)?.keep ?? null;
+  if (vigentes.length === 1) return { mode: "UNICA_VIGENTE", keep: vigentes[0].panel, options: c.options.filter((o) => o.keep === vigentes[0].panel) };
+  if (vigentes.length > 1) {
+    const panels = new Set(vigentes.map((l) => l.panel));
+    return { mode: "VARIAS_VIGENTES", keep: null, options: c.options.filter((o) => o.keep != null && panels.has(o.keep)) };
+  }
+  const keep = keepOf(c.proposal);
+  return keep ? { mode: "TODAS_VENCIDAS_EVIDENCIA", keep, options: c.options.filter((o) => o.keep === keep) } : { mode: "TODAS_VENCIDAS_AMBIGUO", keep: null, options: c.options };
+}
+
+export const SYSTEM_ACTOR = "SISTEMA (regla de vigencia)";
+
 export type CaseView = ReconCase & {
-  status: "PENDIENTE" | "DECIDIDO" | "CONSOLIDADO";
+  status: "PENDIENTE" | "AUTOMATICO" | "DECIDIDO" | "CONSOLIDADO";
+  /** Solo multipanel: clasificación por vigencia. */
+  mode: MultipanelMode | null;
   decision: ReconDecision | null;
   history: ReconDecision[];
   chosen: ReconOption | null;
@@ -127,8 +152,14 @@ export function projectReconciliation(dataset: ReconDataset, decisions: ReconDec
 
   const generated: AdvisorTask[] = [];
   const baseSync: ReconProjection["baseSync"] = [];
-  const cases: CaseView[] = dataset.cases.map((c) => {
-    const history = decisions.filter((d) => d.caseId === c.id && d.fingerprint === c.fingerprint);
+  const cases: CaseView[] = dataset.cases.map((source) => {
+    const rule = source.kind === "MULTIPANEL" ? classifyMultipanel(source, dataset.cut) : null;
+    const automatic = rule != null && rule.keep != null;
+    // Las opciones visibles son solo las que la regla deja abiertas (una línea vencida nunca es candidata si hay vigentes).
+    const c: ReconCase = rule ? { ...source, options: rule.options, proposal: rule.options.some((o) => o.id === source.proposal) ? source.proposal : null } : source;
+    const history = automatic
+      ? [{ id: 0, caseId: c.id, fingerprint: c.fingerprint, option: rule!.options[0].id, by: SYSTEM_ACTOR, at: dataset.generatedAt, supersedes: null, reason: rule!.mode }]
+      : decisions.filter((d) => d.caseId === c.id && d.fingerprint === c.fingerprint && c.options.some((o) => o.id === d.option));
     const decision = currentDecision(history);
     const chosen = decision ? c.options.find((o) => o.id === decision.option) ?? null : null;
     const residualTasks: string[] = [];
@@ -141,7 +172,9 @@ export function projectReconciliation(dataset: ReconDataset, decisions: ReconDec
             id, kind: "LIBERAR", username: c.username, caseId: c.id, keepPanel: chosen.keep, releasePanel: line.panel, line,
             title: `LIBERAR ${PANEL_LABEL[line.panel]} — ${c.username}`,
             instruction: `Liberar en ${PANEL_LABEL[line.panel]} la línea ID ${line.lineId} (fila ${line.row} del corte, vence ${line.expiration}). Se conserva ${PANEL_LABEL[chosen.keep]}.`,
-            evidence: `Decisión ${decision!.by} · ${decision!.at}: conservar ${PANEL_LABEL[chosen.keep]}.`,
+            evidence: automatic
+              ? `Regla de vigencia (corte ${dataset.cut}): ${PANEL_LABEL[chosen.keep]} ${rule!.mode === "UNICA_VIGENTE" ? "es la única línea vigente" : "es el canónico por evidencia BASE/CONTROL (todas vencidas)"}; esta línea venció el ${line.expiration}.`
+              : `Decisión ${decision!.by} · ${decision!.at}: conservar ${PANEL_LABEL[chosen.keep]}.`,
           });
         }
       }
@@ -153,7 +186,8 @@ export function projectReconciliation(dataset: ReconDataset, decisions: ReconDec
       for (const u of chosen.baseUpdates) baseSync.push({ ...u, caseId: c.id, username: c.username, decidedAt: decision!.at });
     }
     const consolidated = chosen != null && residualTasks.every((id) => taskStatus(id) === "EJECUTADO");
-    return { ...c, status: chosen ? (consolidated ? "CONSOLIDADO" : "DECIDIDO") : "PENDIENTE", decision, history, chosen, residualTasks };
+    const status: CaseView["status"] = !chosen ? "PENDIENTE" : consolidated ? "CONSOLIDADO" : automatic ? "AUTOMATICO" : "DECIDIDO";
+    return { ...c, status, mode: rule?.mode ?? null, decision, history, chosen, residualTasks };
   });
 
   const tasks: TaskView[] = [...dataset.tasks, ...generated].map((t) => ({ ...t, status: taskStatus(t.id), events: eventsByTask.get(t.id) ?? [] }));
@@ -164,11 +198,16 @@ export function projectReconciliation(dataset: ReconDataset, decisions: ReconDec
       return { username: t.username, line: t.line!, by: done.by, at: done.at };
     });
 
-  // Estado operacional: un caso multipanel resuelto y consolidado deja de ser excepción.
-  const closed = new Set(cases.filter((c) => c.status === "CONSOLIDADO").map((c) => c.username));
+  // Estado operacional: con panel canónico establecido (regla o decisión), el servicio se clasifica por la vigencia de esa línea.
+  const resolved = new Map<string, ServiceState>();
+  for (const c of cases) {
+    if (c.kind !== "MULTIPANEL" || !c.chosen?.keep) continue;
+    const line = c.lines.find((l) => l.panel === c.chosen!.keep);
+    resolved.set(c.username, line && line.expiration >= dataset.cut ? "ACTIVO" : "INACTIVO");
+  }
   const counts = { ACTIVO: 0, INACTIVO: 0, EXCEPCION: 0, total: 0 };
   for (const s of dataset.services) {
-    const state: ServiceState = s.state === "EXCEPCION" && closed.has(s.username) ? "ACTIVO" : s.state;
+    const state: ServiceState = resolved.get(s.username) ?? s.state;
     counts[state] += 1;
     counts.total += 1;
   }
@@ -176,8 +215,13 @@ export function projectReconciliation(dataset: ReconDataset, decisions: ReconDec
 }
 
 /** Valida una decisión contra el caso antes de guardarla. Devuelve el mensaje de error o null. */
-export function validateDecision(c: ReconCase | undefined, option: string, fingerprint: string, previous: ReconDecision | null, supersedes: number | null, reason: string | null, executedResiduals: boolean) {
+export function validateDecision(c: ReconCase | undefined, option: string, fingerprint: string, previous: ReconDecision | null, supersedes: number | null, reason: string | null, executedResiduals: boolean, cut?: string) {
   if (!c) return "Caso inexistente.";
+  if (c.kind === "MULTIPANEL" && cut) {
+    const rule = classifyMultipanel(c, cut);
+    if (rule.keep) return "Caso resuelto por la regla de vigencia: no requiere decisión de Gerencia.";
+    if (!rule.options.some((o) => o.id === option)) return "Opción no válida: solo se puede conservar un panel vigente.";
+  }
   if (fingerprint !== c.fingerprint) return "El caso cambió desde que se cargó: recargue antes de decidir.";
   if (!c.options.some((o) => o.id === option)) return "Opción no válida para este caso.";
   if (previous) {

@@ -65,10 +65,11 @@ export default async function ConciliacionPage({ searchParams }: { searchParams:
         <p className={`mt-6 ${blocked}`}>BLOQUEADO: no se encontró el dataset privado de conciliación (data/private/tiviplay/conciliacion-servicio.json).</p>
       ) : (
         <div className="mt-6 space-y-5">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <div className={stat}><p className="text-[10px] font-black uppercase tracking-[0.1em] text-brand-muted">Activos</p><p className="text-2xl font-semibold">{data.services.ACTIVO}</p></div>
             <div className={stat}><p className="text-[10px] font-black uppercase tracking-[0.1em] text-brand-muted">Inactivos</p><p className="text-2xl font-semibold">{data.services.INACTIVO}</p></div>
             <div className={stat}><p className="text-[10px] font-black uppercase tracking-[0.1em] text-brand-muted">Excepción</p><p className="text-2xl font-semibold">{data.services.EXCEPCION}</p></div>
+            <div className={stat}><p className="text-[10px] font-black uppercase tracking-[0.1em] text-brand-muted">Resueltos por vigencia</p><p className="text-2xl font-semibold">{data.cases.filter((c) => c.decision?.id === 0).length}</p></div>
             <div className={stat}><p className="text-[10px] font-black uppercase tracking-[0.1em] text-brand-muted">Decisiones pendientes</p><p className="text-2xl font-semibold">{data.cases.filter((c) => c.status === "PENDIENTE").length}</p></div>
             <div className={stat}><p className="text-[10px] font-black uppercase tracking-[0.1em] text-brand-muted">Tareas Asesor abiertas</p><p className="text-2xl font-semibold">{data.tasks.filter((t) => t.status !== "EJECUTADO").length}</p></div>
           </div>
@@ -86,7 +87,7 @@ export default async function ConciliacionPage({ searchParams }: { searchParams:
               description="Cada tarjeta muestra solo las alternativas que existen para ese servicio. Al decidir: queda registrada y bloqueada, BASE pasa a la cola de sincronización y cada línea residual genera su tarea LIBERAR."
               action={(
                 <div className="flex flex-wrap gap-2 text-xs">
-                  {[["", `Activos (${data.cases.filter((c) => c.status === "PENDIENTE" && c.active).length})`], ["inactivos", `Inactivos (${data.cases.filter((c) => c.status === "PENDIENTE" && !c.active).length})`], ["decididos", `Decididos (${data.cases.filter((c) => c.status !== "PENDIENTE").length})`]].map(([v, label]) => (
+                  {[["", `Activos (${data.cases.filter((c) => c.status === "PENDIENTE" && c.active).length})`], ["inactivos", `Inactivos (${data.cases.filter((c) => c.status === "PENDIENTE" && !c.active).length})`], ["decididos", `Resueltos (${data.cases.filter((c) => c.status !== "PENDIENTE").length})`]].map(([v, label]) => (
                     <Link className={`rounded-full border px-3 py-1.5 font-bold ${(ver ?? "") === v ? "border-brand-primary-dark bg-brand-primary-dark text-white" : "border-brand-border text-brand-muted"}`} href={`?${new URLSearchParams({ ...(v ? { ver: v } : {}), ...(q ? { q } : {}) })}`} key={v} prefetch={false}>{label}</Link>
                   ))}
                 </div>
@@ -100,7 +101,7 @@ export default async function ConciliacionPage({ searchParams }: { searchParams:
                     return (
                       <div className="mb-5" key={kind}>
                         <h3 className="mb-2 text-xs font-black uppercase tracking-[0.1em] text-status-warning">{KIND[kind]} · {shown.filter((c) => c.kind === kind).length}</h3>
-                        <ul className="space-y-3">{list.map((c) => <ReconCaseCard c={c} client={client(c.baseRows)} key={c.id} />)}</ul>
+                        <ul className="space-y-3">{list.map((c) => <ReconCaseCard c={c} client={client(c.baseRows)} cut={data.cut} key={c.id} />)}</ul>
                       </div>
                     );
                   })}

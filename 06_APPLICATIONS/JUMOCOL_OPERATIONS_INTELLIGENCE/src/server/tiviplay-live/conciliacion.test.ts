@@ -10,7 +10,8 @@ import { residualTaskId, type ReconDataset } from "./conciliacion-model";
 // Datos sintéticos: ningún cliente, usuario ni línea real.
 const admin: Identity = { id: "julian", name: "Dirección", role: "ADMIN" };
 const advisor: Identity = { id: "jorge", name: "Asesor", role: "OPERADOR" };
-const p1 = { panel: "P1" as const, row: 10, lineId: "900001", expiration: "2026-05-01", lastConnection: null };
+// Dos líneas vigentes: ambigüedad real que sí exige decisión de Gerencia.
+const p1 = { panel: "P1" as const, row: 10, lineId: "900001", expiration: "2026-11-05", lastConnection: null };
 const p3 = { panel: "P3" as const, row: 20, lineId: "900003", expiration: "2026-11-20", lastConnection: null };
 
 const dataset: ReconDataset = {

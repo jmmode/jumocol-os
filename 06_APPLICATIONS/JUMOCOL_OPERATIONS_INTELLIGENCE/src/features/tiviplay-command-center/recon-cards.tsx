@@ -13,7 +13,7 @@ async function post(url: string, body: Record<string, string>) {
 }
 
 /** Tarjeta de Gerencia: alternativas reales del servicio; la elección queda bloqueada y dispara BASE + tareas. */
-export function ReconCaseCard({ c, client }: { c: CaseView; client: string | null }) {
+export function ReconCaseCard({ c, client, cut }: { c: CaseView; client: string | null; cut: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -43,7 +43,7 @@ export function ReconCaseCard({ c, client }: { c: CaseView; client: string | nul
         <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {c.lines.map((l) => (
             <div className={`rounded-lg border px-3 py-2 text-xs ${c.chosen?.keep === l.panel ? "border-brand-green" : "border-brand-border"}`} key={`${l.panel}-${l.lineId}`}>
-              <p className="font-black">{PANEL_LABEL[l.panel]}</p>
+              <p className="font-black">{PANEL_LABEL[l.panel]} · <span className={l.expiration >= cut ? "text-status-success" : "text-status-error"}>{l.expiration >= cut ? "VIGENTE" : "VENCIDA"}</span></p>
               <p>Línea ID {l.lineId} · fila {l.row}</p>
               <p>Vence <strong className="tabular-nums">{l.expiration}</strong></p>
               <p className="text-brand-muted">Última conexión: {l.lastConnection ?? "sin dato confiable"}</p>
@@ -58,7 +58,7 @@ export function ReconCaseCard({ c, client }: { c: CaseView; client: string | nul
           <p><strong>Decidido:</strong> {c.chosen?.label} · {c.decision!.by} · {new Date(c.decision!.at).toLocaleString("es-CO", { timeZone: "America/Bogota" })}</p>
           <p className="text-brand-muted">{c.chosen?.effect}</p>
           {c.history.length > 1 ? <p className="text-brand-muted">Historial: {c.history.map((h) => `${c.options.find((o) => o.id === h.option)?.label ?? h.option} (${h.by})`).join(" → ")}</p> : null}
-          <button className={`${button} mt-2 border-brand-border`} onClick={() => setCorrecting(true)} type="button">Registrar corrección</button>
+          {c.status === "AUTOMATICO" || c.decision?.id === 0 ? <p className="mt-1 font-semibold">Resuelto por regla de vigencia: no requiere decisión.</p> : <button className={`${button} mt-2 border-brand-border`} onClick={() => setCorrecting(true)} type="button">Registrar corrección</button>}
         </div>
       ) : (
         <div className="mt-3 space-y-2">

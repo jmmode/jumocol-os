@@ -16,7 +16,7 @@ export function datasetPath() {
 
 export function loadDataset(): ReconDataset | null {
   try {
-    const parsed = JSON.parse(readFileSync(datasetPath(), "utf8")) as ReconDataset;
+    const parsed = JSON.parse(readFileSync(/*turbopackIgnore: true*/ datasetPath(), "utf8")) as ReconDataset;
     if (!parsed || !Array.isArray(parsed.cases) || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.services)) return null;
     return parsed;
   } catch {
@@ -69,7 +69,7 @@ export function recordReconDecision(actor: Identity, input: Record<string, strin
   const projection = projectReconciliation(dataset, listReconDecisions(), listTaskEvents());
   const view = projection.cases.find((c) => c.id === caseId);
   const executed = view ? view.residualTasks.some((id) => projection.tasks.find((t) => t.id === id)?.status === "EJECUTADO") : false;
-  const error = validateDecision(dataset.cases.find((c) => c.id === caseId), option, fingerprint, view?.decision ?? null, supersedes, reason, executed);
+  const error = validateDecision(dataset.cases.find((c) => c.id === caseId), option, fingerprint, view?.decision ?? null, supersedes, reason, executed, dataset.cut);
   if (error) throw new Error(error);
   tables().prepare("INSERT INTO tiviplay_recon_decisions(at,user_id,case_id,fingerprint,option,supersedes,reason) VALUES(?,?,?,?,?,?,?)")
     .run(new Date().toISOString(), actor.id, caseId, fingerprint, option, supersedes, reason);
