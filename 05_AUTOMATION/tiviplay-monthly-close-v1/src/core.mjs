@@ -47,6 +47,33 @@ export function normalizeHeaders(row) {
   return map;
 }
 
+// Columnas que el motor nunca lee ni conserva (credenciales de servicio del cliente).
+export const SENSITIVE_HEADERS = ["CONTRASEÑA", "CONTRASENA", "PASSWORD", "CLAVE"];
+
+export function isSensitiveHeader(value) {
+  return SENSITIVE_HEADERS.includes(canon(value).replace(/\s+/g, " "));
+}
+
+// Defensa en profundidad: vacía las columnas sensibles de cualquier entrada antes de calcular.
+export function redactSensitiveColumns(rows) {
+  let headerRowIndex;
+  try {
+    headerRowIndex = findHeaderRow(rows);
+  } catch {
+    return rows;
+  }
+  const sensitive = (rows[headerRowIndex] ?? [])
+    .map((value, index) => (isSensitiveHeader(value) ? index : -1))
+    .filter((index) => index >= 0);
+  if (!sensitive.length) return rows;
+  return rows.map((row, i) => {
+    if (i <= headerRowIndex || !Array.isArray(row)) return row;
+    const copy = [...row];
+    for (const index of sensitive) if (index < copy.length) copy[index] = "";
+    return copy;
+  });
+}
+
 function findHeaderRow(rows) {
   const required = ["TC", "CLIENTE"];
   for (let i = 0; i < Math.min(rows.length, 20); i++) {
@@ -128,7 +155,8 @@ function classifyCandidate({ status, observations, referredBy }) {
   };
 }
 
-export function buildMonthlyClose(rows, targetMonth, options = {}) {
+export function buildMonthlyClose(inputRows, targetMonth, options = {}) {
+  const rows = redactSensitiveColumns(inputRows);
   // Fecha de corte explícita: el motor nunca usa la fecha de ejecución.
   const cutoffDate = normalizeCutoffDate(options.cutoffDate);
   const headerRowIndex = findHeaderRow(rows);
@@ -148,7 +176,6 @@ export function buildMonthlyClose(rows, targetMonth, options = {}) {
     cop: findColumn(headers, ["COP"]),
     metodoPago: findColumn(headers, ["MÉTODO DE PAGO", "METODO DE PAGO", "MÉTODO", "METODO"]),
     usuario: findColumn(headers, ["USUARIO"]),
-    contrasena: findColumn(headers, ["CONTRASEÑA", "CONTRASENA"]),
     panel: findColumn(headers, ["PANEL"]),
     vencimiento: findColumn(headers, ["F.VENCIMIENTO"]),
     ultimoPago: findColumn(headers, ["F.ULTIMO PAGO", "F. ÚLTIMO PAGO"]),
@@ -233,7 +260,6 @@ export function buildMonthlyClose(rows, targetMonth, options = {}) {
       cop: valueAt(row, cols.cop),
       paymentMethod: valueAt(row, cols.metodoPago),
       username: valueAt(row, cols.usuario),
-      password: valueAt(row, cols.contrasena),
       panel: valueAt(row, cols.panel),
       expirationDate: valueAt(row, cols.vencimiento),
       lastPaymentDate: valueAt(row, cols.ultimoPago),

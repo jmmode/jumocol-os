@@ -6,6 +6,7 @@ import {
   compareRuns,
   validateOracle,
 } from "./src/core.mjs";
+import { buildEvidence, findLeaks, renderMarkdown, toPrivateCsv } from "./src/evidence.mjs";
 import { readSheetValues } from "./src/google-sheets.mjs";
 
 const spreadsheetId = process.env.TIVIPLAY_SPREADSHEET_ID;
@@ -14,7 +15,8 @@ const targetMonth = process.env.TIVIPLAY_TARGET_MONTH;
 // Fecha de corte explícita (YYYY-MM-DD). Sin ella no se calculan días de mora de cartera.
 const cutoffDate = process.env.TIVIPLAY_CUTOFF_DATE || null;
 const sourceRange = process.env.TIVIPLAY_SOURCE_RANGE ?? "A1:W5000";
-const persistSnapshot = (process.env.TIVIPLAY_PERSIST_SNAPSHOT ?? "true").toLowerCase() !== "false";
+// Salidas privadas (snapshot y preview con datos de clientes): solo si se piden explícitamente.
+const persistSnapshot = (process.env.TIVIPLAY_PERSIST_SNAPSHOT ?? "false").toLowerCase() === "true";
 
 const expectedCount = process.env.TIVIPLAY_EXPECTED_COUNT
   ? Number(process.env.TIVIPLAY_EXPECTED_COUNT)
@@ -74,9 +76,8 @@ const status = !technicalValid
 
 const generatedAt = new Date().toISOString();
 
-const evidence = {
+const evidence = buildEvidence({
   generatedAt,
-  mode: "READ_ONLY_LIVE_WITH_LOCAL_SNAPSHOT",
   source: {
     spreadsheetIdHash: maskId(spreadsheetId),
     sheetName,
@@ -94,7 +95,14 @@ const evidence = {
     ...oracle,
   },
   status,
-};
+});
+
+const evidenceJson = JSON.stringify(evidence, null, 2) + "\n";
+const evidenceMd = renderMarkdown(evidence);
+if (findLeaks(evidenceJson + evidenceMd, run1.preview) > 0) {
+  console.error("Evidencia bloqueada: contiene datos del preview. No se escribió ningún archivo.");
+  process.exit(2);
+}
 
 const evidenceDir = path.resolve("evidence");
 await fs.mkdir(evidenceDir, { recursive: true });
@@ -102,8 +110,8 @@ await fs.mkdir(evidenceDir, { recursive: true });
 const jsonPath = path.join(evidenceDir, `monthly-close-${targetMonth}.json`);
 const mdPath = path.join(evidenceDir, `monthly-close-${targetMonth}.md`);
 
-await fs.writeFile(jsonPath, JSON.stringify(evidence, null, 2) + "\n", "utf8");
-await fs.writeFile(mdPath, renderMarkdown(evidence), "utf8");
+await fs.writeFile(jsonPath, evidenceJson, "utf8");
+await fs.writeFile(mdPath, evidenceMd, "utf8");
 
 let snapshotPath = null;
 if (persistSnapshot) {
@@ -146,7 +154,7 @@ if (persistSnapshot) {
     JSON.stringify({ generatedAt, targetMonth, rows: run1.preview }, null, 2) + "\n",
     "utf8"
   );
-  await fs.writeFile(previewCsvPath, toCsv(run1.preview), "utf8");
+  await fs.writeFile(previewCsvPath, toPrivateCsv(run1.preview), "utf8");
   await fs.writeFile(
     exceptionsPath,
     JSON.stringify({ generatedAt, targetMonth, exceptions: run1.exceptions }, null, 2) + "\n",
@@ -198,82 +206,4 @@ function maskId(id) {
 
 function safeFileName(value) {
   return String(value).replace(/[^a-zA-Z0-9._-]+/g, "_");
-}
-
-function csvEscape(value) {
-  const s = String(value ?? "");
-  if (/[",\n\r]/.test(s)) return `"${s.replaceAll('"', '""')}"`;
-  return s;
-}
-
-function toCsv(rows) {
-  if (!rows.length) return "";
-  const headers = [
-    "sourceRow","week","classification","reviewReasons","tc","client","phone","email","status",
-    "observations","plan","screens","mobile","usd","cop","paymentMethod","username",
-    "password","panel","expirationDate","lastPaymentDate","nextPaymentDate",
-    "referredBy","devices","serviceType","origin"
-  ];
-  const lines = [headers.join(",")];
-  for (const row of rows) {
-    lines.push(headers.map((key) => csvEscape(Array.isArray(row[key]) ? row[key].join("|") : row[key])).join(","));
-  }
-  return lines.join("\n") + "\n";
-}
-
-function renderMarkdown(e) {
-  const errors = e.oracle.errors.length
-    ? e.oracle.errors.map((x) => `- ${x}`).join("\n")
-    : "- Ninguna";
-
-  return `# TIVIPLAY_MONTHLY_CLOSE_V1 — Evidencia de ejecución
-
-**Generado:** ${e.generatedAt}  
-**Modo:** ${e.mode}  
-**Hoja fuente:** \`${e.source.sheetName}\`  
-**Mes objetivo:** \`${e.targetMonth}\`  
-**Estado:** **${e.status}**
-
-## Resultado
-
-| Métrica | RUN 1 | RUN 2 |
-|---|---:|---:|
-| Total | ${e.run1.total} | ${e.run2.total} |
-| Semana 1 | ${e.run1.weeks[0]} | ${e.run2.weeks[0]} |
-| Semana 2 | ${e.run1.weeks[1]} | ${e.run2.weeks[1]} |
-| Semana 3 | ${e.run1.weeks[2]} | ${e.run2.weeks[2]} |
-| Semana 4 | ${e.run1.weeks[3]} | ${e.run2.weeks[3]} |
-| Semana 5 | ${e.run1.weeks[4]} | ${e.run2.weeks[4]} |
-
-## Determinismo
-
-- Firma RUN 1: \`${e.run1.signature}\`
-- Firma RUN 2: \`${e.run2.signature}\`
-- Misma entrada → mismo resultado: **${e.repeatability.identical ? "SÍ" : "NO"}**
-- Fuente estable durante la ventana de ejecución: **${e.source.stableDuringRun ? "SÍ" : "NO"}**
-- Hash lectura 1: \`${e.source.hashAtRead1}\`
-- Hash lectura 2: \`${e.source.hashAtRead2}\`
-- Duplicados detectados: **${e.run1.duplicates.length}**
-- Excepciones de fecha: **${e.run1.exceptions.length}**
-- Preview privado generado: **${e.run1.preview.length} registros**
-- Fecha de corte: **${e.run1.cutoffDate ?? "no suministrada"}**
-- Cartera vencida (TC=1, F. PRÓXIMO PAGO < mes objetivo): **${e.run1.carteraVencida.length}**
-- Firma de salida completa: \`${e.run1.outputSignature}\`
-- Clasificaciones: \`${JSON.stringify(e.run1.classificationCounts)}\`
-- Motivos de revisión: \`${JSON.stringify(e.run1.reviewReasonCounts)}\`
-
-## Oracle
-
-**Suministrado:** ${e.oracle.provided ? "SÍ" : "NO"}
-
-${errors}
-
-**Resultado oracle:** ${e.oracle.provided ? (e.oracle.valid ? "MATCH" : "DIFFERENCE") : "NO APLICA"}
-
-## Criterio
-
-- \`VALIDADO\`: determinismo técnico + fuente estable + cero duplicados + oracle suministrado y coincidente.
-- \`VALIDADO_TECNICO\`: determinismo técnico + fuente estable + cero duplicados, sin oracle de negocio.
-- \`PARCIAL\`: falla alguna condición técnica o el oracle suministrado no coincide.
-`;
 }
