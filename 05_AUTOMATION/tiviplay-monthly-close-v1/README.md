@@ -77,33 +77,39 @@ Esto no certifica la corrección de negocio del universo; certifica que el motor
 
 ## Snapshot privado de corte
 
-Cada ejecución puede persistir una copia privada de la entrada viva para permitir auditoría y replay posterior.
+Opcional y **desactivado por defecto**. Solo se escribe si se pide explícitamente:
 
-Ubicación local:
+```powershell
+$env:TIVIPLAY_PERSIST_SNAPSHOT="true"
+```
+
+Ubicación local (fuera de Git mediante la política `data/private`):
 
 ```text
 06_APPLICATIONS/JUMOCOL_OPERATIONS_INTELLIGENCE/data/private/
   tiviplay-monthly-close-v1/snapshots/
 ```
 
-Esta ruta queda fuera de Git mediante la política `data/private`.
+El snapshot contiene datos operativos de clientes (nunca la contraseña) y no debe subirse al repositorio.
 
-El snapshot contiene datos operativos y no debe subirse al repositorio.
+## Datos sensibles
 
-Para deshabilitarlo:
+- La columna `CONTRASEÑA` (y equivalentes) **no se solicita a la API**: la lectura localiza la fila de encabezados y pide solo los tramos de columnas permitidos. La columna llega vacía.
+- `core.mjs` además vacía cualquier columna sensible de la entrada (`redactSensitiveColumns`) y no expone `password` en el preview.
+- La clave privada de `.env.local` se normaliza (comillas, `\n` literales, CRLF) para evitar `ERR_OSSL_UNSUPPORTED`.
 
-```powershell
-$env:TIVIPLAY_PERSIST_SNAPSHOT="false"
-```
+## Evidencia sanitizada
 
-## Evidencia versionable
-
-La ejecución escribe:
+La ejecución escribe en `evidence/` (ignorada por Git; compartir solo copias revisadas):
 
 - `evidence/monthly-close-YYYY-MM.json`
 - `evidence/monthly-close-YYYY-MM.md`
 
-La evidencia evita nombres de clientes y conserva hashes, conteos, duplicados, excepciones y resultado de validación.
+La evidencia contiene conteos, semanas, filas de origen, fechas, hashes, firmas, excepciones y cartera vencida. **No contiene el preview** (cliente, teléfono, correo, usuario, observaciones). Antes de escribir, `run.mjs` verifica que ningún valor personal del preview aparezca en el JSON o el Markdown; si aparece, no escribe nada y termina con código 2. La consola solo imprime conteos.
+
+Fecha de corte explícita: `TIVIPLAY_CUTOFF_DATE=YYYY-MM-DD` (el motor nunca usa la fecha de ejecución).
+
+Ejecución local recomendada en el equipo de Dirección: `scripts/ejecutar-solo-lectura.ps1` (oracle 99 + BASE GENERAL viva, copia privada, sin snapshots).
 
 ## Estados
 
@@ -115,7 +121,7 @@ La evidencia evita nombres de clientes y conserva hashes, conteos, duplicados, e
 
 - `0`: VALIDADO o VALIDADO_TECNICO
 - `1`: PARCIAL
-- `2`: configuración inválida
+- `2`: configuración inválida o evidencia bloqueada por datos personales
 
 ## Estado funcional
 
@@ -135,7 +141,7 @@ No habilita escritura en producción.
 
 ## Preview operacional privado
 
-La ejecución sobre `BASE GENERAL` genera también, fuera de Git:
+Con `TIVIPLAY_PERSIST_SNAPSHOT=true`, la ejecución sobre `BASE GENERAL` genera también, fuera de Git (sin contraseña):
 
 - `YYYY-MM__preview.json`
 - `YYYY-MM__preview.csv`
@@ -145,4 +151,11 @@ El preview contiene las filas candidatas para `PAGOS [MES]` con origen `BASE GEN
 
 `FACTURAR_CANDIDATO` no sustituye todavía las reglas S0-B de mes gratis, desactivado, plan/acuerdo especial o excepción. Es una salida determinística intermedia que permite iterar esas reglas sin escribir en producción.
 
-Las excepciones de calidad de datos se separan en una cola explícita y nunca se corrigen silenciosamente.
+Las excepciones de calidad de datos se separan en una cola explícita y nunca se corrigen silenciosamente. Una ficha `TC=1` con F. PRÓXIMO PAGO vacía o no interpretable aparece como `INVALID_NEXT_PAYMENT_DATE`, con `cause` igual a `EMPTY_NEXT_PAYMENT_DATE` o `UNPARSEABLE_NEXT_PAYMENT_DATE`.
+
+## Fecha de corte y cartera vencida (S0-B)
+
+- `TIVIPLAY_CUTOFF_DATE=YYYY-MM-DD` fija la fecha de referencia. El motor nunca usa la fecha de ejecución. Sin ella, `daysPastDue` queda en `null`.
+- `carteraVencida[]` reúne las fichas `TC=1` con F. PRÓXIMO PAGO válida anterior al inicio del mes objetivo. Es una población separada del ciclo mensual, sin datos personales, con `origin`, `dueMonth`, `lastPaymentDate`, `daysPastDue` y `signals`.
+- Las señales (`USUARIO_LIBERADO`, `DESACTIVADO`, `NO_RENUEVA`, `MES_GRATIS`, `EXCEPCION`, `MIGRACION`, `CUENTA_UNIFICADA`) marcan `REQUIERE_REVISION`, pero nunca excluyen la ficha.
+- `signature` se conserva para el ciclo mensual. `outputSignature` firma ciclo, cartera, excepciones y corte.
