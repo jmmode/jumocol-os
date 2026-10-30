@@ -159,3 +159,56 @@ Las excepciones de calidad de datos se separan en una cola explícita y nunca se
 - `carteraVencida[]` reúne las fichas `TC=1` con F. PRÓXIMO PAGO válida anterior al inicio del mes objetivo. Es una población separada del ciclo mensual, sin datos personales, con `origin`, `dueMonth`, `lastPaymentDate`, `daysPastDue` y `signals`.
 - Las señales (`USUARIO_LIBERADO`, `DESACTIVADO`, `NO_RENUEVA`, `MES_GRATIS`, `EXCEPCION`, `MIGRACION`, `CUENTA_UNIFICADA`) marcan `REQUIERE_REVISION`, pero nunca excluyen la ficha.
 - `signature` se conserva para el ciclo mensual. `outputSignature` firma ciclo, cartera, excepciones y corte.
+
+## Sincronización del borrador (`sync-draft.mjs`)
+
+Mantiene actualizada la hoja **PAGOS NOVIEMBRE 2026 - BORRADOR** a partir de las fuentes vivas, sin tocar nada más del libro.
+
+```
+BASE GENERAL (sin N) ─┐
+ZELLE/PAYPAL/TRANSF ──┼─► motor (×2) ─► buildDraft (×2) ─► diff por ID_BORRADOR ─► escritura A1:AL<n> ─► relectura ─► firma
+decisions/<mes>.json ─┘                                             │                                  │
+                                                       firma igual = NO_CHANGES             no coincide = RESTAURADO
+```
+
+**Uso**
+
+```powershell
+cd 05_AUTOMATION\tiviplay-monthly-close-v1
+$env:TIVIPLAY_SPREADSHEET_ID="<ID_DE_GESTION_DIA_PAGOS>"
+# Ensayo (por defecto): lee, calcula y muestra el diff. No escribe.
+node sync-draft.mjs --month 2026-11 --cutoff 2026-10-31
+# Escritura: requiere las tres llaves a la vez.
+$env:TIVIPLAY_DRAFT_WRITE_ENABLED="true"
+node sync-draft.mjs --month 2026-11 --cutoff 2026-10-31 --apply --confirm-sheet "PAGOS NOVIEMBRE 2026 - BORRADOR"
+```
+
+Estados: `NO_CHANGES` (firma igual, sin escritura) · `PLAN` (ensayo) · `ACTUALIZADO` · `RESTAURADO` (relectura no coincidió; se repusieron los valores previos) · `BLOQUEADO_FUENTE_INESTABLE` · `BLOQUEADO_NO_DETERMINISTA` · `BLOQUEADO_HOJA_NO_EXISTE` · `BLOQUEADO_CONFLICTO` (alguien editó la hoja durante la ejecución) · `BLOQUEADO_EXCEDE_RANGO` · `FALLO_RESTAURACION`. El reporte JSON se guarda en `evidence/draft-sync/` (ignorado por Git) con CLIENTE y USUARIO enmascarados.
+
+**Qué detecta.** El diff compara la hoja publicada con el nuevo cálculo por `ID_BORRADOR` (`NOV26-B<fila>` en el universo, `NOV26-AJ/PG/BQ/CV/EX<…>` en las secciones) y clasifica cada cambio como `CONFIRMACION`, `PAGO`, `FECHA`, `SEMANA`, `CLASIFICACION` o `DECISION`. Una ficha solo depende de su propia fila, de los pagos enlazados de forma única a esa fila (COINCIDENCIAS_BASE = 1), de su decisión registrada y de la repetición de su USUARIO: una excepción nunca reclasifica fichas independientes (prueba `excepciones aisladas`).
+
+**Decisiones operacionales.** `decisions/<mes>.json` registra bloqueos y notas de Dirección/BO por fila de BASE (sin nombres). Cambiarlo exige PR. `CONFIRMADO JM` nunca se escribe aquí: se lee de las hojas de pagos.
+
+**Garantías de escritura**
+
+- Allowlist de un título por mes (`src/draft/contract.mjs`); cualquier otra hoja se rechaza antes de llamar a la API.
+- El motor no crea hojas, ni cambia formato, protección o estructura: solo `values.update` RAW sobre `A1:AL<n>` y `values.clear` de `A<n+1>:AL600`.
+- Token de lectura (`spreadsheets.readonly`) separado del de escritura (`spreadsheets`), que solo se pide con `--apply`.
+- Firma de contenido en `AK2` (`firma:<sha256>`) y corte en `AJ2`; la intranet la muestra.
+
+**Recuperación**
+
+1. Automática: si la relectura no coincide con la firma, se reescriben los valores previos y se verifica (`RESTAURADO`).
+2. Manual: *Archivo → Historial de versiones* de Google Sheets sobre el libro (cada ejecución es una versión).
+3. Reconstrucción: el cálculo es determinista; volver a ejecutar con el mismo `--cutoff` y las mismas fuentes reproduce la misma firma.
+4. Desactivación inmediata: `TIVIPLAY_DRAFT_WRITE_ENABLED=false` (o retirar el permiso de edición de la cuenta de escritura).
+
+**Permisos mínimos**
+
+| Componente | Credencial | Scope | Permiso en el libro |
+|---|---|---|---|
+| Intranet (Vercel) | cuenta de servicio actual | `spreadsheets.readonly` | Lector (sin cambios) |
+| sync-draft (ensayo) | cualquiera de lectura | `spreadsheets.readonly` | Lector |
+| sync-draft (`--apply`) | **cuenta de servicio dedicada** | `spreadsheets` | Editor del libro + todas las hojas salvo BORRADOR protegidas sin esa cuenta en sus editores |
+
+Google no ofrece un permiso por hoja: el límite real es la allowlist del código más la protección de hojas. La cuenta de escritura no debe ser la de la intranet ni la de leads.

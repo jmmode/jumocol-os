@@ -7,6 +7,8 @@ import Link from "next/link";
 import { PageHeader } from "@/components/ui/page-header";
 import { TiviplayNavigation } from "@/features/tiviplay-command-center/tiviplay-navigation";
 import { TiviplayRuntimeDashboard } from "@/features/tiviplay-runtime/tiviplay-runtime-dashboard";
+import type { TiviplayDraftLive } from "@/server/tiviplay-live/draft-read-model";
+import { getTiviplayDraftLive } from "@/server/tiviplay-live/draft-source";
 import { getTiviplayMonthlyCloseLive, type TiviplayMonthlyCloseLive } from "@/server/tiviplay-live/monthly-close";
 import { bogotaToday, getTiviplayRuntimeLive } from "@/server/tiviplay-live/runtime-source";
 
@@ -21,13 +23,18 @@ export default async function TiviplayRuntimePage({ searchParams }: { searchPara
   const { refresh, month } = await searchParams;
   // Cierre mensual (Runtime V1): mismo mes por defecto que la versión validada, seleccionable con ?month=YYYY-MM.
   const closeMonth = month ?? process.env.TIVIPLAY_TARGET_MONTH ?? bogotaToday().slice(0, 7);
-  const [runtime, close] = await Promise.allSettled([
+  // Borrador del cierre (hoja escrita solo por el motor sync-draft): lectura gerencial, solo ADMIN.
+  const isAdmin = identity.role === "ADMIN";
+  const [runtime, close, draftRead] = await Promise.allSettled([
     getTiviplayRuntimeLive({ force: refresh === "1" }),
     getTiviplayMonthlyCloseLive(closeMonth),
+    isAdmin ? getTiviplayDraftLive(closeMonth) : Promise.resolve(null),
   ]);
   const model = runtime.status === "fulfilled" ? runtime.value : null;
   const monthlyClose: TiviplayMonthlyCloseLive | null = close.status === "fulfilled" ? close.value : null;
   const closeError = close.status === "rejected" ? "Fuente de cierre temporalmente no disponible" : null;
+  const draft: TiviplayDraftLive | null = draftRead.status === "fulfilled" ? draftRead.value : null;
+  const draftError = draftRead.status === "rejected" ? "Hoja BORRADOR temporalmente no disponible" : null;
 
   audit(identity.id, "tiviplay-runtime", refresh === "1" ? "refresh" : "read", model ? "SUCCESS" : "UNAVAILABLE");
   return (
@@ -48,7 +55,7 @@ export default async function TiviplayRuntimePage({ searchParams }: { searchPara
       <TiviplayNavigation />
 
       {model ? (
-        <TiviplayRuntimeDashboard closeError={closeError} closeMonth={closeMonth} model={operationalRuntime(model)} managementModel={identity.role === "ADMIN" ? model : undefined} monthlyClose={monthlyClose} />
+        <TiviplayRuntimeDashboard closeError={closeError} closeMonth={closeMonth} model={operationalRuntime(model)} managementModel={identity.role === "ADMIN" ? model : undefined} monthlyClose={monthlyClose} draft={draft} draftError={draftError} />
       ) : (
         <p className="mt-6 rounded-2xl border border-brand-red/30 bg-brand-red/5 px-5 py-4 text-sm text-status-error">
           BLOQUEADO: no fue posible leer Google Sheets (fuente temporalmente no disponible). No se muestran indicadores sin fuente viva.

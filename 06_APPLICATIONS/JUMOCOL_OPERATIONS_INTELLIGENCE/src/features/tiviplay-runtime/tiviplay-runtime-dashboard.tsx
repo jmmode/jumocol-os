@@ -6,6 +6,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { EmptyChart, InteractiveBarList, MetricCard, SectionCard } from "@/features/tiviplay-payments/dashboard-charts";
 import { CARTERA_LABEL, evidenceText, formatDate, formatMoney, formatNumber } from "@/features/tiviplay-runtime/format";
 import type { CarteraState, Evidence, Kpi, PanelId, PanelSummary } from "@/server/tiviplay-live/runtime-read-model";
+import type { DraftClass, TiviplayDraftLive } from "@/server/tiviplay-live/draft-read-model";
 import type { TiviplayMonthlyCloseLive } from "@/server/tiviplay-live/monthly-close";
 import type { TiviplayRuntimeLive } from "@/server/tiviplay-live/runtime-source";
 
@@ -20,7 +21,13 @@ const TABS: Array<{ id: Tab; label: string; question: string }> = [
   { id: "cierre", label: "Cierre mensual", question: "Pre-cierre BASE GENERAL por mes (Runtime V1)" },
 ];
 
-type CloseProps = { monthlyClose: TiviplayMonthlyCloseLive | null; closeError: string | null; closeMonth: string };
+type CloseProps = {
+  monthlyClose: TiviplayMonthlyCloseLive | null;
+  closeError: string | null;
+  closeMonth: string;
+  draft?: TiviplayDraftLive | null;
+  draftError?: string | null;
+};
 
 export function TiviplayRuntimeDashboard({ model, managementModel, ...close }: { model: OperationalRuntime; managementModel?: TiviplayRuntimeLive } & CloseProps) {
   const [tab, setTab] = useState<Tab>(managementModel ? "gerencial" : "operativa");
@@ -544,7 +551,7 @@ function shiftMonth(month: string, delta: number) {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-function MonthlyCloseView({ monthlyClose: data, closeError, closeMonth }: CloseProps) {
+function MonthlyCloseView({ monthlyClose: data, closeError, closeMonth, draft, draftError }: CloseProps) {
   const nav = (
     <div className="flex gap-2 text-xs">
       {[-1, 0, 1].map((d) => {
@@ -598,6 +605,7 @@ function MonthlyCloseView({ monthlyClose: data, closeError, closeMonth }: CloseP
           <Row k="Firma resultado" v={`${data.signatures.result.slice(0, 16)}…`} />
         </dl>
       </SectionCard>
+      {draft || draftError ? <DraftPanel draft={draft ?? null} error={draftError ?? null} /> : null}
       {data.exceptions.length ? (
         <SectionCard eyebrow="Calidad de datos" title="Requiere corrección en BASE GENERAL" description="Filas con F. PRÓXIMO PAGO no interpretable.">
           <ul className="space-y-1 text-xs">
@@ -606,5 +614,83 @@ function MonthlyCloseView({ monthlyClose: data, closeError, closeMonth }: CloseP
         </SectionCard>
       ) : null}
     </div>
+  );
+}
+
+const DRAFT_LABEL: Record<DraftClass, string> = {
+  FACTURABLE: "Facturable",
+  REQUIERE_REVISION: "Requiere revisión",
+  BLOQUEADO: "Bloqueado",
+  PAGADO_SIN_PROPAGAR: "Pagado sin propagar",
+};
+const DRAFT_TONE: Record<DraftClass, "green" | "yellow" | "red" | "cyan"> = {
+  FACTURABLE: "green",
+  REQUIERE_REVISION: "yellow",
+  BLOQUEADO: "red",
+  PAGADO_SIN_PROPAGAR: "cyan",
+};
+
+/** Vista gerencial de ingresos del mes desde la hoja BORRADOR (no es cierre definitivo). */
+function DraftPanel({ draft, error }: { draft: TiviplayDraftLive | null; error: string | null }) {
+  if (!draft) {
+    return (
+      <SectionCard eyebrow="Borrador de facturación" title="Hoja BORRADOR" description="Escrita solo por el motor sync-draft.">
+        <p className="rounded-2xl border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-sm text-status-error">BLOQUEADO: {error ?? "sin datos"}</p>
+      </SectionCard>
+    );
+  }
+  const classes = Object.keys(DRAFT_LABEL) as DraftClass[];
+  return (
+    <SectionCard
+      eyebrow="Borrador de facturación · NO DEFINITIVO"
+      title={`${draft.title} · corte ${draft.cutoffDate ?? "sin corte"}`}
+      description="Ingresos esperados del mes por clasificación del motor. Montos por moneda, sin mezclar. Gate: NO APTO PARA MOTOR MENSUAL."
+    >
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {classes.map((c) => (
+          <MetricCard
+            key={c}
+            label={DRAFT_LABEL[c]}
+            value={formatNumber(draft.classes[c].count)}
+            detail={formatMoney({ USD: draft.classes[c].usd, COP: draft.classes[c].cop, CAD: 0 })}
+            tone={DRAFT_TONE[c]}
+          />
+        ))}
+      </div>
+      <div className="mt-5 grid gap-5 lg:grid-cols-2">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-brand-muted">Facturables por semana (de {draft.universe} fichas)</p>
+          <div className="mt-3 grid grid-cols-5 gap-2">
+            {draft.facturableWeeks.map((v, i) => (
+              <div key={i} className="rounded-xl bg-brand-surface p-3 text-center text-xs">
+                <div className="text-brand-muted">S{i + 1}</div>
+                <div className="mt-1 text-lg font-semibold tabular-nums">{v}</div>
+                <div className="text-[10px] text-brand-muted">de {draft.weeks[i]}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <dl className="space-y-1 text-xs">
+          <Row k="Pagos sin enlace o sin confirmar" v={formatNumber(draft.sections.pagosPendientes)} warn={draft.sections.pagosPendientes > 0} />
+          <Row k="Ajustes por pagos no propagados" v={formatNumber(draft.sections.ajustes)} />
+          <Row k="Bloqueados fuera del universo" v={formatNumber(draft.sections.bloqueadosFuera)} warn={draft.sections.bloqueadosFuera > 0} />
+          <Row k="Cartera vencida (separada)" v={formatNumber(draft.sections.cartera)} />
+          <Row k="Excluidos con causa" v={formatNumber(draft.sections.excluidos)} />
+          <Row k="Firma del motor" v={draft.signature ? `${draft.signature.slice(0, 16)}…` : "SIN FIRMA"} warn={!draft.signature} />
+        </dl>
+      </div>
+      {draft.attention.length ? (
+        <ul className="mt-5 space-y-1 text-xs">
+          {draft.attention.map((x) => (
+            <li key={x.id}>
+              <strong>{x.id}</strong> · {DRAFT_LABEL[x.clase]} · {x.categoria} · {x.causa} <span className="text-brand-muted">→ {x.responsable}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {draft.issues.length ? (
+        <p className="mt-4 rounded-2xl border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-xs text-status-error">{draft.issues.join(" · ")}</p>
+      ) : null}
+    </SectionCard>
   );
 }
