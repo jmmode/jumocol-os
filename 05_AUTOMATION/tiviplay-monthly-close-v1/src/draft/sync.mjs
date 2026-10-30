@@ -1,11 +1,27 @@
 import crypto from "node:crypto";
 
 import { buildMonthlyClose } from "../core.mjs";
-import { DRAFT_MAX_ROWS, assertAllowedDraftTitle, draftTarget } from "./contract.mjs";
-import { buildDraft, contentSignature, storedSignature } from "./builder.mjs";
-import { diffDraft } from "./diff.mjs";
+import { DRAFT_MAX_ROWS, TEAM_COLUMNS, assertAllowedDraftTitle, draftTarget } from "./contract.mjs";
+import { buildDraft, contentSignature, fullSignature, storedSignature } from "./builder.mjs";
+import { diffDraft, indexById } from "./diff.mjs";
 
 const sha256 = (value) => crypto.createHash("sha256").update(value).digest("hex");
+
+/**
+ * Conserva las columnas del equipo (AM:AP) por ID_BORRADOR: si la fila ya existía y el equipo
+ * escribió algo, su valor gana sobre el valor inicial. Filas nuevas reciben el valor inicial del motor.
+ */
+export function mergeTeamColumns(current, values, prefix) {
+  const before = indexById(current, prefix);
+  return values.map((row) => {
+    const id = String(row[37] ?? "") || (String(row[0] ?? "").startsWith(`${prefix}-`) ? String(row[0]) : "");
+    const prev = id ? before.get(id)?.row : null;
+    if (!prev || !TEAM_COLUMNS.some((c) => String(prev[c] ?? "") !== "")) return row;
+    const copy = [...row];
+    for (const c of TEAM_COLUMNS) copy[c] = prev[c] ?? "";
+    return copy;
+  });
+}
 
 /**
  * Sincronización controlada fuente → motor → hoja BORRADOR.
@@ -52,6 +68,8 @@ export async function syncDraft({ io, targetMonth, cutoffDate, decisions = {}, a
   const current = await io.readDraft(title);
   if (current == null) return { ...report, status: "BLOQUEADO_HOJA_NO_EXISTE" };
   const currentSignature = contentSignature(current);
+  const currentFull = fullSignature(current);
+  const values = mergeTeamColumns(current, draft.values, target.prefix);
   report.previousSignature = storedSignature(current);
   report.diff = diffDraft(current, draft.values, target.prefix);
   step("diff", { added: report.diff.added.length, removed: report.diff.removed.length, modified: report.diff.modified.length, byKind: report.diff.byKind });
@@ -62,22 +80,23 @@ export async function syncDraft({ io, targetMonth, cutoffDate, decisions = {}, a
   if (!apply) return { ...report, status: "PLAN", written: false };
 
   const recheck = await io.readDraft(title);
-  if (contentSignature(recheck ?? []) !== currentSignature) {
+  if (fullSignature(recheck ?? []) !== currentFull) {
     return { ...report, status: "BLOQUEADO_CONFLICTO", written: false };
   }
 
-  await io.writeDraft(title, draft.values);
+  await io.writeDraft(title, values);
   const readback = await io.readDraft(title);
   const readbackSignature = contentSignature(readback ?? []);
-  step("relectura", { signature: readbackSignature, matches: readbackSignature === draft.signature });
-  if (readbackSignature === draft.signature && storedSignature(readback) === draft.signature) {
+  const teamPreserved = fullSignature(readback ?? []) === fullSignature(values);
+  step("relectura", { signature: readbackSignature, matches: readbackSignature === draft.signature, teamPreserved });
+  if (readbackSignature === draft.signature && storedSignature(readback) === draft.signature && teamPreserved) {
     return { ...report, status: "ACTUALIZADO", written: true };
   }
 
   // Recuperación automática: se reponen los valores previos y se verifica la reposición.
   await io.writeDraft(title, current);
   const restored = await io.readDraft(title);
-  const ok = contentSignature(restored ?? []) === currentSignature;
+  const ok = fullSignature(restored ?? []) === currentFull;
   step("restauracion", { ok });
   return { ...report, status: ok ? "RESTAURADO" : "FALLO_RESTAURACION", written: true };
 }

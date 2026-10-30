@@ -102,7 +102,46 @@ test("primera sincronización escribe la hoja y la relectura coincide con la fir
   assert.equal(report.summary.universe, 6);
   assert.equal(report.summary.cartera, 2);
   assert.equal(report.summary.blocked, 1);
-  assert.equal(report.summary.excluded, 2);
+  assert.equal(report.summary.excluded, 1);
+  assert.equal(report.summary.historicalSections, 1);
+  // Cuadre: cada ficha TC=1 operativa cae en un solo destino (3..8 mes, 9 y 13 cartera, 10 sin fecha).
+  assert.equal(report.summary.tally.tc1, 9);
+  assert.equal(report.summary.reconciled, true);
+});
+
+test("cartera con pago confirmado que vence en el mes entra a su semana, sin duplicarse en cartera", async () => {
+  const sources = { baseRows: baseRows(), payments: [pay(), pay({ row: 12, baseRow: 13, paymentDate: "2026-10-27", proposedNext: "2026-11-27" })], missingSheets: [] };
+  const io = memoryIo(sources);
+  const report = await run(io);
+  const b13 = universeRow(io.state.sheet, 13);
+  assert.equal(b13[17], "2026-11-27");
+  assert.equal(b13[32], 5);
+  assert.equal(b13[34], "PROPAGACIÓN PENDIENTE");
+  assert.equal(io.state.sheet.some((r) => r[0] === "NOV26-CV13"), false);
+  assert.equal(report.summary.movedFromCartera, 1);
+  assert.equal(report.summary.reconciled, true);
+  assert.equal(sources.baseRows[12][17], "20-10-26"); // BASE intacta
+});
+
+test("columnas del equipo (AM:AP) se conservan por ID aunque la ficha cambie de semana", async () => {
+  const sources = { baseRows: baseRows(), payments: [pay()], missingSheets: [] };
+  const io = memoryIo(sources);
+  await run(io);
+  const i = io.state.sheet.findIndex((r) => r[37] === "NOV26-B5");
+  assert.equal(io.state.sheet[i][38], "PENDIENTE");
+  io.state.sheet[i][38] = "CONTACTADO";
+  io.state.sheet[i][41] = "Promete pagar el viernes";
+  // Editar solo columnas del equipo no provoca reescritura.
+  assert.equal((await run(io)).status, "NO_CHANGES");
+
+  sources.baseRows[4][17] = "21-11-26"; // la ficha 5 se mueve de S3 a S4
+  const report = await run(io);
+  assert.equal(report.status, "ACTUALIZADO");
+  const b5 = universeRow(io.state.sheet, 5);
+  assert.equal(b5[32], 4);
+  assert.equal(b5[38], "CONTACTADO");
+  assert.equal(b5[41], "Promete pagar el viernes");
+  assert.equal(universeRow(io.state.sheet, 3)[38], "PENDIENTE");
 });
 
 test("segunda ejecución sin cambios: NO_CHANGES, sin escritura y sin registros duplicados", async () => {
@@ -264,8 +303,8 @@ test("sheets-io: escritura RAW en rango fijo de la hoja autorizada; otras hojas 
   await io.writeDraft(TITLE, [["a"], ["b"]]);
   const put = calls.find((c) => c.method === "PUT");
   const clear = calls.find((c) => c.method === "POST");
-  assert.match(put.url, /'PAGOS NOVIEMBRE 2026 - BORRADOR'!A1:AL2\?valueInputOption=RAW$/);
-  assert.match(clear.url, /'PAGOS NOVIEMBRE 2026 - BORRADOR'!A3:AL600:clear$/);
+  assert.match(put.url, /'PAGOS NOVIEMBRE 2026 - BORRADOR'!A1:AP2\?valueInputOption=RAW$/);
+  assert.match(clear.url, /'PAGOS NOVIEMBRE 2026 - BORRADOR'!A3:AP600:clear$/);
   assert.equal(calls.some((c) => c.method !== "GET" && !c.url.includes(TITLE)), false);
 
   const readOnly = createSheetsIo({ spreadsheetId: "libro", targetMonth: "2026-11", readToken: async () => "r", fetchImpl });

@@ -1,4 +1,4 @@
-import { CARTERA_MASKED_COLUMNS, ID_COL, MASKED_COLUMNS, META_SIGNATURE_COL, columnLetter } from "./contract.mjs";
+import { CARTERA_MASKED_COLUMNS, ID_COL, MANAGED_COLUMNS, MASKED_COLUMNS, META_SIGNATURE_COL, columnLetter } from "./contract.mjs";
 
 const cell = (value) => (value == null ? "" : String(value));
 // Fichas del universo: <PREFIJO>-B<fila> (no confundir con -BQ<fila>).
@@ -37,7 +37,8 @@ export function diffDraft(currentValues, nextValues, prefix) {
   for (const [id, b] of before) {
     const a = after.get(id);
     if (!a) continue;
-    const width = Math.max(b.row.length, a.row.length);
+    // Solo columnas del motor (A..AL): las del equipo no son cambios de la fuente.
+    const width = Math.min(MANAGED_COLUMNS, Math.max(b.row.length, a.row.length));
     const changes = [];
     for (let c = 0; c < width; c++) {
       if (id.endsWith("-META") && c === META_SIGNATURE_COL) continue;

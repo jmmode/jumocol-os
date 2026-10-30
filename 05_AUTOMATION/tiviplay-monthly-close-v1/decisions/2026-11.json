@@ -1,7 +1,7 @@
 {
   "targetMonth": "2026-11",
   "registro": "Decisiones operacionales vigentes para el borrador de noviembre. Solo filas de BASE GENERAL y texto de causa: sin nombres, correos ni credenciales. Cambiar este archivo exige PR revisado; CONFIRMADO JM nunca se registra aquí.",
-  "fuente": "CHECKPOINT_RECEPCION_TIVIPLAY_2026-10-29 §6, §9 y §10",
+  "fuente": "CHECKPOINT_RECEPCION_TIVIPLAY_2026-10-29 §6, §9, §10 y §12",
   "rows": {
     "21": {
       "clase": "BLOQUEADO",
@@ -12,7 +12,7 @@
     "739": {
       "clase": "BLOQUEADO",
       "categoria": "IDENTIDAD + CONFIRMACIÓN (P0-1)",
-      "causa": "ZELLE (OCT) 23 sigue en REQUIERE REVISIÓN (2 coincidencias). USUARIO repetido con la ficha 811 de cartera.",
+      "causa": "ZELLE (OCT) 23 USD 15: CONFIRMADO JM (relectura 29/10 21:15 COT) pero con 2 coincidencias en BASE, sin enlace único. USUARIO repetido con la ficha 811 de cartera.",
       "responsable": "DIRECCIÓN → BO (enlazar 739, depurar 811)"
     },
     "760": {

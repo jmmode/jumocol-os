@@ -12,8 +12,11 @@ export const DRAFT_TARGETS = Object.freeze({
   }),
 });
 
-export const DRAFT_COLUMNS = 38; // A..AL
-export const DRAFT_LAST_COLUMN = "AL";
+export const DRAFT_COLUMNS = 42; // A..AP
+export const DRAFT_LAST_COLUMN = "AP";
+// A..AL los calcula el motor; AM..AP son del equipo (gestión de cobro) y se conservan por ID_BORRADOR.
+export const MANAGED_COLUMNS = 38;
+export const TEAM_COLUMNS = Object.freeze([38, 39, 40, 41]);
 export const DRAFT_MAX_ROWS = 600;
 
 // Encabezados de PAGOS OCTUBRE (A..AF) + columnas del borrador (AG..AL).
@@ -24,7 +27,17 @@ export const DRAFT_HEADERS = Object.freeze([
   "DISPOSITIVOS", "ORIGEN BASE", "CONFIRMACION", "CLIENTE_KEY_PAGO", "COINCIDENCIAS_FINANCIERAS", "FUENTE_FINANCIERA",
   "FILA_FUENTE", "FECHA_PAGO", "MONEDA_PAGO", "VALOR_PAGO", "VALIDACION_TARIFA", "CONFIRMACION_FINANCIERA",
   "SEMANA", "CLASIFICACION_BORRADOR", "CATEGORIA", "CAUSA / ACCIÓN", "RESPONSABLE", "ID_BORRADOR",
+  "ESTADO_COBRO", "FECHA_GESTION", "GESTIONADO_POR", "NOTA_EQUIPO",
 ]);
+
+// Estado de cobro inicial (el equipo lo actualiza; el motor no lo sobrescribe en filas existentes).
+export const INITIAL_COLLECTION_STATE = Object.freeze({
+  FACTURABLE: "PENDIENTE",
+  REQUIERE_REVISION: "EN REVISIÓN",
+  BLOQUEADO: "BLOQUEADO",
+  PAGADO_SIN_PROPAGAR: "NO COBRAR · YA PAGÓ",
+  CARTERA: "PENDIENTE (CARTERA)",
+});
 
 // Celdas de metadatos (fila 2): corte, firma de contenido e id de la fila.
 export const META_ROW = 2;

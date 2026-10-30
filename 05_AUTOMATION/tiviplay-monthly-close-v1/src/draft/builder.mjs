@@ -5,6 +5,8 @@ import {
   DRAFT_COLUMNS,
   DRAFT_HEADERS,
   ID_COL,
+  INITIAL_COLLECTION_STATE,
+  MANAGED_COLUMNS,
   META_CUTOFF_COL,
   META_ROW,
   META_SIGNATURE_COL,
@@ -139,11 +141,21 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
   /* ------------------------------------------------------------ universo */
   const universe = [];
   const excluded = [];
+  // Secciones históricas (bajas, ventas en excepción): un renglón por sección con su rango de filas.
+  const historical = new Map();
+  const addHistorical = (n) => {
+    const label = sectionOf(n).label || "HISTÓRICO";
+    const h = historical.get(label) ?? { label, from: n, to: n, count: 0 };
+    h.from = Math.min(h.from, n);
+    h.to = Math.max(h.to, n);
+    h.count += 1;
+    historical.set(label, h);
+  };
   for (const p of close.preview) {
     const n = p.sourceRow;
     const r = R(n);
     if (sectionOf(n).historical) {
-      excluded.push({ n, section: sectionOf(n).label, tc: clean(r[B.tc]), next: clean(r[B.next]), cause: "SECCION_HISTORICA_TC1" });
+      addHistorical(n);
       continue;
     }
     const tv = tariffCheck(r);
@@ -152,7 +164,7 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
     let cls = "FACTURABLE";
     let cat = "";
     let cause = "";
-    let owner = "SISTEMA";
+    let owner = "EQUIPO COBROS";
 
     if (decision?.clase) {
       ({ clase: cls, categoria: cat = "", causa: cause = "", responsable: owner = "DIRECCIÓN" } = decision);
@@ -200,7 +212,22 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
     const n = c.sourceRow;
     const sec = sectionOf(n);
     if (sec.historical) {
-      excluded.push({ n, section: sec.label, tc: clean(R(n)[B.tc]), next: clean(R(n)[B.next]), cause: "SECCION_HISTORICA_TC1" });
+      addHistorical(n);
+      continue;
+    }
+    const lpc = lastPayment(n);
+    // Vencida en BASE pero con pago confirmado cuyo próximo vencimiento cae en el mes: se cobra en el mes.
+    // BASE no se toca; la fecha sale de PROP_F_PROXIMO del pago CONFIRMADO JM y BO la propaga.
+    if (lpc && isConfirmed(lpc) && lpc.proposedNext && lpc.proposedNext.slice(0, 7) === month && !decisionOf(n)?.clase) {
+      const week = weekBucket(lpc.proposedNext);
+      universe.push({
+        n, r: R(n), week, lp: lpc, tv: tariffCheck(R(n)), moved: c.nextPaymentDate,
+        p: { sourceRow: n, week, nextPaymentDate: lpc.proposedNext, reviewReasons: [] },
+        cls: "REQUIERE_REVISION",
+        cat: "PROPAGACIÓN PENDIENTE",
+        cause: `BASE F. PRÓXIMO PAGO ${c.nextPaymentDate} sin propagar. Vence ${lpc.proposedNext} según ${describePayment(lpc)} CONFIRMADO JM: gestionar en esa fecha. BO propaga a BASE.`,
+        owner: "EQUIPO COBROS · BO propaga",
+      });
       continue;
     }
     const sub = [];
@@ -235,7 +262,7 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
   const blocked = [];
   for (const e of close.exceptions) {
     const sec = sectionOf(e.sourceRow);
-    if (sec.historical) excluded.push({ n: e.sourceRow, section: sec.label, tc: clean(R(e.sourceRow)[B.tc]), next: "", cause: "SIN_F_PROXIMO_EN_SECCION_HISTORICA" });
+    if (sec.historical) addHistorical(e.sourceRow);
     else blocked.push({ n: e.sourceRow, cause: `TC=1 con F. PRÓXIMO PAGO ${e.cause === "EMPTY_NEXT_PAYMENT_DATE" ? "vacía" : "no interpretable"}. ${decisionOf(e.sourceRow)?.nota ?? ""}`.trim() });
   }
   for (let n = headerIndex + 2; n <= baseRows.length; n++) {
@@ -258,7 +285,8 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
     const baseNext = parseOperationalDate(R(n)[B.next]);
     if (lp.proposedNext === baseNext) continue;
     let effect;
-    if (inUniverse.has(n) && lp.proposedNext > end) effect = "Sale del cobro del mes (ya pagó; PAGADO_SIN_PROPAGAR).";
+    if (inUniverse.get(n)?.moved) effect = `Incluida en S${weekBucket(lp.proposedNext)} del borrador con la fecha del pago confirmado; BASE sigue en ${baseNext}.`;
+    else if (inUniverse.has(n) && lp.proposedNext > end) effect = "Sale del cobro del mes (ya pagó; PAGADO_SIN_PROPAGAR).";
     else if (inUniverse.has(n)) {
       const a = weekBucket(baseNext);
       const b = weekBucket(lp.proposedNext);
@@ -267,6 +295,24 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
     else effect = `Sin efecto en el mes: sale de cartera (PROP ${lp.proposedNext}).`;
     adjustments.push({ n, lp, baseNext, effect });
   }
+
+  const tally = { tc1: 0, tc1Historical: 0, nextMonths: 0, tc0: 0 };
+  for (let n = headerIndex + 2; n <= baseRows.length; n++) {
+    const tc = clean(R(n)[B.tc]);
+    if (tc === "0" && !sectionOf(n).historical) tally.tc0 += 1;
+    if (tc !== "1") continue;
+    if (sectionOf(n).historical) {
+      tally.tc1Historical += 1;
+      continue;
+    }
+    tally.tc1 += 1;
+    const d = parseOperationalDate(R(n)[B.next]);
+    if (d && d > end) tally.nextMonths += 1;
+  }
+  const movedCount = universe.filter((u) => u.moved).length;
+  const historicalTotal = [...historical.values()].reduce((t, h) => t + h.count, 0);
+  const reconciled = universe.length - movedCount + (cartera.length + movedCount) + blocked.length + tally.nextMonths === tally.tc1
+    && historicalTotal === tally.tc1Historical;
 
   const pending = payments
     .filter((p) => !isConfirmed(p) || !isUniquelyLinked(p) || p.link === "SIN BASE" || p.link === "REQUIERE DECISIÓN")
@@ -311,6 +357,7 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
         9: clean(r[B.usd]), 10: clean(r[B.cop]), 11: clean(r[B.method]), 12: clean(r[B.user]), 14: clean(r[B.panel]),
         15: clean(r[B.due]), 16: clean(r[B.last]), 17: p.nextPaymentDate, 18: clean(r[B.t]), 21: `BASE GENERAL!${u.n}`,
         30: u.tv, 32: u.week, 33: u.cls, 34: u.cat, 35: u.cause, 36: u.owner, 37: `${P}-B${u.n}`,
+        38: INITIAL_COLLECTION_STATE[u.cls],
       });
       if (lp) Object.assign(v, { 22: lp.confirmation, 24: lp.matches, 25: lp.source, 26: lp.row, 27: lp.paymentDate ?? "", 28: lp.currency, 29: lp.amount, 31: lp.confirmation });
       out.push(v);
@@ -347,20 +394,36 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
 
   sectionRow("BLOQUEADOS FUERA DEL UNIVERSO MENSUAL", `${P}-SEC-BQ`);
   row("ID", "FILA_BASE", "ORIGEN BASE", "CAUSA", "RESPONSABLE");
-  for (const b of blocked) row(`${P}-BQ${b.n}`, b.n, `BASE GENERAL!${b.n}`, b.cause, "BO (F. PRÓX) → DIRECCIÓN si cambia tarifa");
+  for (const b of blocked) row(`${P}-BQ${b.n}`, b.n, `BASE GENERAL!${b.n}`, b.cause, "BO (F. PRÓX) → DIRECCIÓN si cambia tarifa")[38] = INITIAL_COLLECTION_STATE.BLOQUEADO;
   row();
 
   sectionRow("CARTERA VENCIDA · SEPARADA DEL UNIVERSO MENSUAL", `${P}-SEC-CV`);
-  row("ID", "FILA_BASE", "ORIGEN BASE", "SECCIÓN", "CLIENTE", "USUARIO", "ESTADO", "F. ÚLTIMO PAGO", "F. PRÓXIMO PAGO", "MES", "DÍAS VENCIDO AL CORTE", "SUBESTADO", "NOTA");
+  row("ID", "FILA_BASE", "ORIGEN BASE", "SECCIÓN", "CLIENTE", "USUARIO", "ESTADO", "F. ÚLTIMO PAGO", "F. PRÓXIMO PAGO", "MES", "DÍAS VENCIDO AL CORTE", "SUBESTADO", "NOTA", "RESPONSABLE");
   for (const c of cartera) {
     const r = R(c.n);
-    row(`${P}-CV${c.n}`, c.n, c.c.origin, c.section, clean(r[B.client]), clean(r[B.user]), clean(r[B.status]), clean(r[B.last]), c.c.nextPaymentDate, c.c.dueMonth, c.c.daysPastDue ?? "", c.sub, c.note);
+    const v = row(`${P}-CV${c.n}`, c.n, c.c.origin, c.section, clean(r[B.client]), clean(r[B.user]), clean(r[B.status]), clean(r[B.last]), c.c.nextPaymentDate, c.c.dueMonth, c.c.daysPastDue ?? "", c.sub, c.note,
+      /PAGADO|SALE AL MES/.test(c.sub) ? "BO: propagar pago a BASE" : /BLOQUEADO|DUPLICADO/.test(c.sub) || decisionOf(c.n) ? "BO → DIRECCIÓN" : "EQUIPO COBROS (cartera)");
+    v[38] = /PAGADO/.test(c.sub) ? INITIAL_COLLECTION_STATE.PAGADO_SIN_PROPAGAR : INITIAL_COLLECTION_STATE.CARTERA;
   }
   row();
 
   sectionRow("EXCLUIDOS CON CAUSA VERIFICABLE · TC_0 = ficha no facturable · SECCION_HISTORICA_TC1 = TC 1 en sección de baja/excepción", `${P}-SEC-EX`);
   row("ID", "FILA_BASE", "ORIGEN BASE", "SECCIÓN", "TC", "F. PRÓXIMO PAGO", "CAUSA");
   for (const e of excluded) row(`${P}-EX${e.n}`, e.n, `BASE GENERAL!${e.n}`, e.section, e.tc, e.next, e.cause);
+  for (const h of [...historical.values()].sort((a, b) => a.from - b.from)) {
+    row(`${P}-EXH${h.from}`, `${h.from}–${h.to}`, `BASE GENERAL!${h.from}:${h.to}`, h.label, `TC=1 × ${h.count}`, "", "SECCION_HISTORICA_TC1: baja o venta en excepción; no se cobra en el ciclo");
+  }
+  row();
+
+  sectionRow("PROCEDIMIENTO PARA MOVIMIENTOS POSTERIORES AL CORTE", `${P}-SEC-PR`);
+  [
+    "Pago recibido: el asesor lo registra en la hoja de pagos del mes (ZELLE / PAYPAL / TRANSF), como en octubre. No se anota el pago en BASE ni en esta hoja como confirmado.",
+    "Confirmación: solo Dirección marca CONFIRMADO JM en la hoja de pagos. Nadie más la escribe.",
+    "Gestión: el equipo actualiza aquí ESTADO_COBRO (PENDIENTE → CONTACTADO → PAGO REPORTADO → COBRADO / NO RENUEVA), FECHA_GESTION, GESTIONADO_POR y NOTA_EQUIPO (columnas AM:AP). No borrar ni mover filas.",
+    "Propagación: BO actualiza F. PRÓXIMO PAGO en BASE GENERAL con el pago confirmado, como hoy.",
+    "Regeneración: el borrador se recalcula desde BASE y pagos (ensayo, revisión del diff y escritura solo en esta hoja). Las columnas del equipo se conservan por ID_BORRADOR.",
+    "Altas, bajas o fechas corregidas en BASE entran en la siguiente regeneración. Las excepciones (tarifa, identidad, duplicados) las resuelve el RESPONSABLE de la fila; tarifa e identidad las decide Dirección.",
+  ].forEach((text, i) => row(`${P}-PR${i + 1}`, `Paso ${i + 1}`, text));
   row();
 
   sectionRow("VALIDACIÓN Y CONTROL", `${P}-SEC-VA`);
@@ -370,7 +433,8 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
   row("", "Clasificación", `${classLine(tot)} · facturable por semana ${facturableWeeks.join("/")} · cartera ${cartera.length} · excluidos ${excluded.length} · pagos pendientes ${pending.length}`);
   row("", "Fechas", universe.every((u) => u.p.nextPaymentDate.slice(0, 7) === month) ? `Todas dentro de ${month}` : "REVISAR");
   row("", "Idempotencia", "");
-  row("", "Sincronización", "sync-draft: recalcula con fecha de corte explícita y reescribe solo este rango; segunda ejecución sin cambios = sin escritura.");
+  row("", "Cuadre con BASE", `${reconciled ? "OK" : "REVISAR"} · TC=1 operativas ${tally.tc1} = universo ${universe.length - movedCount} + cartera ${cartera.length + movedCount} (de ellas ${movedCount} incluidas en el mes por pago confirmado) + sin F. PRÓX ${blocked.length} + vencen después del mes ${tally.nextMonths} · TC=1 en secciones históricas ${tally.tc1Historical} (excluidas por sección) · TC=0 operativas ${tally.tc0} (excluidas fila a fila)`);
+  row("", "Sincronización", "Columnas AM:AP son del equipo y se conservan por ID_BORRADOR al regenerar. A:AL las calcula el motor: no editarlas a mano.");
   row("", "Gate", "NO APTO PARA MOTOR MENSUAL mientras existan P0 abiertos. Este borrador no es cierre definitivo.");
 
   const ids = [];
@@ -380,7 +444,7 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
   }
   const dup = ids.filter((id, i) => ids.indexOf(id) !== i);
   if (dup.length) throw new Error(`ID_BORRADOR duplicado: ${[...new Set(dup)].join(", ")}`);
-  out[validationStart + 3][2] = `Clave ID_BORRADOR única (${ids.length} ids, 0 duplicados). Escritura sobre rango fijo A1:AL${out.length}; el resto del rango se limpia.`;
+  out[validationStart + 3][2] = `Clave ID_BORRADOR única (${ids.length} ids, 0 duplicados). Escritura sobre rango fijo A1:AP${out.length}; el resto del rango se limpia.`;
 
   const values = out.map((r) => r.map(normalizeCell));
   const signature = contentSignature(values);
@@ -394,13 +458,18 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
       targetMonth: month,
       cutoffDate,
       universe: universe.length,
-      weeks: close.weeks,
+      weeks: [1, 2, 3, 4, 5].map((w) => universe.filter((u) => u.week === w).length),
+      motorWeeks: close.weeks,
       classes: { FACTURABLE: tot.FACTURABLE ?? 0, REQUIERE_REVISION: tot.REQUIERE_REVISION ?? 0, BLOQUEADO: tot.BLOQUEADO ?? 0, PAGADO_SIN_PROPAGAR: tot.PAGADO_SIN_PROPAGAR ?? 0 },
       facturableWeeks,
       cartera: cartera.length,
       excluded: excluded.length,
       pendingPayments: pending.length,
       adjustments: adjustments.length,
+      movedFromCartera: movedCount,
+      historicalSections: historical.size,
+      tally,
+      reconciled,
       blocked: blocked.length,
       rows: values.length,
     },
@@ -416,8 +485,17 @@ export function normalizeCell(value) {
 
 /** Firma del contenido con la celda de firma en blanco y sin celdas vacías finales (forma de la API). */
 export function contentSignature(values) {
+  return signatureOf(values, MANAGED_COLUMNS);
+}
+
+/** Firma de toda la hoja (incluye columnas del equipo): detecta ediciones concurrentes. */
+export function fullSignature(values) {
+  return signatureOf(values, Infinity);
+}
+
+function signatureOf(values, width) {
   const rows = values.map((r, i) => {
-    const copy = r.map((c) => (typeof c === "number" ? String(c) : normalizeCell(c)));
+    const copy = r.slice(0, width).map((c) => (typeof c === "number" ? String(c) : normalizeCell(c)));
     if (i === META_ROW - 1 && copy.length > META_SIGNATURE_COL) copy[META_SIGNATURE_COL] = "";
     while (copy.length && copy[copy.length - 1] === "") copy.pop();
     return copy;
