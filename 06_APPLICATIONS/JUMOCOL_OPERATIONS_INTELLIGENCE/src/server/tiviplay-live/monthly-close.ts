@@ -264,6 +264,7 @@ function buildReadModel(rows: unknown[][], targetMonth: string) {
 
 async function readBaseGeneral() {
   // Misma credencial y cliente compartido que el Runtime Operativo (sheets-client).
+  // La columna N (CONTRASEÑA) no se solicita: batchReadSheets aplica SENSITIVE_COLUMNS["BASE GENERAL"].
   const spreadsheetId = getTiviplaySpreadsheetId();
   const token = await getSheetsAccessToken();
   const values = await batchReadSheets(spreadsheetId, token, ["BASE GENERAL"], "W", 5000);
