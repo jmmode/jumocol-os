@@ -229,12 +229,57 @@ Invariantes: `ACTIVOS + VENCIDOS = TOTAL TIVIPLAY`; `TOTAL TIVIPLAY ≠ ACTIVOS`
 
 **Estrategia anti-posicional (definitiva).**
 - La posición de fila no es identidad. Identidad comercial: `CLIENTE_KEY + TC` (y `USUARIO` como llave operacional); identidad técnica: `PANEL + LINE_ID`. Nunca solo el nombre; nunca se inventa `LINE_ID`.
-- `FILA_BASE` es un puntero **calculado**: en las hojas de octubre `INDEX(FILTER(ROW(BASE!A), BASE!AF = CLIENTE_KEY, BASE!A = TC), 1)`; en las de septiembre (y ZELLE (OCT) desde la fila 1001) `MATCH(CLIENTE_KEY, BASE!AF$3:AF$n, 0) + 2`. Ambos se recalculan al mover filas. Regla: el rango del `MATCH` debe empezar en la fila 3 porque el `+2` es su desplazamiento; insertar filas justo en la fila 3 desplaza el inicio y rompe el puntero (incidente del 28/10/2026, corregido el mismo día).
-- Las fórmulas de pago leen `W`, `Y`, `Z`, `H` con `INDEX(…, FILA_BASE)`: siguen a la ficha porque `FILA_BASE` la sigue.
-- Las fichas deben permanecer dentro del rango buscado (hoy filas 3–1223; el rango se amplía solo con inserciones internas).
+- `FILA_BASE` es un puntero **calculado**: en las hojas de octubre `INDEX(FILTER(ROW(BASE!A), BASE!AG = CLIENTE_KEY, BASE!A = TC), 1)`; en las de septiembre (y ZELLE (OCT) desde la fila 1001) `MATCH(CLIENTE_KEY, BASE!AG$3:AG$n, 0) + 2`. (Hasta el 31/10/2026 la llave estaba en `AF`; Google Sheets ajustó estas fórmulas al insertar `ID` en `M`.) Ambos se recalculan al mover filas. Regla: el rango del `MATCH` debe empezar en la fila 3 porque el `+2` es su desplazamiento; insertar filas justo en la fila 3 desplaza el inicio y rompe el puntero (incidente del 28/10/2026, corregido el mismo día).
+- Las fórmulas de pago leen `X`, `Z`, `AA`, `H` (antes `W`, `Y`, `Z`, `H`) con `INDEX(…, FILA_BASE)`: siguen a la ficha porque `FILA_BASE` la sigue.
+- Las fichas deben permanecer dentro del rango buscado (fórmulas de octubre: filas 4–1223; el rango se amplía solo con inserciones internas). Al 01/11/2026 BASE llega a la fila ~1300: las fichas del historial DESACTIVADOS posteriores a la 1223 no son enlazables por fórmula.
 - `ORIGEN BASE` («BASE GENERAL!n» en `PAGOS [MES]`, `PRELIMINAR`, `FLUJO 743 *`) es texto estático del corte: evidencia, no identidad; ningún consumidor (fórmula, motor o intranet) lo usa para localizar fichas. 64 de 96 punteros de PAGOS OCTUBRE ya estaban desalineados antes de normalizar. No se reescriben.
 - La intranet y la conciliación localizan por `USUARIO`/llave y calculan la fila en vivo; no persisten posiciones.
 - Toda reordenación futura: ensayo en copia, una operación de orden por llamada con relectura, y verificación de `FILA_BASE` (llave en la fila apuntada = `CLIENTE_KEY`, TC = 1, sin llaves duplicadas).
+
+**Diccionario de columnas de BASE GENERAL (vigente desde el 01/11/2026).** Única referencia de esquema para las capas que leen BASE (fórmulas de las hojas de medio y PAGOS, motor `tiviplay-monthly-close-v1`, intranet). Descubierto y validado por encabezados (fila 2) el 01/11/2026. Ningún consumidor debe ubicar columnas por letra o índice: se resuelven por el texto del encabezado en cada lectura. Este diccionario no cambia ninguna regla de negocio de §5.4 ni de S0.
+
+| Col. | Encabezado | Antes del 01/11 | Tipo | Uso / regla |
+| --- | --- | --- | --- | --- |
+| A | TC | A | dato | Cobro (1/0). Suma de totales |
+| B–D | CLIENTE · TELEFONO · CORREO | B–D | PII | No se copian a reportes. B se usa solo en fórmulas (`CLIENTE_KEY`) |
+| E | ESTADO | E | fórmula | Semáforo por `T` |
+| F–H | OBSERVACIONES · PLAN ACTIVO · PANTALLAS | F–H | dato | — |
+| I | CELULAR | I | PII | No se lee |
+| J–L | USD · COP · MÉTODO DE PAGO | J–L | dato | — |
+| **M** | **ID** | — (nueva) | dato | **Identificador de la cuenta en el panel.** Ver reglas abajo |
+| N | USUARIO | M | dato | Llave operacional de la cuenta |
+| **O** | **CONTRASEÑA** | N | **secreto** | **Nunca se solicita, lee, muestra ni persiste** |
+| P | PANEL | O | dato | Identidad técnica junto con `ID`/`LINE_ID` |
+| Q | F.VENCIMIENTO | P | fórmula | `MAX(AH, AL)` si hay crédito de CONTROL con `CONFIRMADO JM` |
+| R | F.ULTIMO PAGO | Q | fórmula | `MAX(AI, AN)` si `AM = CONFIRMADO JM` |
+| S | F. PRÓXIMO PAGO | R | fórmula | `MAX(AJ, AO)` si `AM = CONFIRMADO JM` |
+| T | T | S | fórmula | `S − hoy` |
+| U · W | REFERIDO · CUMPLEAÑOS | T · V | PII | No se copian a reportes |
+| V | DISPOSITIVOS | U | dato | — |
+| X–AF | TIPO_SERVICIO … DIF_DIAS_CICLO_VS_PAGO | W–AE | auxiliares | Catálogo y ciclo |
+| AG | CLIENTE_KEY | AF | fórmula | Llave comercial (`UPPER(TRIM(B))`) usada por `FILA_BASE` |
+| AH · AI · AJ | BASE_VENCIMIENTO_ANT · BASE_ULT_PAGO_ANT · BASE_PROX_PAGO_ANT | AG–AI | **dato de entrada** | Valores fijos que alimentan Q/R/S. Son las únicas celdas de fecha que se escriben a mano; Q/R/S no se sobrescriben |
+| AK–AP | CREDITO_CONTROL_OCT … ESTADO_SYNC_OCT | AJ–AO | fórmula | Cruce con CONTROL (OCT) y PAGOS OCTUBRE 2026 por `USUARIO` (N) |
+| AQ | CONCILIACION_SERVICIO_27OCT | AP | dato | Marca `DUPLICADO DEPURADO` |
+
+**Reglas del campo `ID` (M).**
+- Significado: identificador de la cuenta en el panel; con `PANEL` forma la identidad técnica. No sustituye a `CLIENTE_KEY + TC` (identidad comercial) ni a `USUARIO` (llave operacional).
+- Correspondencia: una ficha = un `ID` = un `USUARIO` en un `PANEL`. Si `ID` y `USUARIO` apuntan a fichas distintas, la ficha no se actualiza: REQUIERE REVISIÓN (Back Office).
+- Vacío: se permite mientras se completa. Con `ID` vacío se usa la identidad vigente (`CLIENTE_KEY + TC`, luego `USUARIO` único no marcado `DUPLICADO DEPURADO`). Estado al 01/11/2026: **0 de 1 255 fichas con `ID`** (columna creada, sin poblar).
+- Repetido: un `ID` en más de una ficha sin marca `DUPLICADO DEPURADO` bloquea la actualización automática de esas fichas (REQUIERE REVISIÓN). Repetido entre una ficha vigente y otra marcada `DUPLICADO DEPURADO` se resuelve hacia la vigente.
+- No coincidente: un `ID` que no existe en el panel (CONTROL / USUARIOS LIBERADOS) o cuyo `USUARIO` difiere del panel → REQUIERE REVISIÓN; nunca se corrige por inferencia.
+- Prioridad de enlace: `ID` verificable (no vacío, único y coherente con `USUARIO`/`PANEL`) > `CLIENTE_KEY + TC` > `USUARIO` único. Nunca solo el nombre.
+- Formato: texto tal como lo muestra el panel, sin espacios al inicio/final. No es dato sensible, pero tampoco se publica junto al `USUARIO`.
+
+**Impacto en lectores por posición (verificado el 01/11/2026 en la rama de continuidad).** Las fórmulas del libro se ajustaron solas. El código no:
+
+| Lector | Lectura | Efecto de la inserción | Estado |
+| --- | --- | --- | --- |
+| Intranet `conciliacion.ts › readBaseLive` | Índices fijos 12/14/15/41 sobre `A1:AP` | `username` lee `ID` (vacío), **`panel` lee `CONTRASEÑA`**, `due` lee `PANEL`; la marca `DUPLICADO DEPURADO` (AQ) queda fuera del rango | **BLOQUEADO (seguridad, P0)** — pasar a encabezados y excluir CONTRASEÑA |
+| Intranet `sheets-client.ts › batchReadSheets` (PR #7) | Excluye la letra fija `N` | Excluiría `USUARIO` y **devolvería `CONTRASEÑA` (O)** | **BLOQUEADO** — PR #7 no debe fusionarse sin excluir por encabezado |
+| Intranet `monthly-close`, `runtime-read-model`, `creditos-hoy*`, `confirmado-jm*` | Por encabezado | Sin efecto (solo revisar que el rango final cubra las columnas usadas) | IMPLEMENTADO |
+| Motor `core.mjs` (PR #5) | Por encabezado + borra columnas con encabezado CONTRASEÑA | Sin efecto en la identidad. El rango por defecto `A1:W5000` ya no incluye `TIPO_SERVICIO` (ahora X) | PARCIAL — ampliar rango |
+| Motor `draft/sheets-io.mjs` (PR #6) | `A1:Z1500` por encabezado | Pierde una columna a la derecha y las filas > 1500 | PARCIAL — ampliar rango |
 
 **Relación BASE GENERAL ↔ intranet.** La intranet lee BASE en solo lectura, recorre todas las secciones por `TC`/`ESTADO` (independiente de la posición) y salta las filas de consolidación. Matriz al 28/10/2026 tras normalizar:
 
