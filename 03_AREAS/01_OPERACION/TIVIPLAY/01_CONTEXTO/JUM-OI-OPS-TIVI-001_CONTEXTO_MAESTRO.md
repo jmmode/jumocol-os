@@ -281,6 +281,17 @@ Invariantes: `ACTIVOS + VENCIDOS = TOTAL TIVIPLAY`; `TOTAL TIVIPLAY ≠ ACTIVOS`
 | Motor `core.mjs` (PR #5) | Por encabezado + borra columnas con encabezado CONTRASEÑA | Sin efecto en la identidad. El rango por defecto `A1:W5000` ya no incluye `TIPO_SERVICIO` (ahora X) | PARCIAL — ampliar rango |
 | Motor `draft/sheets-io.mjs` (PR #6) | `A1:Z1500` por encabezado | Pierde una columna a la derecha y las filas > 1500 | PARCIAL — ampliar rango |
 
+**Fuentes del circuito comercial: encabezados verificados el 01/11/2026.** Complementa el diccionario de BASE. Regla general: resolver por encabezado y excluir por nombre toda columna `CONTRASEÑA`.
+
+| Fuente | Columnas usadas (letra al 01/11/2026 → encabezado) | Secreto / PII | Notas |
+| --- | --- | --- | --- |
+| `VENTAS 2026 (Tiviplay)` · `VENTAS_<MES>` (fila 2) | A TC · B CONCEPTO · C ORIGEN · D ASESOR · H ESTADO · J USUARIO · L PANEL · M F.VENCIMIENTO · N PLAN ACTIVO · O PANTALLAS · Q USD · R COP · S MÉTODO DE PAGO · T F.ULTIMO PAGO · U F.PRÓXIMO PAGO · W CONFIRMACION | **K CONTRASEÑA**; E CLIENTE, F TELEFONO, G CORREO, P CELULAR, I OBSERVACIONES | Registro comercial (historia). W está vacío: la confirmación vive en las hojas de medio. Debajo de las ventas hay un tablero con totales (no son ventas) |
+| `ZELLE (MES)` (fila 3) | F Origen · H CONFIRMACION · K FILA_BASE · P ESTADO_ENLACE | B Cliente | Origen `VENTA` / `FACTURACIÓN` / `RECONEXIÓN` |
+| `PAYPAL (MES)` (fila 2) | K ORIGEN · M CONFIRMACION · P FILA_BASE · S ESTADO_ENLACE | B CLIENTE | Datos de factura en D:J |
+| `TRANSF (MES)` (fila 2) | I ORIGEN · K CONFIRMACION · N FILA_BASE | B CLIENTE | USD en D, COP en C |
+| `CONTROL (MES) P1/P2/P3` | A TC · B ASESOR · C RECARGA · D USUARIO · F PANEL · G FECHA · H F.VENCIMIENTO · I ORIGEN · J CREDITO | **E CONTRASEÑA** | P2 = PANEL 2 = MIRA+ |
+| `PAGOS [MES]` | A:AF mismo orden en octubre y noviembre (incluye N CONTRASEÑA) | **N CONTRASEÑA** (en PAGOS OCTUBRE 2026 está poblada; en noviembre vacía a propósito) | Noviembre agrega SEMANA … ID_BORRADOR y AM:AP del equipo |
+
 **Relación BASE GENERAL ↔ intranet.** La intranet lee BASE en solo lectura, recorre todas las secciones por `TC`/`ESTADO` (independiente de la posición) y salta las filas de consolidación. Matriz al 28/10/2026 tras normalizar:
 
 | Indicador | Fuente | Regla | Resultado BASE | Resultado intranet | Conciliación |
