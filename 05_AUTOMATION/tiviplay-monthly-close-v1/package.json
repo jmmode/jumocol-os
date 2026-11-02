@@ -7,10 +7,15 @@
   "scripts": {
     "test": "node --test",
     "run": "node run.mjs",
-    "reconcile-sales": "node reconcile-sales.mjs"
+    "reconcile-sales": "node reconcile-sales.mjs",
+    "assign-panel-ids": "node assign-panel-ids.mjs",
+    "cycle-sales": "node cycle-sales.mjs",
+    "generate-month": "node generate-month.mjs"
   },
   "dependencies": {
-    "google-auth-library": "^9.15.1"
+    "exceljs": "^4.4.0",
+    "google-auth-library": "^9.15.1",
+    "xlsx": "^0.18.5"
   },
   "engines": {
     "node": ">=20"

@@ -77,33 +77,39 @@ Esto no certifica la corrección de negocio del universo; certifica que el motor
 
 ## Snapshot privado de corte
 
-Cada ejecución puede persistir una copia privada de la entrada viva para permitir auditoría y replay posterior.
+Opcional y **desactivado por defecto**. Solo se escribe si se pide explícitamente:
 
-Ubicación local:
+```powershell
+$env:TIVIPLAY_PERSIST_SNAPSHOT="true"
+```
+
+Ubicación local (fuera de Git mediante la política `data/private`):
 
 ```text
 06_APPLICATIONS/JUMOCOL_OPERATIONS_INTELLIGENCE/data/private/
   tiviplay-monthly-close-v1/snapshots/
 ```
 
-Esta ruta queda fuera de Git mediante la política `data/private`.
+El snapshot contiene datos operativos de clientes (nunca la contraseña) y no debe subirse al repositorio.
 
-El snapshot contiene datos operativos y no debe subirse al repositorio.
+## Datos sensibles
 
-Para deshabilitarlo:
+- La columna `CONTRASEÑA` (y equivalentes) **no se solicita a la API**: la lectura localiza la fila de encabezados y pide solo los tramos de columnas permitidos. La columna llega vacía.
+- `core.mjs` además vacía cualquier columna sensible de la entrada (`redactSensitiveColumns`) y no expone `password` en el preview.
+- La clave privada de `.env.local` se normaliza (comillas, `\n` literales, CRLF) para evitar `ERR_OSSL_UNSUPPORTED`.
 
-```powershell
-$env:TIVIPLAY_PERSIST_SNAPSHOT="false"
-```
+## Evidencia sanitizada
 
-## Evidencia versionable
-
-La ejecución escribe:
+La ejecución escribe en `evidence/` (ignorada por Git; compartir solo copias revisadas):
 
 - `evidence/monthly-close-YYYY-MM.json`
 - `evidence/monthly-close-YYYY-MM.md`
 
-La evidencia evita nombres de clientes y conserva hashes, conteos, duplicados, excepciones y resultado de validación.
+La evidencia contiene conteos, semanas, filas de origen, fechas, hashes, firmas, excepciones y cartera vencida. **No contiene el preview** (cliente, teléfono, correo, usuario, observaciones). Antes de escribir, `run.mjs` verifica que ningún valor personal del preview aparezca en el JSON o el Markdown; si aparece, no escribe nada y termina con código 2. La consola solo imprime conteos.
+
+Fecha de corte explícita: `TIVIPLAY_CUTOFF_DATE=YYYY-MM-DD` (el motor nunca usa la fecha de ejecución).
+
+Ejecución local recomendada en el equipo de Dirección: `scripts/ejecutar-solo-lectura.ps1` (oracle 99 + BASE GENERAL viva, copia privada, sin snapshots).
 
 ## Estados
 
@@ -115,7 +121,7 @@ La evidencia evita nombres de clientes y conserva hashes, conteos, duplicados, e
 
 - `0`: VALIDADO o VALIDADO_TECNICO
 - `1`: PARCIAL
-- `2`: configuración inválida
+- `2`: configuración inválida o evidencia bloqueada por datos personales
 
 ## Estado funcional
 
@@ -135,7 +141,7 @@ No habilita escritura en producción.
 
 ## Preview operacional privado
 
-La ejecución sobre `BASE GENERAL` genera también, fuera de Git:
+Con `TIVIPLAY_PERSIST_SNAPSHOT=true`, la ejecución sobre `BASE GENERAL` genera también, fuera de Git (sin contraseña):
 
 - `YYYY-MM__preview.json`
 - `YYYY-MM__preview.csv`
@@ -145,4 +151,83 @@ El preview contiene las filas candidatas para `PAGOS [MES]` con origen `BASE GEN
 
 `FACTURAR_CANDIDATO` no sustituye todavía las reglas S0-B de mes gratis, desactivado, plan/acuerdo especial o excepción. Es una salida determinística intermedia que permite iterar esas reglas sin escribir en producción.
 
-Las excepciones de calidad de datos se separan en una cola explícita y nunca se corrigen silenciosamente.
+Las excepciones de calidad de datos se separan en una cola explícita y nunca se corrigen silenciosamente. Una ficha `TC=1` con F. PRÓXIMO PAGO vacía o no interpretable aparece como `INVALID_NEXT_PAYMENT_DATE`, con `cause` igual a `EMPTY_NEXT_PAYMENT_DATE` o `UNPARSEABLE_NEXT_PAYMENT_DATE`.
+
+## Fecha de corte y cartera vencida (S0-B)
+
+- `TIVIPLAY_CUTOFF_DATE=YYYY-MM-DD` fija la fecha de referencia. El motor nunca usa la fecha de ejecución. Sin ella, `daysPastDue` queda en `null`.
+- `carteraVencida[]` reúne las fichas `TC=1` con F. PRÓXIMO PAGO válida anterior al inicio del mes objetivo. Es una población separada del ciclo mensual, sin datos personales, con `origin`, `dueMonth`, `lastPaymentDate`, `daysPastDue` y `signals`.
+- Las señales (`USUARIO_LIBERADO`, `DESACTIVADO`, `NO_RENUEVA`, `MES_GRATIS`, `EXCEPCION`, `MIGRACION`, `CUENTA_UNIFICADA`) marcan `REQUIERE_REVISION`, pero nunca excluyen la ficha.
+- `signature` se conserva para el ciclo mensual. `outputSignature` firma ciclo, cartera, excepciones y corte.
+
+## Sincronización del borrador (`sync-draft.mjs`)
+
+Mantiene actualizada la hoja **PAGOS NOVIEMBRE 2026 - BORRADOR** a partir de las fuentes vivas, sin tocar nada más del libro.
+
+```
+BASE GENERAL (sin N) ─┐
+ZELLE/PAYPAL/TRANSF ──┼─► motor (×2) ─► buildDraft (×2) ─► diff por ID_BORRADOR ─► escritura A1:AL<n> ─► relectura ─► firma
+decisions/<mes>.json ─┘                                             │                                  │
+                                                       firma igual = NO_CHANGES             no coincide = RESTAURADO
+```
+
+**Uso**
+
+```powershell
+cd 05_AUTOMATION\tiviplay-monthly-close-v1
+$env:TIVIPLAY_SPREADSHEET_ID="<ID_DE_GESTION_DIA_PAGOS>"
+# Ensayo (por defecto): lee, calcula y muestra el diff. No escribe.
+node sync-draft.mjs --month 2026-11 --cutoff 2026-10-31
+# Escritura: requiere las tres llaves a la vez.
+$env:TIVIPLAY_DRAFT_WRITE_ENABLED="true"
+node sync-draft.mjs --month 2026-11 --cutoff 2026-10-31 --apply --confirm-sheet "PAGOS NOVIEMBRE 2026 - BORRADOR"
+```
+
+Estados: `NO_CHANGES` (firma igual, sin escritura) · `PLAN` (ensayo) · `ACTUALIZADO` · `RESTAURADO` (relectura no coincidió; se repusieron los valores previos) · `BLOQUEADO_FUENTE_INESTABLE` · `BLOQUEADO_NO_DETERMINISTA` · `BLOQUEADO_HOJA_NO_EXISTE` · `BLOQUEADO_CONFLICTO` (alguien editó la hoja durante la ejecución) · `BLOQUEADO_EXCEDE_RANGO` · `FALLO_RESTAURACION`. El reporte JSON se guarda en `evidence/draft-sync/` (ignorado por Git) con CLIENTE y USUARIO enmascarados.
+
+**Qué detecta.** El diff compara la hoja publicada con el nuevo cálculo por `ID_BORRADOR` (`NOV26-B<fila>` en el universo, `NOV26-AJ/PG/BQ/CV/EX<…>` en las secciones) y clasifica cada cambio como `CONFIRMACION`, `PAGO`, `FECHA`, `SEMANA`, `CLASIFICACION` o `DECISION`. Una ficha solo depende de su propia fila, de los pagos enlazados de forma única a esa fila (COINCIDENCIAS_BASE = 1), de su decisión registrada y de la repetición de su USUARIO: una excepción nunca reclasifica fichas independientes (prueba `excepciones aisladas`).
+
+**Decisiones operacionales.** `decisions/<mes>.json` registra bloqueos y notas de Dirección/BO por fila de BASE (sin nombres). Cambiarlo exige PR. `CONFIRMADO JM` nunca se escribe aquí: se lee de las hojas de pagos.
+
+**Garantías de escritura**
+
+- Allowlist de un título por mes (`src/draft/contract.mjs`); cualquier otra hoja se rechaza antes de llamar a la API.
+- El motor no crea hojas, ni cambia formato, protección o estructura: solo `values.update` RAW sobre `A1:AL<n>` y `values.clear` de `A<n+1>:AL600`.
+- Token de lectura (`spreadsheets.readonly`) separado del de escritura (`spreadsheets`), que solo se pide con `--apply`.
+- Firma de contenido en `AK2` (`firma:<sha256>`) y corte en `AJ2`; la intranet la muestra.
+
+**Recuperación**
+
+1. Automática: si la relectura no coincide con la firma, se reescriben los valores previos y se verifica (`RESTAURADO`).
+2. Manual: *Archivo → Historial de versiones* de Google Sheets sobre el libro (cada ejecución es una versión).
+3. Reconstrucción: el cálculo es determinista; volver a ejecutar con el mismo `--cutoff` y las mismas fuentes reproduce la misma firma.
+4. Desactivación inmediata: `TIVIPLAY_DRAFT_WRITE_ENABLED=false` (o retirar el permiso de edición de la cuenta de escritura).
+
+**Permisos mínimos**
+
+| Componente | Credencial | Scope | Permiso en el libro |
+|---|---|---|---|
+| Intranet (Vercel) | cuenta de servicio actual | `spreadsheets.readonly` | Lector (sin cambios) |
+| sync-draft (ensayo) | cualquiera de lectura | `spreadsheets.readonly` | Lector |
+| sync-draft (`--apply`) | **cuenta de servicio dedicada** | `spreadsheets` | Editor del libro + todas las hojas salvo BORRADOR protegidas sin esa cuenta en sus editores |
+
+Google no ofrece un permiso por hoja: el límite real es la allowlist del código más la protección de hojas. La cuenta de escritura no debe ser la de la intranet ni la de leads.
+
+## Ciclo comercial del mes (VENTAS × pagos × CONTROL × BASE)
+
+Implementa `TIVIPLAY_REGLAS_CIRCUITO_COMERCIAL_Y_CIERRE_MENSUAL_V1_0_2026-11-01` (§2–§5). Solo lectura.
+
+```powershell
+$env:TIVIPLAY_SPREADSHEET_ID="<ID_DE_GESTION_DIA_PAGOS>"
+$env:TIVIPLAY_SALES_SPREADSHEET_ID="<ID_DE_VENTAS_2026>"
+$env:TIVIPLAY_MONTH_TAG="OCT"
+$env:TIVIPLAY_SALES_SHEET="VENTAS_OCTUBRE"
+# $env:TIVIPLAY_D1_ANCHOR="PAGO"   # solo cuando Dirección ratifique D1
+npm run cycle-sales
+```
+
+- Cada venta TC=1 de VENTAS se cruza con su pago (misma hoja de medio, importe y fecha; se prefiere origen VENTA) y con CONTROL y BASE **por USUARIO**, nunca por nombre.
+- Plan, duración y pantallas salen de VENTAS (`PLAN ACTIVO`, `PANTALLAS`), nunca del importe. El catálogo (`CATALOGO_TARIFAS_VIGENTE`) solo valida el precio; las promociones v1 exigen reactivación con inactividad > 30 días demostrada.
+- Clasificación: `ALTA`, `REACTIVACION`, `YA_EN_BASE`, `MIRA_PLUS`, `EXCLUIDO_TC0`. Estado: `AUTORIZABLE`, `AUTORIZABLE_TRAS_D1`, `REQUIERE_DECISION` (Dirección) o `REQUIERE_REVISION_BO`, con la lista de bloqueos.
+- Para cada alta se calculan la fecha de pago, la activación (CONTROL), la `F.PRÓXIMO PAGO` de VENTAS y las dos propuestas (pago + duración / activación + duración). Toda discrepancia queda como bloqueo; nada se corrige por inferencia.
+- Las columnas con encabezado CONTRASEÑA no se leen; la salida no contiene nombres, contactos ni usuarios. Evidencia: `data/private/tiviplay-monthly-close-v1/sales-cycle/` (fuera de git).

@@ -47,6 +47,33 @@ export function normalizeHeaders(row) {
   return map;
 }
 
+// Columnas que el motor nunca lee ni conserva (credenciales de servicio del cliente).
+export const SENSITIVE_HEADERS = ["CONTRASEÑA", "CONTRASENA", "PASSWORD", "CLAVE"];
+
+export function isSensitiveHeader(value) {
+  return SENSITIVE_HEADERS.includes(canon(value).replace(/\s+/g, " "));
+}
+
+// Defensa en profundidad: vacía las columnas sensibles de cualquier entrada antes de calcular.
+export function redactSensitiveColumns(rows) {
+  let headerRowIndex;
+  try {
+    headerRowIndex = findHeaderRow(rows);
+  } catch {
+    return rows;
+  }
+  const sensitive = (rows[headerRowIndex] ?? [])
+    .map((value, index) => (isSensitiveHeader(value) ? index : -1))
+    .filter((index) => index >= 0);
+  if (!sensitive.length) return rows;
+  return rows.map((row, i) => {
+    if (i <= headerRowIndex || !Array.isArray(row)) return row;
+    const copy = [...row];
+    for (const index of sensitive) if (index < copy.length) copy[index] = "";
+    return copy;
+  });
+}
+
 function findHeaderRow(rows) {
   const required = ["TC", "CLIENTE"];
   for (let i = 0; i < Math.min(rows.length, 20); i++) {
@@ -77,6 +104,35 @@ function identityKey(row, cols) {
   ].map(canon).join("|");
 }
 
+// Señales de cartera vencida (S0-B): solo subestado/revisión, nunca exclusión.
+const CARTERA_SIGNALS = [
+  ["USUARIO_LIBERADO", /LIBERAD/],
+  ["DESACTIVADO", /DESACTIV/],
+  ["NO_RENUEVA", /NO\s+RENUEV|NO\s+VA\s+RENOVAR|NO\s+RENOVAR/],
+  ["MES_GRATIS", /MES\s+GRATIS/],
+  ["EXCEPCION", /EXCEPCI[ÓO]N/],
+  ["MIGRACION", /MIGRA/],
+  ["CUENTA_UNIFICADA", /UNIFIC/],
+];
+
+function detectCarteraSignals({ status, observations, referredBy }) {
+  const text = canon([status, observations, referredBy].filter(Boolean).join(" | "));
+  return CARTERA_SIGNALS.filter(([, re]) => re.test(text)).map(([name]) => name);
+}
+
+export function normalizeCutoffDate(value) {
+  if (value == null || value === "") return null;
+  const s = clean(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || Number.isNaN(Date.parse(`${s}T00:00:00Z`))) {
+    throw new Error(`cutoffDate must be YYYY-MM-DD, received: ${value}`);
+  }
+  return s;
+}
+
+function daysBetween(fromIso, toIso) {
+  return Math.round((Date.parse(`${toIso}T00:00:00Z`) - Date.parse(`${fromIso}T00:00:00Z`)) / 86400000);
+}
+
 function classifyCandidate({ status, observations, referredBy }) {
   const text = canon([status, observations, referredBy].filter(Boolean).join(" | "));
   const reviewReasons = [];
@@ -99,7 +155,10 @@ function classifyCandidate({ status, observations, referredBy }) {
   };
 }
 
-export function buildMonthlyClose(rows, targetMonth) {
+export function buildMonthlyClose(inputRows, targetMonth, options = {}) {
+  const rows = redactSensitiveColumns(inputRows);
+  // Fecha de corte explícita: el motor nunca usa la fecha de ejecución.
+  const cutoffDate = normalizeCutoffDate(options.cutoffDate);
   const headerRowIndex = findHeaderRow(rows);
   const headers = normalizeHeaders(rows[headerRowIndex] ?? []);
 
@@ -117,7 +176,6 @@ export function buildMonthlyClose(rows, targetMonth) {
     cop: findColumn(headers, ["COP"]),
     metodoPago: findColumn(headers, ["MÉTODO DE PAGO", "METODO DE PAGO", "MÉTODO", "METODO"]),
     usuario: findColumn(headers, ["USUARIO"]),
-    contrasena: findColumn(headers, ["CONTRASEÑA", "CONTRASENA"]),
     panel: findColumn(headers, ["PANEL"]),
     vencimiento: findColumn(headers, ["F.VENCIMIENTO"]),
     ultimoPago: findColumn(headers, ["F.ULTIMO PAGO", "F. ÚLTIMO PAGO"]),
@@ -134,6 +192,7 @@ export function buildMonthlyClose(rows, targetMonth) {
   const { start, end } = monthBounds(targetMonth);
   const selected = [];
   const exceptions = [];
+  const carteraVencida = [];
 
   for (let i = headerRowIndex + 1; i < rows.length; i++) {
     const row = rows[i] ?? [];
@@ -143,18 +202,39 @@ export function buildMonthlyClose(rows, targetMonth) {
     const date = parseOperationalDate(rawDate);
 
     if (!date) {
-      if (rawDate) {
-        exceptions.push({
-          sourceRow: i + 1,
-          type: "INVALID_NEXT_PAYMENT_DATE",
-          rawValue: rawDate,
-          action: "REQUIERE_CORRECCION",
-        });
-      }
+      // Una ficha TC=1 sin F. PRÓXIMO PAGO válida nunca desaparece en silencio.
+      exceptions.push({
+        sourceRow: i + 1,
+        type: "INVALID_NEXT_PAYMENT_DATE",
+        cause: rawDate ? "UNPARSEABLE_NEXT_PAYMENT_DATE" : "EMPTY_NEXT_PAYMENT_DATE",
+        rawValue: rawDate,
+        action: "REQUIERE_CORRECCION",
+      });
       continue;
     }
 
-    if (date < start || date > end) continue;
+    if (date < start) {
+      // Cartera vencida: población separada del ciclo mensual, trazable a su fila.
+      const signals = detectCarteraSignals({
+        status: valueAt(row, cols.estado),
+        observations: valueAt(row, cols.observaciones),
+        referredBy: valueAt(row, cols.referido),
+      });
+      const lastPayment = parseOperationalDate(valueAt(row, cols.ultimoPago));
+      carteraVencida.push({
+        sourceRow: i + 1,
+        origin: `BASE GENERAL!${i + 1}`,
+        nextPaymentDate: date,
+        dueMonth: date.slice(0, 7),
+        lastPaymentDate: lastPayment,
+        daysPastDue: cutoffDate ? daysBetween(date, cutoffDate) : null,
+        classification: signals.length ? "REQUIERE_REVISION" : "CARTERA_VENCIDA",
+        signals,
+      });
+      continue;
+    }
+
+    if (date > end) continue;
 
     const identity = identityKey(row, cols);
     const status = valueAt(row, cols.estado);
@@ -180,7 +260,6 @@ export function buildMonthlyClose(rows, targetMonth) {
       cop: valueAt(row, cols.cop),
       paymentMethod: valueAt(row, cols.metodoPago),
       username: valueAt(row, cols.usuario),
-      password: valueAt(row, cols.contrasena),
       panel: valueAt(row, cols.panel),
       expirationDate: valueAt(row, cols.vencimiento),
       lastPaymentDate: valueAt(row, cols.ultimoPago),
@@ -227,8 +306,29 @@ export function buildMonthlyClose(rows, targetMonth) {
     return acc;
   }, {});
 
+  carteraVencida.sort((a, b) => b.dueMonth.localeCompare(a.dueMonth) || a.sourceRow - b.sourceRow);
+  const carteraByMonth = Object.entries(
+    carteraVencida.reduce((acc, item) => ((acc[item.dueMonth] = (acc[item.dueMonth] ?? 0) + 1), acc), {}),
+  )
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([month, count]) => ({ month, count }));
+  const carteraSignalCounts = carteraVencida.flatMap((item) => item.signals).reduce((acc, name) => {
+    acc[name] = (acc[name] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  // Firma de la salida completa (ciclo + cartera + excepciones + corte). `signature` se conserva intacta.
+  const outputSignature = sha256(JSON.stringify({
+    targetMonth,
+    cutoffDate,
+    monthly: stableRows,
+    cartera: carteraVencida,
+    exceptions: exceptions.map(({ sourceRow, cause }) => ({ sourceRow, cause })),
+  }));
+
   return {
     targetMonth,
+    cutoffDate,
     total: selected.length,
     weeks,
     classificationCounts,
@@ -237,6 +337,10 @@ export function buildMonthlyClose(rows, targetMonth) {
     duplicates,
     exceptions,
     signature,
+    carteraVencida,
+    carteraByMonth,
+    carteraSignalCounts,
+    outputSignature,
   };
 }
 
