@@ -1353,3 +1353,42 @@ Fuera de altas: VENTAS!16 → ficha 756 vigente y 1372 histórica con el mismo U
 **ESTADO:** «PAGOS NOVIEMBRE 2026» REGENERADA Y VALIDADA: 98 fichas, cuadre exacto con el motor, gestiones del equipo conservadas e idempotente. Gate: **NO APTO PARA MOTOR MENSUAL** mientras sigan abiertos los P0 (seguridad de intranet `readBaseLive`, enlaces P0-2/P0-3).
 
 **NEXT ACTION (única):** pasar a la intranet. Dirección autoriza corregir el P0 de `readBaseLive` (resolver columnas por encabezado y excluir CONTRASEÑA), en PR sin fusionar ni desplegar, como primer paso de la integración.
+
+## 19. PARIDAD VISUAL OCTUBRE → NOVIEMBRE (02/11/2026 01:16–02:00 UTC)
+
+**Encargo:** Julian (01:16) pidió que «PAGOS NOVIEMBRE 2026» tenga el mismo diseño, distribución y consolidados que «PAGOS OCTUBRE 2026», con los datos de noviembre ya validados. Octubre se leyó en solo lectura y sin tocar su columna N (contraseñas). No se modificaron BASE GENERAL, los medios de pago, CONFIRMADO JM ni la intranet.
+
+### 19.1 Diferencias encontradas y corregidas
+| Elemento | Octubre (plantilla) | Noviembre antes | Noviembre ahora |
+| --- | --- | --- | --- |
+| Título (fila 1) | B: «PAGOS OCTUBRE 2026 · CORTE BASE GENERAL 30/09/2026», banda azul marino | A: «… · BORRADOR · CORTE 2026-11-01», sin color | B: «PAGOS NOVIEMBRE 2026 · CORTE BASE GENERAL 01/11/2026», mismo formato |
+| Resumen (fila 2) | B: «F. PRÓXIMO PAGO 01–31/10/2026 · 99 fichas · cartera nominal USD … + COP …», banda crema | A: firmas del motor | B: «F. PRÓXIMO PAGO 01–30/11/2026 · 98 fichas · cartera nominal USD 6.177 + COP 295.848…». Las firmas pasan a «Trazabilidad» |
+| Encabezados (fila 3) | Azul marino, texto blanco, bordes punteados A:V; W:AM centrado y ajustado | Solo negrita | Formato de octubre: dos bloques, BASE (A:V) y conciliación (W:AF), más AG:AP operativas |
+| Semanas | «SEMANA 1 · 01–04 OCT», banda azul | «SEMANA 1 · 01–04/11» | «SEMANA 1 · 01–04 NOV», banda azul |
+| Consolidados | «TOTAL SEMANA n»: A = fichas, J = USD, K = COP; banda lila; sin fila en blanco | «SUBTOTAL SEMANA n: …» solo con USD, más una fila en blanco | «TOTAL SEMANA n» con A/J/K. El desglose por clase va a CAUSA / ACCIÓN (AJ). Sin filas en blanco |
+| Total del mes | «TOTAL VENCIMIENTOS OCTUBRE · NO META», banda azul marino | «TOTAL NOVIEMBRE 2026: …» | «TOTAL VENCIMIENTOS NOVIEMBRE · NO META»: 98 · USD 6.177 · COP 295.848 |
+| Filas de fichas | Roboto 12, alineaciones y formatos de número de octubre; ESTADO coloreado | Sin formato | Formato de la fila tipo de octubre; reglas de color de ESTADO (Al dia / Por vencer / Vencido) |
+| Anchos / alturas | Anchos propios (B 260, F 460, …); filas de 21 px | 100 px; filas por defecto | Anchos de octubre en A:AO (AJ 128 y AP 128 para el texto operativo); filas de 21 px |
+| Congelado / pestaña | 3 filas, 0 columnas; pestaña verde | 3 filas + 2 columnas; naranja | 3 filas, 0 columnas; verde |
+
+- **Información adicional de noviembre conservada, sin cambiar su significado:** ajustes AJ, pagos sin enlace PG, bloqueados BQ, cartera vencida CV, excluidos EX/EXH, procedimiento y VALIDACIÓN Y CONTROL. Quedan debajo del total con el mismo lenguaje visual: títulos con banda de semana, cabeceras con estilo de encabezado y filas con estilo de ficha.
+- **Color de fila de octubre:** el amarillo de octubre marca pagos ya cobrados al cierre y el rojo, vencidos sin pago. En noviembre la fila se pinta amarilla cuando el equipo marca `ESTADO_COBRO = COBRADO` (regla condicional), así que el significado es el mismo.
+- **Regla no trasladada, a propósito:** en octubre, W = «CONFIRMADO JM» pintaba la fila de verde. En noviembre W refleja el pago de octubre, no el de noviembre, y esa regla mostraría como confirmadas fichas que aún no han pagado noviembre.
+- **Mecanismo:** el builder de PR #6 incorpora el diseño (commit `989db9e` en `wo-tivi-sync-borrador-001`, 34/34 tests, sin fusionar), así que la próxima regeneración conserva la paridad. En la hoja se borraron las 5 filas en blanco entre bloques y se escribieron solo las celdas que cambiaban. El formato se copió de las filas tipo de octubre: 1, 2, 3, 4 (semana), 25 (total semanal), 103 (ficha), 166 (total del mes) y 167 (vacía).
+
+### 19.2 Verificación
+| Control | Resultado |
+| --- | --- |
+| Concurrencia antes de escribir | Hoja idéntica a la relectura de §18 |
+| Contenido releído vs builder | 325 filas, **0 diferencias de contenido**. 308 celdas solo cambian de presentación: fechas e importes con el formato de número de octubre |
+| Universo | 98 fichas · 8/25/20/29/16 · 0 IDs duplicados · firma `f6e16fceb84b…` (AK2) |
+| Consolidados | TOTAL SEMANA 1–5 = 8/25/20/29/16 fichas · USD 440/1.259/1.010/2.260/1.208 · TOTAL 98 · USD 6.177 · COP 295.848, cuadra con el motor |
+| Gestiones del equipo | 118/118 IDs con AM:AP idénticos (190 gestiones de AM conservadas) |
+| Formato vs plantilla de octubre | 5.040 celdas comparadas en filas 1–120: idénticas salvo el formato de número. AP se igualó a AO. Octubre sigue con sus 11 reglas, sin cambios |
+| Idempotencia | Segunda pasada sobre la hoja releída: misma firma y 0 diferencias |
+
+- **Reversión:** relectura previa de valores y formato en la sesión privada; los valores escritos en §18 están en el archivo del builder.
+
+**ESTADO:** PAGOS NOVIEMBRE 2026 tiene paridad visual y funcional con octubre, con 98 fichas, consolidados cuadrados y gestiones conservadas. Gate: **NO APTO PARA MOTOR MENSUAL** mientras sigan abiertos los P0.
+
+**NEXT ACTION (única):** Dirección revisa la hoja en Sheets. Si da su conformidad, se pasa a la intranet: autorizar la corrección del P0 `readBaseLive` (lectura por encabezado y sin CONTRASEÑA) en un PR sin fusionar ni desplegar.
