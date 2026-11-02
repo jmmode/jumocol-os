@@ -26,3 +26,11 @@ Bloqueado: discrepancia técnica de panel Gustavo.
 Requiere decisión: tarifa promocional de Julio, en espera de evidencia.
 
 No se alteró CONFIRMADO JM ni se fusionó PR ni desplegó intranet.
+
+## Evidencia nueva: PANEL corte 01/11/2026 y regla de crédito
+Fuente: Drive carpeta PANELES, archivos PANELES_CORTE 27_10_26.xlsx y PANELES_CORTE 01_11_26.xlsx. Evidencia de snapshots, NO estado en tiempo real.
+- Carlos Gallón: usuario PL1000321, PANEL colombia78DM, vencimiento técnico 29/10 en corte 27/10 → 30/11 en corte 01/11. Comercial próximo cobro 24/11. Cuenta técnica vigente al corte. No solicitar liberar crédito.
+- Gustavo Sepúlveda: PL556845, PANEL colombia78DM, vencimiento técnico 05/11 en ambos cortes; comercial 24/11. Técnico vigente al 01/11 pero insuficiente para cubrir ciclo comercial; BO panel verifica continuidad/extensión antes del 05/11, SIN solicitar liberación de una cuenta ya vencida.
+- Julio Correa: Julio100251, PANEL colombia78DM, vencimiento técnico 17/11 (corte 01/11) frente a comercial 17/10/2027. En BASE GENERAL Q763 se corrigió fecha técnica a 17/11/2026 manteniendo R/S comerciales intactas; ajuste puntual del snapshot, pendiente reemplazar por sincronización automática con fuente técnica.
+
+Regla: cruces por usuario exacto/ID técnico y panel; excluir contraseñas. A fecha de corte, cuenta vencida no requiere llamada de liberación de crédito; encontrar asociación válida y cuenta vigente, si existe. Cuenta vigente no demuestra cobertura del período comercial completo; fechas de cobro y de panel se auditan por separado. No reasignar cuentas ni liberar créditos sin fuente autorizada. Próxima acción técnica: integrar snapshots versionados del panel al motor en solo lectura y detectar brechas comerciales/técnicas con responsables BO.
