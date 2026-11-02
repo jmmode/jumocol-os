@@ -1245,3 +1245,48 @@ Diff de presentación propuesto (no aplicado, requiere aprobación): copiar a no
 **ESTADO:** Gate 1 VALIDADO (138 · 102/11/3/22). Gate 2 PARCIAL (estructura verificada; lote preparado; R2 y altas sin autorizar). Gate 3 DISPONIBLE, no definitivo. Gate 4 PARCIAL (funcional sí, visual no). Gate 5 PREPARADO. Gate global: **NO APTO PARA MOTOR MENSUAL**.
 
 **NEXT ACTION (única):** Dirección confirma D1 (fecha de alta = pago + catálogo) para autorizar la inserción única de las 3 altas listas (ZELLE!64, TRANSF!8, PAYPAL!12) junto con R2.
+
+## 16. REGLAS v1.0 EN EL MOTOR Y LOTE DE ALTAS DE OCTUBRE (02/11/2026 00:05–00:50 UTC; código, sin escrituras en Sheets)
+
+**Encargo:** Julian, 02/11 00:03 UTC, sobre el contrato `TIVIPLAY_REGLAS_CIRCUITO_COMERCIAL_Y_CIERRE_MENSUAL_V1_0_2026-11-01` (PR #8 @ `d784b90`). 0 escrituras en Sheets, 0 merges, 0 despliegues. Intranet sin tocar.
+
+### 16.1 Código (PR #9, apilado sobre #5)
+- Rama `wo-tivi-motor-ventas-001` @ `7a0147e`, base `wo-tivi-motor-seguro-001` (#5). PR: https://github.com/jmmode/jumocol-os/pull/9
+- `src/sales-cycle.mjs`: VENTAS (plan, duración y pantallas vendidas) × pago CONFIRMADO JM (hoja de medio + importe + fecha; prefiere origen VENTA; descarta pagos enlazados a otra ficha) × CONTROL (cuenta y activación) × BASE (por USUARIO). Bloqueos con responsable; D1 sin ratificar por defecto; fechas de venta/pago, activación, VENTAS y técnica separadas; propuesta de fila con AI/AJ en serial.
+- Bloqueos que implementa: SIN_PAGO, PAGO_AMBIGUO, SIN_CONFIRMADO_JM, HOMONIMO_POSIBLE, FICHA_HISTORICA_MISMO_USUARIO, USUARIO_DUPLICADO_EN_BASE, FICHA_HISTORICA_NO_LOCALIZADA, PLAN_INCOMPLETO_EN_VENTAS, TARIFA_FUERA_DE_CATALOGO, BONO_SIN_RATIFICAR, PROMO_FUERA_DE_VIGENCIA, ELEGIBILIDAD_PROMO_NO_DEMOSTRADA, SIN_CREDITO_EN_CONTROL, FECHA_CONTROL_INCOHERENTE, FECHA_VENTAS_DISCREPA, D1_ANCLAJE_SIN_RATIFICAR.
+- `cycle-sales.mjs` (`npm run cycle-sales`): en vivo (`readSheetValues`, que omite CONTRASEÑA por encabezado) o `--snapshot`. Evidencia en `data/private` (ignorado por git).
+- **Pruebas: 35/35** (13 nuevas + 22 del motor). Una prueba verifica que la salida no contiene contraseñas, nombres, contactos ni usuarios.
+- Esquema M=ID, N=USUARIO, O=CONTRASEÑA, P=PANEL: el módulo resuelve todo por encabezado; ID (M) sigue vacío en BASE, así que la identidad técnica es USUARIO + PANEL. Lecturas de esta sesión: VENTAS sin K, CONTROL sin E, BASE sin O.
+
+### 16.2 Resultado con datos vivos de octubre (instantánea 01/11 23:24, igual a la del 22:20)
+17 ventas TC=1 + 1 FREE → **11 altas TIVIPLAY**, 3 MIRA+ (TRANSF!6, ZELLE!35, ZELLE!78), 3 ya en BASE (757 sin acción; 756 con histórica 1372; 792 con fila de VENTAS sin monto ni fecha). 0 pagos VENTA confirmados sin fila en VENTAS.
+
+| VENTAS | Pago | Plan vendido (VENTAS) | Catálogo | Estado | Bloqueos (responsable) |
+| --- | --- | --- | --- | --- | --- |
+| !6 | TRANSF!8 · 25 | 2M·1p | 25 ✓ | **AUTORIZABLE TRAS D1** | D1. Pago 10-10 → 10-12-26 (= VENTAS); activación P3 13-10 → 13-12-26 |
+| !13 | PAYPAL!12 · 70 | **6M·1p** | 70 ✓ (no promo) | **AUTORIZABLE TRAS D1** | D1. Pago 24-10 → 24-04-27 (= VENTAS); activación P3 25-10 → 25-04-27 |
+| !7 | ZELLE!64 · 15 | 1M·1p | 15 ✓ | REVISIÓN BO | VENTAS registra F.PRÓX 14-12-26; el plan da 14-11-26 (¿mes extra de referido?) |
+| !4 | ZELLE!41 · 70 | 6M·1p | 70 ✓ | REVISIÓN BO | Pago enlazado por nombre a la ficha 368 (otro USUARIO): ¿segunda línea u homónimo? |
+| !10 | PAYPAL!8 · 15 | 1M·1p | 15 ✓ | REVISIÓN BO | Crédito en CONTROL (OCT) P1!68 con FECHA «2026-11-16» (toda la columna FECHA de P1 OCT muestra noviembre): fecha técnica incoherente |
+| !15 | ZELLE!95 · 15 | 1M·1p | 15 ✓ | REVISIÓN BO | Sin crédito en CONTROL (OCT) P1/P2/P3 |
+| !11 | TRANSF!12 · 70 | 12M·3p (Reactivación · BASE INACTIVOS) | promo anual | REVISIÓN BO | Ficha histórica no localizada por USUARIO; elegibilidad > 30 d sin demostrar |
+| !8 | ZELLE!66 · 150 | 12M+1 · 4p | 12M·4p = 240 | DECISIÓN | Tarifa (150 = 12M·2p) y bono +1 |
+| !9 | ZELLE!67 · 70 | 6M+1 · 2p | 6M·2p = 82 | DECISIÓN | Tarifa (70 = 6M·1p) y bono +1 |
+| !18 | ZELLE!104 · 180 | 12M+2 · 3p | 180 ✓ | DECISIÓN | Bono +2 |
+| !19 | ZELLE!107 · 110 | 12M · 3p | 180 | DECISIÓN | 110 no es tarifa |
+
+Fuera de altas: VENTAS!16 → ficha 756 vigente y 1372 histórica con el mismo USUARIO (D4); VENTAS!20 → ficha 792 ya aplicada, pero la fila de VENTAS no tiene monto, método ni fechas (BO completa VENTAS).
+
+### 16.3 Lote estructural único (preparado, no ejecutado)
+- **Ejecutable tras D1 + autorización:** inserción única de **K = 2** filas antes de la 760 (S5 ALTAS OCTUBRE), con fórmulas copiadas de la 759: TRANSF!8 (G PLAN 2 MESES · H 1 · J 25 · L NEQUI · P PANEL 3 · AI 46305 → AJ 46366) y PAYPAL!12 (G PLAN 6 MESES · H 1 · J 70 · L PAYPAL · P PANEL 3 · AI 46319 → AJ 46501). N = USUARIO de VENTAS (no se documenta aquí); M (ID) vacío; F = `ALTA · VENTAS!r · <pago> · CONFIRMADO JM`. Con anclaje a activación: 46308 → 46369 y 46320 → 46502.
+- Junto con el **lote R2** (18 fórmulas X:AF en 45/48). Comprobaciones previas, respaldo y reversión: §14.5 (la reversión es borrar las K filas). Cada fila insertada desplaza +1 las fichas ≥ 760 y FILA_BASE.
+- La consolidación S5 → CLIENTES AL DÍA sigue para después de regenerar noviembre (D5).
+
+### 16.4 Motor noviembre frente a «PAGOS NOVIEMBRE 2026»
+- Estado actual (corte 01/11, §15.4): 98 fichas · 8/25/20/29/16 · 0 duplicados. Frente a la hoja (101): salen 11, 23 y 30 (renovaron en §13.2, F.PRÓX 2027); 76 pasa de S4 a S5 (anclaje al ciclo); 0 fichas solo en el motor.
+- **Escenario con las 5 altas sin decisión tarifaria insertadas** (TRANSF!8, PAYPAL!12, ZELLE!64, PAYPAL!8, ZELLE!95): **101 fichas** · 8/25/22/30/16 · 0 duplicados · firma repetible (`ea1186547d21…`). Entran ZELLE!64 (14-11), PAYPAL!8 (16-11) y ZELLE!95 (25-11). La excepción de la 760 pasa a la fila 765: la inserción desplaza las filas, como estaba previsto.
+- AM:AP de la hoja: sin gestiones del equipo en AN:AP; al regenerar se conserva AM por ID_BORRADOR.
+
+**ESTADO:** reglas v1.0 IMPLEMENTADAS en el motor (PR #9, 35/35). Altas: 2 autorizables tras D1, 4 en Dirección y 5 en BO. 0 escrituras. Gate: **NO APTO PARA MOTOR MENSUAL**.
+
+**NEXT ACTION (única):** Dirección ratifica D1 (alta = fecha de pago + duración de VENTAS) y autoriza el lote único: inserción de 2 filas (TRANSF!8, PAYPAL!12) + R2.
