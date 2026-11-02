@@ -22,7 +22,6 @@ declare module "@motor/tiviplay-monthly-close-v1/core" {
     cop: string;
     paymentMethod: string;
     username: string;
-    password: string;
     panel: string;
     expirationDate: string;
     lastPaymentDate: string;
@@ -36,8 +35,20 @@ declare module "@motor/tiviplay-monthly-close-v1/core" {
   export type MotorException = {
     sourceRow: number;
     type: "INVALID_NEXT_PAYMENT_DATE";
+    cause: "UNPARSEABLE_NEXT_PAYMENT_DATE" | "EMPTY_NEXT_PAYMENT_DATE";
     rawValue: string;
     action: "REQUIERE_CORRECCION";
+  };
+
+  export type MotorCarteraItem = {
+    sourceRow: number;
+    origin: string;
+    nextPaymentDate: string;
+    dueMonth: string;
+    lastPaymentDate: string | null;
+    daysPastDue: number | null;
+    classification: "CARTERA_VENCIDA" | "REQUIERE_REVISION";
+    signals: string[];
   };
 
   export type MotorDuplicate = { identityHash: string; sourceRows: number[] };
@@ -52,8 +63,17 @@ declare module "@motor/tiviplay-monthly-close-v1/core" {
     duplicates: MotorDuplicate[];
     exceptions: MotorException[];
     signature: string;
+    cutoffDate: string | null;
+    carteraVencida: MotorCarteraItem[];
+    carteraByMonth: Array<{ month: string; count: number }>;
+    carteraSignalCounts: Record<string, number>;
+    outputSignature: string;
   };
 
-  export function buildMonthlyClose(rows: unknown[][], targetMonth: string): MotorMonthlyClose;
+  export function buildMonthlyClose(
+    rows: unknown[][],
+    targetMonth: string,
+    options?: { cutoffDate?: string | null },
+  ): MotorMonthlyClose;
   export function weekBucket(isoDate: string): number;
 }

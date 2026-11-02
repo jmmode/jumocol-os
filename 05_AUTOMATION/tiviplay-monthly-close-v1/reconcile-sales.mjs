@@ -45,7 +45,7 @@ console.log(`Matched in BASE GENERAL: ${result.matchedConfirmed}`);
 console.log(`Exceptions: ${result.exceptions.length}`);
 
 for (const x of result.exceptions) {
-  console.log(`- row ${x.salesRow}: ${x.type} | ${x.client}`);
+  console.log(`- row ${x.salesRow}: ${x.type}`);
 }
 
 console.log(`STATUS: ${result.exceptions.length === 0 ? "VALIDADO" : "PARCIAL"}`);
