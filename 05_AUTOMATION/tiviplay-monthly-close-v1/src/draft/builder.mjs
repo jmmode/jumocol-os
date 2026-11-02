@@ -95,8 +95,9 @@ function findHeaderIndex(rows) {
 const WEEK_LABEL = (month) => {
   const [y, m] = month.split("-").map(Number);
   const end = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  const mm = String(m).padStart(2, "0");
-  return { 1: `01–04/${mm}`, 2: `05–11/${mm}`, 3: `12–18/${mm}`, 4: `19–25/${mm}`, 5: `26–${end}/${mm}` };
+  // Mismo rótulo que PAGOS OCTUBRE 2026 («SEMANA 1 · 01–04 OCT»).
+  const ab = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"][m - 1];
+  return { 1: `01–04 ${ab}`, 2: `05–11 ${ab}`, 3: `12–18 ${ab}`, 4: `19–25 ${ab}`, 5: `26–${end} ${ab}` };
 };
 
 const describePayment = (p) => `${p.source} ${p.row} ${p.currency} ${p.amount}`;
@@ -331,15 +332,23 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
   };
   const count = (items) => items.reduce((acc, u) => ((acc[u.cls] = (acc[u.cls] ?? 0) + 1), acc), {});
   const usdSum = (items) => Math.round(items.reduce((s, u) => s + (num(u.r[B.usd]) ?? 0), 0) * 100) / 100;
+  const copSum = (items) => Math.round(items.reduce((s, u) => s + (num(u.r[B.cop]) ?? 0), 0) * 100) / 100;
+  const [yy, mo] = month.split("-");
+  const lastDay = new Date(Date.UTC(Number(yy), Number(mo), 0)).getUTCDate();
+  const monthName = target.label.split(" ")[0];
+  const ddmmyyyy = (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
   const tot = count(universe);
   const classLine = (c) => `FACTURABLE ${c.FACTURABLE ?? 0} · REVISIÓN ${c.REQUIERE_REVISION ?? 0} · BLOQUEADO ${c.BLOQUEADO ?? 0} · PAGADO SIN PROPAGAR ${c.PAGADO_SIN_PROPAGAR ?? 0}`;
 
   const paymentsSignature = sha256(JSON.stringify(payments)).slice(0, 12);
   const decisionsSignature = sha256(JSON.stringify(decisions)).slice(0, 12);
 
-  row(`PAGOS ${target.label} · BORRADOR · CORTE ${cutoffDate}`);
+  // Encabezado con el mismo diseño que PAGOS OCTUBRE 2026: título y resumen en la columna B.
+  row("", `PAGOS ${target.label} · CORTE BASE GENERAL ${ddmmyyyy(cutoffDate)}`);
+  const fmtNum = (n) => n.toLocaleString("es-CO", { maximumFractionDigits: 2 });
   const meta = row(
-    `Motor tiviplay-monthly-close-v1 + sync-draft. Universo ${universe.length} · ${classLine(tot)} · motor ${close.signature.slice(0, 12)} · pagos ${paymentsSignature} · decisiones ${decisionsSignature} · BORRADOR NO DEFINITIVO · Columnas C, D, F, I, N, T, U vacías a propósito (sin PII ni contraseña).`,
+    "",
+    `F. PRÓXIMO PAGO 01–${lastDay}/${mo}/${yy} · ${universe.length} fichas · cartera nominal USD ${fmtNum(usdSum(universe))} + COP ${fmtNum(copSum(universe))}. Metas y recaudo se concilian por separado.`,
   );
   meta[META_CUTOFF_COL] = `corte:${cutoffDate}`;
   meta[ID_COL] = `${P}-META`;
@@ -362,13 +371,17 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
       if (lp) Object.assign(v, { 22: lp.confirmation, 24: lp.matches, 25: lp.source, 26: lp.row, 27: lp.paymentDate ?? "", 28: lp.currency, 29: lp.amount, 31: lp.confirmation });
       out.push(v);
     }
-    const c = row("", `SUBTOTAL SEMANA ${wk}: ${items.length} fichas · ${classLine(count(items))}`);
+    // Consolidado como en octubre: A = fichas, J = USD, K = COP; el desglose por clase va en CAUSA / ACCIÓN.
+    const c = row(items.length, `TOTAL SEMANA ${wk}`);
     c[9] = usdSum(items);
+    c[10] = copSum(items);
+    c[35] = `${items.length} fichas · ${classLine(count(items))}`;
     c[ID_COL] = `${P}-T${wk}`;
-    row();
   }
-  const total = row("", `TOTAL ${target.label}: ${universe.length} fichas · ${classLine(tot)}`);
+  const total = row(universe.length, `TOTAL VENCIMIENTOS ${monthName} · NO META`);
   total[9] = usdSum(universe);
+  total[10] = copSum(universe);
+  total[35] = `${universe.length} fichas · ${classLine(tot)}`;
   total[ID_COL] = `${P}-TOTAL`;
   row();
 
@@ -436,6 +449,7 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
   row("", "Cuadre con BASE", `${reconciled ? "OK" : "REVISAR"} · TC=1 operativas ${tally.tc1} = universo ${universe.length - movedCount} + cartera ${cartera.length + movedCount} (de ellas ${movedCount} incluidas en el mes por pago confirmado) + sin F. PRÓX ${blocked.length} + vencen después del mes ${tally.nextMonths} · TC=1 en secciones históricas ${tally.tc1Historical} (excluidas por sección) · TC=0 operativas ${tally.tc0} (excluidas fila a fila)`);
   row("", "Sincronización", "Columnas AM:AP son del equipo y se conservan por ID_BORRADOR al regenerar. A:AL las calcula el motor: no editarlas a mano.");
   row("", "Gate", "NO APTO PARA MOTOR MENSUAL mientras existan P0 abiertos. Este borrador no es cierre definitivo.");
+  row("", "Trazabilidad", `Motor tiviplay-monthly-close-v1 + sync-draft · corte ${cutoffDate} · motor ${close.signature.slice(0, 12)} · pagos ${paymentsSignature} · decisiones ${decisionsSignature} · Columnas C, D, F, I, N, T, U vacías a propósito (sin PII ni contraseña).`);
 
   const ids = [];
   for (const r of out) {
