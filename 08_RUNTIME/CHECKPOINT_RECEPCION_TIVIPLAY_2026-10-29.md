@@ -1317,3 +1317,39 @@ Fuera de altas: VENTAS!16 → ficha 756 vigente y 1372 histórica con el mismo U
 **ESTADO:** lote único APLICADO y verificado (2 altas + R2). Universo de noviembre = 98. Gate: **NO APTO PARA MOTOR MENSUAL** hasta regenerar la hoja de noviembre con este universo.
 
 **NEXT ACTION (única):** autorizar la regeneración de «PAGOS NOVIEMBRE 2026» con el universo de 98 (salen 11, 23 y 30; se corrige la 76 y las referencias 765→767 y 865→867), conservando AM por ID.
+
+## 18. REGENERACIÓN DE «PAGOS NOVIEMBRE 2026» (02/11/2026 00:40–01:30 UTC)
+
+**Autorización:** Julian (00:40, «REGENERACIÓN NOVIEMBRE») aprobó regenerar solo la hoja de noviembre. Sin cambios en BASE GENERAL, CONFIRMADO JM, otras hojas, intranet, PR ni despliegues. Sin lectura de contraseñas.
+
+### 18.1 Preparación
+- BASE releída tras §17: 98 fichas · 8/25/20/29/16 · 0 duplicados. Sin cambios, así que no hubo diff que presentar.
+- Respaldo previo de la hoja (A1:AP600): valores (userEnteredValue + formattedValue, 331 filas, 0 fórmulas) y formato/propiedades/validaciones, en la sesión privada. **Reversión:** reescribir esos valores sobre A1:AP331.
+- Comprobación de concurrencia justo antes de escribir: hoja idéntica al respaldo, sin conflicto de edición.
+- Mecanismo: builder de PR #6 (`wo-tivi-sync-borrador-001` @ 900d860), sin cambios de código. Ajustes solo locales: claves de `decisions/2026-11.json` ≥760 desplazadas +2 (760→762, 762→764, 802→804, 811→813; el archivo del repo no cambia). IDs actuales ≥760 remapeados +2 antes de conservar AM:AP. Identidad comprobada en 92 filas, con 0 fallos: 765→767 y 865→867 confirmados.
+
+### 18.2 Resultado escrito (A1:AP329, solo valores, 5 bloques)
+- **329 filas** · firma `8434b6be48e6…` (AK2) · 304 ID_BORRADOR únicos.
+- **Universo: 98 fichas · semanas 8/25/20/29/16 · 0 duplicados.** FACTURABLE 75 · REVISIÓN 21 · BLOQUEADO 2 · PAGADO SIN PROPAGAR 0. Facturable por semana: 5/17/15/25/13. Cartera 90 · excluidos 29 · pagos pendientes 35 · ajustes 7.
+- Salen B11, B23 y B30 (renovaron, §13.2). Trazabilidad: quedan en el respaldo, y la 23 y la 30 en §13.2. Sus AM eran solo el valor inicial y AN:AP estaban vacías.
+- B76: 27-11, semana 5, con su ajuste AJ76 (pago 24-11 vs BASE 27-11).
+- Referencias: BASE!767 (B767) y BASE!867 aparecen una vez cada una. No queda ningún ID ni referencia antigua a 765/865 como ficha del mes.
+- Otros cambios esperados:
+  - B45 y B48 muestran su pago enlazado tras R2.
+  - Lista PG: salen TRANSF!8, TRANSF!10 y ZELLE!46; entran PAYPAL(NOV)3, ZELLE(NOV)4 y ZELLE(OCT)112 (pagos nuevos de la hoja).
+  - EXH agrupa 18 secciones por su etiqueta real.
+  - 9 fichas pasan de REVISIÓN a FACTURABLE y conservan su AM «EN REVISIÓN» (columna del equipo, no se toca).
+
+### 18.3 Verificación
+| Control | Resultado |
+| --- | --- |
+| Celdas escritas vs locales | 2453 / 2435 / 2236 / 1792 / 62: idénticas por bloque |
+| Relectura vs builder | 329 filas; filas 330+ vacías. Contenido idéntico. Solo hay diferencias de presentación numérica que aplica Sheets al interpretar fechas e importes (p. ej. `2026-10-02` se muestra `02-10-26`; `15.00` se muestra `15`) y 1 espacio duro normalizado |
+| AM:AP | 190/190 gestiones conservadas por ID; AN:AP seguían sin gestiones del equipo |
+| Formato y estructura | Propiedades, filas/columnas congeladas (3/2), anchos, color de pestaña, negritas (42) y fondos (4) idénticos. Sin formatos condicionales, validaciones, protecciones ni combinaciones, igual que antes. Sin fórmulas en la hoja, igual que antes |
+| Idempotencia | Segunda pasada usando como «hoja actual» la propia hoja releída: misma firma `8434b6be…` y 0 diferencias en A..AP frente a la primera |
+| Omisiones | 0 sin causa: todo TC=1 está en el universo, en cartera, en meses posteriores o en una sección histórica. Excepción BO: la fila **1296** (sección histórica «DESACTIVADOS JULIO») tiene TC=1, F.PRÓX 01-11-27 y «Al dia». Parece una ficha reactivada dentro de una sección histórica; por eso el cuadre histórico da 702 vs 703 y el bloque VALIDACIÓN muestra «REVISAR» |
+
+**ESTADO:** «PAGOS NOVIEMBRE 2026» REGENERADA Y VALIDADA: 98 fichas, cuadre exacto con el motor, gestiones del equipo conservadas e idempotente. Gate: **NO APTO PARA MOTOR MENSUAL** mientras sigan abiertos los P0 (seguridad de intranet `readBaseLive`, enlaces P0-2/P0-3).
+
+**NEXT ACTION (única):** pasar a la intranet. Dirección autoriza corregir el P0 de `readBaseLive` (resolver columnas por encabezado y excluir CONTRASEÑA), en PR sin fusionar ni desplegar, como primer paso de la integración.
