@@ -1,7 +1,7 @@
 import type { Role } from "./store";
 
 const operatorPages = new Set([
-  "/operaciones/tiviplay", "/operaciones/tiviplay/hoy", "/operaciones/tiviplay/contexto", "/operaciones/tiviplay/runtime",
+  "/operaciones/tiviplay", "/operaciones/tiviplay/hoy", "/operaciones/tiviplay/avance", "/operaciones/tiviplay/contexto", "/operaciones/tiviplay/runtime",
   "/operaciones/tiviplay/manuales", "/operaciones/tiviplay/conciliacion", "/acceso-denegado",
 ]);
 export function allowed(role: Role, pathname: string, method = "GET") {

@@ -106,24 +106,38 @@ export function normalizeSheetDate(value: string): string | null {
   return null;
 }
 
+/** Encabezados de BASE GENERAL que usa la conciliación. Nunca CONTRASEÑA. */
+export const BASE_LIVE_COLUMNS = ["CLIENTE", "USUARIO", "PANEL", "F.VENCIMIENTO", "CONCILIACION_SERVICIO_27OCT"] as const;
+
+/** Proyecta las columnas leídas por encabezado a filas absolutas de BASE GENERAL. */
+export function baseLiveRows(firstRow: number, columns: Record<string, string[]>) {
+  const col = (name: string) => columns[name] ?? [];
+  const n = Math.max(0, ...BASE_LIVE_COLUMNS.map((c) => col(c).length));
+  const out = new Map<number, BaseLiveRow>();
+  for (let i = 0; i < n; i++) {
+    out.set(firstRow + i, {
+      client: (col("CLIENTE")[i] ?? "").trim(),
+      username: normUser(col("USUARIO")[i] ?? ""),
+      panel: (col("PANEL")[i] ?? "").trim(),
+      due: normalizeSheetDate(col("F.VENCIMIENTO")[i] ?? ""),
+      duplicate: (col("CONCILIACION_SERVICIO_27OCT")[i] ?? "").startsWith("DUPLICADO DEPURADO"),
+    });
+  }
+  return out;
+}
+
 /**
- * Lectura viva (solo lectura) de BASE GENERAL: cliente, PANEL y F.VENCIMIENTO por fila.
- * Sirve para mostrar el cliente y para validar por relectura la cola de sincronización. Las demás columnas no se usan.
+ * Lectura viva (solo lectura) de BASE GENERAL: cliente, USUARIO, PANEL y F.VENCIMIENTO por fila.
+ * Resuelve las columnas por ENCABEZADO (fila 2) y pide solo esas columnas: nunca CONTRASEÑA ni posiciones fijas
+ * (el 01/11/2026 se insertó ID en M y los índices fijos pasaron a leer CONTRASEÑA como PANEL).
  */
 export async function readBaseLive(): Promise<Map<number, BaseLiveRow> | null> {
   try {
-    const { batchReadSheets, getSheetsAccessToken, getTiviplaySpreadsheetId } = await import("@/server/tiviplay-live/sheets-client");
+    const { getSheetsAccessToken, getTiviplaySpreadsheetId, readColumnsByHeader } = await import("@/server/tiviplay-live/sheets-client");
     const token = await getSheetsAccessToken();
-    const sheets = await batchReadSheets(getTiviplaySpreadsheetId(), token, ["BASE GENERAL"], "AP", 4000);
-    const out = new Map<number, BaseLiveRow>();
-    (sheets["BASE GENERAL"] ?? []).forEach((r, i) => {
-      const client = String(r?.[1] ?? "").trim();
-      out.set(i + 1, {
-        client, username: normUser(String(r?.[12] ?? "")), panel: String(r?.[14] ?? "").trim(), due: normalizeSheetDate(String(r?.[15] ?? "")),
-        duplicate: String(r?.[41] ?? "").startsWith("DUPLICADO DEPURADO"),
-      });
-    });
-    return out;
+    const { firstRow, columns } = await readColumnsByHeader(getTiviplaySpreadsheetId(), token, "BASE GENERAL", ["USUARIO", "PANEL", "F.VENCIMIENTO"], BASE_LIVE_COLUMNS, "AZ", 4);
+    if (!columns.USUARIO || !columns.PANEL || !columns["F.VENCIMIENTO"]) return null;
+    return baseLiveRows(firstRow, columns);
   } catch {
     return null;
   }

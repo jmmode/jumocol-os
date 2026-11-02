@@ -3,6 +3,7 @@ import "server-only";
 import { GoogleAuth } from "google-auth-library";
 
 import { getGoogleSheetsLeadConfig } from "@/server/leads/google-sheets/config";
+import { findHeaderRow, resolveColumns, scrubSensitiveColumns } from "@/server/tiviplay-live/sheet-columns";
 
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const API = "https://sheets.googleapis.com/v4/spreadsheets";
@@ -46,12 +47,12 @@ async function sheetsFetch<T>(url: string, token: string): Promise<T> {
 export async function readSheetMetadata(spreadsheetId: string, token: string) {
   const payload = await sheetsFetch<{
     properties?: { title?: string };
-    sheets?: Array<{ properties?: { title?: string; hidden?: boolean } }>;
-  }>(`${API}/${encodeURIComponent(spreadsheetId)}?fields=properties.title,sheets.properties(title,hidden)`, token);
+    sheets?: Array<{ properties?: { title?: string; hidden?: boolean; sheetId?: number } }>;
+  }>(`${API}/${encodeURIComponent(spreadsheetId)}?fields=properties.title,sheets.properties(title,hidden,sheetId)`, token);
 
   return {
     workbook: payload.properties?.title ?? "",
-    sheets: (payload.sheets ?? []).map((s) => ({ title: s.properties?.title ?? "", hidden: !!s.properties?.hidden })),
+    sheets: (payload.sheets ?? []).map((s) => ({ title: s.properties?.title ?? "", hidden: !!s.properties?.hidden, gid: s.properties?.sheetId ?? null })),
   };
 }
 
@@ -68,7 +69,8 @@ export async function batchReadSheets(spreadsheetId: string, token: string, titl
   );
   const out: Record<string, unknown[][]> = {};
   titles.forEach((t, i) => {
-    out[t] = payload.valueRanges?.[i]?.values ?? [];
+    // Defensa en profundidad: ninguna lectura de hoja completa devuelve valores de una columna CONTRASEÑA.
+    out[t] = scrubSensitiveColumns(payload.valueRanges?.[i]?.values ?? []);
   });
   return out;
 }
@@ -82,4 +84,35 @@ export async function batchReadRanges(spreadsheetId: string, token: string, rang
     token,
   );
   return ranges.map((_, i) => payload.valueRanges?.[i]?.values ?? []);
+}
+
+/** Enlace a la pestaña exacta del libro (fuente verificada) para las vistas de solo lectura. */
+export const sheetUrl = (spreadsheetId: string, gid: number | null) =>
+  `https://docs.google.com/spreadsheets/d/${encodeURIComponent(spreadsheetId)}/edit${gid != null ? `#gid=${gid}` : ""}`;
+
+/**
+ * Lectura por ENCABEZADO: localiza la fila de encabezados en las primeras `scanRows` filas y pide solo las columnas
+ * nombradas, una por rango. Una columna sensible (CONTRASEÑA) nunca se solicita (resolveColumns lanza error).
+ * Devuelve, por nombre, los valores desde la fila siguiente al encabezado; `firstRow` es la fila absoluta del primer valor.
+ */
+export async function readColumnsByHeader(spreadsheetId: string, token: string, sheet: string, required: string[], wanted: readonly string[], lastColumn = "AZ", scanRows = 6, lastRow = 4000) {
+  // Fila por fila hasta encontrar los encabezados: nunca se descargan filas de datos (que traen CONTRASEÑA) para ubicarlos.
+  const head: unknown[][] = [];
+  let h = -1;
+  for (let r = 1; r <= scanRows && h < 0; r++) {
+    const [row] = await batchReadRanges(spreadsheetId, token, [`${quoteSheet(sheet)}!A${r}:${lastColumn}${r}`]);
+    head.push(row?.[0] ?? []);
+    h = findHeaderRow(head, required);
+  }
+  if (h < 0) throw new Error(`Encabezados no encontrados en ${sheet}: ${required.join(", ")}`);
+  const letters = resolveColumns(head[h] ?? [], wanted);
+  const names = wanted.filter((n) => letters[n]);
+  const firstRow = h + 2;
+  const values = names.length
+    ? await batchReadRanges(spreadsheetId, token, names.map((n) => `${quoteSheet(sheet)}!${letters[n]}${firstRow}:${letters[n]}${lastRow}`))
+    : [];
+  const columns: Record<string, string[]> = {};
+  names.forEach((n, i) => { columns[n] = (values[i] ?? []).map((r) => String(r?.[0] ?? "")); });
+  const preface = head.slice(0, h).map((r) => (r ?? []).map((c) => String(c ?? "")));
+  return { firstRow, columns, letters, preface };
 }
