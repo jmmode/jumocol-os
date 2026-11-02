@@ -40,19 +40,48 @@ const REASON_TEXT = {
 // Señales de no continuidad en OBSERVACIONES que el motor base no clasifica.
 const CONTINUITY_SIGNAL = /CANCELA|OTRO OPERADOR|NO CONTIN/;
 
-// Índices de BASE GENERAL (contrato A..X). N (CONTRASEÑA) nunca llega aquí.
-const B = { tc: 0, client: 1, status: 4, notes: 5, plan: 6, screens: 7, usd: 9, cop: 10, method: 11, user: 12, panel: 14, due: 15, last: 16, next: 17, t: 18, code: 23 };
+// Columnas de BASE GENERAL localizadas por ENCABEZADO, nunca por posición.
+// Desde la inserción de ID en M (oct-2026) las posiciones fijas (contrato A..X) leían ID como USUARIO
+// y CONTRASEÑA como PANEL. CONTRASEÑA nunca se resuelve aquí: llega vacía (redactSensitiveColumns).
+export const BASE_ALIASES = Object.freeze({
+  tc: ["TC"], client: ["CLIENTE"], phone: ["TELEFONO", "TELÉFONO"], email: ["CORREO"], status: ["ESTADO"],
+  notes: ["OBSERVACIONES"], plan: ["PLAN ACTIVO", "PLAN"], screens: ["PANTALLAS"], cell: ["CELULAR"], usd: ["USD"], cop: ["COP"],
+  method: ["MÉTODO DE PAGO", "METODO DE PAGO"], id: ["ID"], user: ["USUARIO"], panel: ["PANEL"], due: ["F.VENCIMIENTO"],
+  last: ["F.ULTIMO PAGO", "F. ÚLTIMO PAGO"], next: ["F. PRÓXIMO PAGO", "F.PRÓXIMO PAGO"], t: ["T"], devices: ["DISPOSITIVOS", "DISPOSITIVO"],
+  code: ["CODIGO_CANONICO"],
+});
+const REQUIRED_BASE = ["tc", "client", "user", "panel", "next"];
 
-function planMonths(row) {
+export function resolveBaseColumns(headerRow) {
+  const header = (headerRow ?? []).map(canon);
+  const cols = {};
+  for (const [key, aliases] of Object.entries(BASE_ALIASES)) {
+    const i = aliases.map((a) => header.indexOf(canon(a))).find((x) => x >= 0);
+    cols[key] = i ?? -1; // -1 → celda vacía (row[-1] es undefined)
+  }
+  const missing = REQUIRED_BASE.filter((k) => cols[k] < 0);
+  if (missing.length) throw new Error(`BASE GENERAL: faltan encabezados ${missing.join(", ")}`);
+  return Object.freeze(cols);
+}
+
+// Contrato histórico A..X (sin ID), usado solo como valor por defecto de las funciones exportadas.
+const LEGACY_B = resolveBaseColumns(["TC", "CLIENTE", "TELEFONO", "CORREO", "ESTADO", "OBSERVACIONES", "PLAN ACTIVO", "PANTALLAS", "CELULAR", "USD", "COP",
+  "MÉTODO DE PAGO", "USUARIO", "CONTRASEÑA", "PANEL", "F.VENCIMIENTO", "F.ULTIMO PAGO", "F. PRÓXIMO PAGO", "T", "REFERIDO", "DISPOSITIVOS", "CUMPLEAÑOS", "TIPO_SERVICIO", "CODIGO_CANONICO"]);
+
+export function planMonths(row, B = LEGACY_B) {
   const code = clean(row[B.code]).match(/PLN_(\d+)/);
   if (code) return Number(code[1]);
   const plan = canon(row[B.plan]).match(/(\d+)\s*MES/);
   return plan ? Number(plan[1]) : null;
 }
 
-export function tariffCheck(row) {
+export function tariffCheck(row, B = LEGACY_B) {
+  return tariffCheckWith(row, B);
+}
+
+function tariffCheckWith(row, B) {
   const screens = Number.parseInt(clean(row[B.screens]), 10);
-  const months = planMonths(row);
+  const months = planMonths(row, B);
   const expected = CATALOG[screens]?.[months];
   const usd = num(row[B.usd]);
   const cop = num(row[B.cop]);
@@ -66,7 +95,7 @@ export function tariffCheck(row) {
  * Secciones de BASE GENERAL a partir de sus filas de rótulo (TC distinto de 0/1 con texto en B).
  * Todo lo que sigue a "TOTAL GENERAL" es histórico (bajas, ventas en excepción) y nunca se factura.
  */
-export function detectSections(rows, headerIndex) {
+export function detectSections(rows, headerIndex, B = resolveBaseColumns(rows[headerIndex])) {
   const sections = new Map();
   let label = "ACTIVOS";
   let historical = false;
@@ -118,7 +147,9 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
   const P = target.prefix;
   const R = (n) => baseRows[n - 1] ?? [];
   const headerIndex = findHeaderIndex(baseRows);
-  const sections = detectSections(baseRows, headerIndex);
+  const B = resolveBaseColumns(baseRows[headerIndex]);
+  const tariffCheck = (row) => tariffCheckWith(row, B);
+  const sections = detectSections(baseRows, headerIndex, B);
   const sectionOf = (n) => sections.get(n) ?? { label: "", historical: false };
   const decisionRows = decisions.rows ?? {};
   const decisionOf = (n) => decisionRows[String(n)] ?? null;
@@ -488,6 +519,8 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
       rows: values.length,
     },
     classByRow: Object.fromEntries(universe.map((u) => [u.n, u.cls])),
+    // Modelo en memoria para la planilla operativa (src/operative). Contiene PII: nunca se serializa a evidencia.
+    model: { month, cutoffDate, prefix: P, B, headerIndex, universe, cartera, blocked, excluded, historical: [...historical.values()], adjustments, pending, tally, reconciled, movedCount },
   };
 }
 
