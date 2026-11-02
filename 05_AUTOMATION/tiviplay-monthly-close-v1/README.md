@@ -212,3 +212,22 @@ Estados: `NO_CHANGES` (firma igual, sin escritura) · `PLAN` (ensayo) · `ACTUAL
 | sync-draft (`--apply`) | **cuenta de servicio dedicada** | `spreadsheets` | Editor del libro + todas las hojas salvo BORRADOR protegidas sin esa cuenta en sus editores |
 
 Google no ofrece un permiso por hoja: el límite real es la allowlist del código más la protección de hojas. La cuenta de escritura no debe ser la de la intranet ni la de leads.
+
+## Ciclo comercial del mes (VENTAS × pagos × CONTROL × BASE)
+
+Implementa `TIVIPLAY_REGLAS_CIRCUITO_COMERCIAL_Y_CIERRE_MENSUAL_V1_0_2026-11-01` (§2–§5). Solo lectura.
+
+```powershell
+$env:TIVIPLAY_SPREADSHEET_ID="<ID_DE_GESTION_DIA_PAGOS>"
+$env:TIVIPLAY_SALES_SPREADSHEET_ID="<ID_DE_VENTAS_2026>"
+$env:TIVIPLAY_MONTH_TAG="OCT"
+$env:TIVIPLAY_SALES_SHEET="VENTAS_OCTUBRE"
+# $env:TIVIPLAY_D1_ANCHOR="PAGO"   # solo cuando Dirección ratifique D1
+npm run cycle-sales
+```
+
+- Cada venta TC=1 de VENTAS se cruza con su pago (misma hoja de medio, importe y fecha; se prefiere origen VENTA) y con CONTROL y BASE **por USUARIO**, nunca por nombre.
+- Plan, duración y pantallas salen de VENTAS (`PLAN ACTIVO`, `PANTALLAS`), nunca del importe. El catálogo (`CATALOGO_TARIFAS_VIGENTE`) solo valida el precio; las promociones v1 exigen reactivación con inactividad > 30 días demostrada.
+- Clasificación: `ALTA`, `REACTIVACION`, `YA_EN_BASE`, `MIRA_PLUS`, `EXCLUIDO_TC0`. Estado: `AUTORIZABLE`, `AUTORIZABLE_TRAS_D1`, `REQUIERE_DECISION` (Dirección) o `REQUIERE_REVISION_BO`, con la lista de bloqueos.
+- Para cada alta se calculan la fecha de pago, la activación (CONTROL), la `F.PRÓXIMO PAGO` de VENTAS y las dos propuestas (pago + duración / activación + duración). Toda discrepancia queda como bloqueo; nada se corrige por inferencia.
+- Las columnas con encabezado CONTRASEÑA no se leen; la salida no contiene nombres, contactos ni usuarios. Evidencia: `data/private/tiviplay-monthly-close-v1/sales-cycle/` (fuera de git).
