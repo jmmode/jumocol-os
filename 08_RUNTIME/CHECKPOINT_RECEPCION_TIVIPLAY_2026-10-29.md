@@ -1290,3 +1290,30 @@ Fuera de altas: VENTAS!16 → ficha 756 vigente y 1372 histórica con el mismo U
 **ESTADO:** reglas v1.0 IMPLEMENTADAS en el motor (PR #9, 35/35). Altas: 2 autorizables tras D1, 4 en Dirección y 5 en BO. 0 escrituras. Gate: **NO APTO PARA MOTOR MENSUAL**.
 
 **NEXT ACTION (única):** Dirección ratifica D1 (alta = fecha de pago + duración de VENTAS) y autoriza el lote único: inserción de 2 filas (TRANSF!8, PAYPAL!12) + R2.
+
+## 17. EJECUCIÓN DEL LOTE ÚNICO Y UNIVERSO REAL DE NOVIEMBRE (02/11/2026 00:25–01:00 UTC)
+
+**Autorización:** Julian ratificó D1 (00:18: alta nueva = fecha de pago + duración de VENTAS; renovación anticipada conserva el ciclo) y autorizó el lote único en la tarjeta de decisión (00:25, «Autorizar y ejecutar»). Sin merges, despliegues ni cambios en intranet.
+
+### 17.1 Escrituras aplicadas (BASE GENERAL, sheetId 1013112049)
+| Lote | Celdas | Detalle | Verificación |
+| --- | --- | --- | --- |
+| R2 | 18 | X:AF canónico de la fila 44 copiado a 45 y 48 | TRANSF!10 → 45 y ZELLE!46 → 48: «COINCIDE PLAN» (antes «REQUIERE REVISION»); fechas sin cambio |
+| Inserción | 2 filas | 1 sola inserción antes de la 760 (S5 ALTAS OCTUBRE), formato heredado de la 759 | S5 = 729–762; totales 823→825, 731→733, total general 827→**829** |
+| Alta TRANSF!8 (VENTAS!6) | fila 760 | PLAN 2 MESES · 1 · USD 25 · NEQUI · PANEL 3 · AH 13-11-26 · AI 10-10-26 · AJ 10-12-26 | R/S = 10-10-26 / 10-12-26; X:AF «PLAN 2 MESES» · PAGO EN FECHA DE CICLO; crédito P3 = 1; TRANSF!N8 enlaza solo a 760 «COINCIDE PLAN» |
+| Alta PAYPAL!12 (VENTAS!13) | fila 761 | PLAN 6 MESES · 1 · USD 70 · PAYPAL · PANEL 3 · AH 24-11-26 · AI 24-10-26 · AJ 24-04-27 | R/S = 24-10-26 / 24-04-27; X:AF «PLAN 6 MESES» · PAGO EN FECHA DE CICLO; crédito P3 = 1 |
+
+- En cada alta: A=1, B y N tomados de VENTAS, F = `ALTA · VENTAS!r · pago · CONFIRMADO JM`; M (ID), O y contactos vacíos; fórmulas E, Q:T, X:AG y AK:AP iguales a la 759.
+- Duplicados: USUARIO de las 2 altas aparece 1 sola vez en N1:N1500. FILA_BASE de los medios se recalcula sola (PAYPAL!14 ya apunta a 764).
+- Reversión: borrar las filas 760:761 y restaurar X:AF de 45/48 (fórmulas anteriores en respaldo privado de la sesión).
+- Observaciones (no bloquean): (a) AP de las altas = «SIN PAGO CONFIRMADO» porque el USUARIO no está en `PAGOS OCTUBRE 2026`; R/S salen de AI/AJ y son correctas. (b) PAYPAL!12 no tiene CLIENTE_KEY en su fila de pago, así que su enlace automático queda pendiente (BO). (c) En 45/48, AB/AC/AE conservan el formato de número del bloque anterior (valores correctos; cambio de presentación sin aplicar).
+
+### 17.2 Motor noviembre tras la escritura (corte 2026-11-01, firma repetible)
+- **Universo real: 98 fichas · semanas 8/25/20/29/16 · 0 duplicados** · 91 candidatas + 7 en revisión · cartera 90 · excepción única: fila 762 (antes 760) sin F.PRÓX.
+- Las 2 altas no entran en noviembre (próximo pago 10-12-26 y 24-04-27), como corresponde.
+- Frente a «PAGOS NOVIEMBRE 2026» (101): salen 11, 23 y 30 (renovaron en §13.2; la 23 ya figura «NO COBRAR · YA PAGÓ»); la 76 pasa de 24-11 (S4) a 27-11 (S5); 0 fichas solo en el motor. La hoja aún cita BASE!765 y BASE!865, que tras la inserción son 767 y 867 (referencias de texto desfasadas +2). AN:AP sin gestiones del equipo.
+- Siguen en BO sin bloquear lo anterior: ZELLE!64, ZELLE!41, PAYPAL!8, ZELLE!95, TRANSF!12; en Dirección: ZELLE!66, !67, !104, !107.
+
+**ESTADO:** lote único APLICADO y verificado (2 altas + R2). Universo de noviembre = 98. Gate: **NO APTO PARA MOTOR MENSUAL** hasta regenerar la hoja de noviembre con este universo.
+
+**NEXT ACTION (única):** autorizar la regeneración de «PAGOS NOVIEMBRE 2026» con el universo de 98 (salen 11, 23 y 30; se corrige la 76 y las referencias 765→767 y 865→867), conservando AM por ID.
