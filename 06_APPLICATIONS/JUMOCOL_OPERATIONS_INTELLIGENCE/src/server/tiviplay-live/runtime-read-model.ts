@@ -146,6 +146,10 @@ export type ClientCard = {
   balanceRule: string;
   advisor: string;
   note: string;
+  /** BASE GENERAL!F: texto de gestiones; puede contener histórico libre heredado. */
+  gestionObservation?: string;
+  /** BASE GENERAL!W: observación libre del asesor, independiente de la gestión F. */
+  advisorObservation?: string;
   carteraState: CarteraState | null;
   baseRow: number;
 };
@@ -895,7 +899,8 @@ export function buildRuntimeReadModel(input: {
       tc: col("TC"),
       client: col("CLIENTE"),
       status: col("ESTADO"),
-      note: col("OBSERVACIONES"),
+      note: col("OBSERVACIONES GESTION", "OBSERVACIONES"),
+      advisorObservation: col("OBSERVACIONES ASESOR"),
       plan: col("PLAN ACTIVO"),
       canonicalPlan: col("VALOR_CANONICO"),
       method: col("MÉTODO DE PAGO"),
@@ -972,6 +977,8 @@ export function buildRuntimeReadModel(input: {
           : `Sin vencimiento en ${currentMonth}`,
         advisor: cartera?.advisor || lp?.advisor || "",
         note: cartera?.nextAction && cartera.state !== "PAGADO_VALIDADO" ? cartera.nextAction : latestNote(at(row, c.note)),
+        gestionObservation: at(row, c.note),
+        advisorObservation: at(row, c.advisorObservation),
         carteraState: cartera?.state ?? null,
       });
     }
