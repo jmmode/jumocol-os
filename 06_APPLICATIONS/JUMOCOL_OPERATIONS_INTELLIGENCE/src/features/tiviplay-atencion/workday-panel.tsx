@@ -109,7 +109,12 @@ export function WorkdayPanel({ result, admin }: { result: WorkdayResult; admin: 
     </> : null}
 
     <section aria-labelledby="cola">
-      <h2 className="text-lg font-semibold" id="cola">Contactos priorizados de hoy ({w.queue.length})</h2>
+      <h2 className="text-lg font-semibold" id="cola">Cola Operacional · Contactos y alertas ({w.queue.length})</h2>
+      <p className="mt-2 rounded-xl border border-brand-yellow/45 bg-brand-yellow/10 px-3 py-2 text-xs text-status-warning" role={w.releaseAlerts ? "alert" : "status"}>
+        Alertas de liberación de línea: <strong>{w.releaseAlerts}</strong>. Responsable: el asesor que abre ATENDER.
+        Son alertas calculadas desde D0: no prueban que la línea esté suspendida ni que se haya ejecutado la acción.
+        Comprobar primero el pago del ciclo y después el estado real del panel.
+      </p>
       {admin ? <p className="mt-1 text-xs text-brand-muted">Orden: vencidos → hoy → anticipada; en cada grupo: cobrar → confirmar → verificar → bloqueado. ATENDER abre Atención con el cliente y la ficha sugerida. Fuente: {cartera} · Alcance: {scope}.</p> : null}
       {w.queue.length === 0 ? <p className="mt-3 text-sm text-brand-muted">La cartera no tiene clientes por gestionar en la jornada.</p> : <ul className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {w.queue.map((q, i) => <li className={`${card} flex flex-col`} key={`${q.source}`}>
@@ -118,6 +123,11 @@ export function WorkdayPanel({ result, admin }: { result: WorkdayResult; admin: 
             <span className="rounded-full border border-brand-border px-2 py-0.5 text-[10px] font-black uppercase">{BUCKET_LABEL[q.bucket]}</span>
             <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black uppercase ${LANE_CLASS[q.lane]}`}>{LANE_LABEL[q.lane]}</span>
           </div>
+          {q.releaseAlert ? <div className="mt-2 rounded-xl border border-brand-yellow/45 bg-brand-yellow/10 px-3 py-2 text-xs text-status-warning" role="alert">
+            <p className="font-bold">ALERTA · Verificar liberación de línea · D+{q.releaseAlert.daysOverdue}</p>
+            <p>Estado: {q.releaseAlert.state === "PENDIENTE_VERIFICACION_FINANCIERA" ? "VERIFICAR FINANZAS ANTES DE ACTUAR" : "PENDIENTE DE VERIFICACIÓN TÉCNICA"}</p>
+            <p>Responsable: asesor que atiende · {q.releaseAlert.instruction}</p>
+          </div> : null}
           <p className="mt-2 font-semibold">{q.client}</p>
           <p className="text-xs text-brand-graphite">{q.phone || "Sin teléfono"} · usuario <span className="font-mono">{q.user || "—"}</span></p>
           <p className="text-xs text-brand-muted">{q.plan || "Plan POR VALIDAR"} · {q.panel || "—"} · {q.method || "—"}</p>
