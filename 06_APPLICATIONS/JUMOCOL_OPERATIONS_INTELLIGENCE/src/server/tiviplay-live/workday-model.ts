@@ -54,6 +54,15 @@ export const ADVANCE_WINDOW = {
 export type Scope = { status: "COMPLETO" | "PARCIAL"; detail: string };
 export type QueueLane = "COBRAR" | "VERIFICAR" | "BLOQUEADO" | "CONFIRMAR_PAGO";
 
+/** Alerta calculada de solo lectura. No acredita liberación ni registra una ejecución. */
+export type ReleaseAlert = {
+  type: "ALERTA_LIBERACION_LINEA";
+  state: "PENDIENTE_VERIFICACION_FINANCIERA" | "PENDIENTE_VERIFICAR_LIBERACION";
+  owner: "ASESOR_QUE_ATIENDE";
+  daysOverdue: number;
+  instruction: string;
+};
+
 export type QueueItem = {
   id: string;
   client: string;
@@ -78,6 +87,7 @@ export type QueueItem = {
   priorCycleConfirmation?: string;
   /** Evidencia separada: pago confirmado del mes en hoja de método y pendiente de sincronización. */
   confirmedMethodReference?: string | null;
+  releaseAlert?: ReleaseAlert | null;
   /** Última gestión registrada en la fuente, o "" si no hay historial (no se deduce etapa de gestión). */
   lastManaged: string;
   reason: string;
@@ -92,6 +102,7 @@ export type Workday = {
   carteraSheet: string | null;
   universe: number;
   queue: QueueItem[]; // VENCIDO + HOY + SEMANA (la jornada)
+  releaseAlerts: number; // conteo de alertas calculadas, no casos cerrados
   later: number; // resto del mes, fuera de la jornada
   scope: Scope;
   paymentsToConfirm: { status: "OK" | "BLOQUEADO"; count: number; amount: Money; source: string; reason: string | null };
@@ -222,6 +233,40 @@ export function confirmedPaymentNeedsSync(
   return payment;
 }
 
+
+/** Genera una alerta para el asesor a partir de D0, sin cambiar el estado del panel. */
+export function calculateReleaseAlert(
+  item: CarteraItem,
+  today: string,
+  currentMonthPayments: readonly PaymentRecord[],
+  confirmedPayment: PaymentRecord | null,
+  identityVerified: boolean,
+): ReleaseAlert | null {
+  if (!item.dueDate || item.dueDate > today || item.state === "PAGADO_VALIDADO") return null;
+  const sameNamePayments = currentMonthPayments.filter((p) =>
+    canon(p.client) === canon(item.client) && p.date?.slice(0, 7) === today.slice(0, 7));
+  // X podría conservar una confirmación del mes anterior: exige revisión del ciclo, nunca acredita por sí sola.
+  const x = canon(item.paymentConfirmation ?? "");
+  const financeUncertain = !!confirmedPayment || sameNamePayments.length > 0 ||
+    /CONFIRMADO|PENDIENTE|REVISION/.test(x) ||
+    item.state !== "SIN_PAGO" || !!item.signals.length || !identityVerified ||
+    /PAGADO|COBRADO|CONFIRMADO/.test(canon(item.collectionStatus ?? ""));
+  const daysOverdue = Math.max(0, Math.round((Date.parse(today) - Date.parse(item.dueDate)) / 86_400_000));
+  return financeUncertain ? {
+    type: "ALERTA_LIBERACION_LINEA",
+    state: "PENDIENTE_VERIFICACION_FINANCIERA",
+    owner: "ASESOR_QUE_ATIENDE",
+    daysOverdue,
+    instruction: "Verificar pago y ciclo con Dirección, resolver identidad o excepción antes de tocar el panel. No liberar ni confirmar suspensión.",
+  } : {
+    type: "ALERTA_LIBERACION_LINEA",
+    state: "PENDIENTE_VERIFICAR_LIBERACION",
+    owner: "ASESOR_QUE_ATIENDE",
+    daysOverdue,
+    instruction: "Verificar ausencia de pago confirmado, comprobar estado real del panel y confirmar liberación solo con evidencia. No se libera automáticamente.",
+  };
+}
+
 function laneOf(item: CarteraItem): QueueLane {
   if (item.state === "PAGO_POR_CONFIRMAR") return "CONFIRMAR_PAGO";
   if (item.signals.some((s) => s.startsWith("BLOQUEADO"))) return "BLOQUEADO";
@@ -270,6 +315,9 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
     if (bucket === "MES") { later += 1; continue; }
     if (lane === "COBRAR") add(toCollectToday, item.nominal); // vencidos + hoy + anticipada (ya filtrado MES)
     const dir = (item.baseRow ? byBaseRow.get(item.baseRow) : undefined) ?? byName.get(canon(item.client));
+    const uniqueIdentity = !!(dir?.user && item.baseRow && dir.baseRow === item.baseRow &&
+      directory.filter((d) => canon(d.user) === canon(dir.user)).length === 1);
+    const releaseAlert = calculateReleaseAlert(item, today, model.payments.month, matchedPayment ?? null, uniqueIdentity);
     queue.push({
       id: dir?.id ?? opaqueId(`${carteraSheet}!${item.row}`, "", item.client),
       client: item.client,
@@ -289,6 +337,7 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
       paymentConfirmation: item.paymentConfirmation ?? "",
       priorCycleConfirmation: item.priorCycleConfirmation ?? "",
       confirmedMethodReference: matchedPayment ? matchedPayment.sheet + "!" + matchedPayment.row : null,
+      releaseAlert,
       lastManaged: item.lastManaged ?? "",
       reason: [item.signals.join(" · "), matchedPayment ? "Pago confirmado JM en " + matchedPayment.sheet + "!" + matchedPayment.row + "; estado de cartera sin sincronizar. Vinculación del ciclo por validar." : ""].filter(Boolean).join(" · "),
       nextAction: matchedPayment && initialLane !== "BLOQUEADO"
@@ -300,7 +349,7 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
   }
   const order: Record<QueueBucket, number> = { VENCIDO: 0, HOY: 1, ANTICIPADO: 2, MES: 3 };
   const laneOrder: Record<QueueLane, number> = { COBRAR: 0, CONFIRMAR_PAGO: 1, VERIFICAR: 2, BLOQUEADO: 3 };
-  queue.sort((a, b) => order[a.bucket] - order[b.bucket] || laneOrder[a.lane] - laneOrder[b.lane] || (a.dueDate ?? "").localeCompare(b.dueDate ?? "") || a.client.localeCompare(b.client, "es"));
+  queue.sort((a, b) => Number(!!b.releaseAlert) - Number(!!a.releaseAlert) || order[a.bucket] - order[b.bucket] || laneOrder[a.lane] - laneOrder[b.lane] || (a.dueDate ?? "").localeCompare(b.dueDate ?? "") || a.client.localeCompare(b.client, "es"));
 
   const zero = { HABILITADO: 0, NO_HABILITADO: 0, SIN_PAGAR: 0, REQUIERE_REVISION: 0, EJECUTADO: 0, total: 0 };
   let creditStatus: Workday["credits"]["status"] = "BLOQUEADO";
@@ -349,6 +398,7 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
     carteraSheet,
     universe,
     queue,
+    releaseAlerts: queue.filter((q) => q.releaseAlert != null).length,
     later,
     scope,
     paymentsToConfirm,
