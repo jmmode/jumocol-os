@@ -13,12 +13,12 @@ const BASE = [
 ];
 const CONTROL = [
   ["CONTROL NOVIEMBRE PANEL 3"],
-  ["TC", "ASESOR", "RECARGA", "USUARIO", "FECHA", "F.VENCIMIENTO", "ORIGEN", "CREDITO"],
-  ["1", "MANUELA", "1 MES", "UNICO1", "04-11-26", "2026-12-04\n10:00", "FACTURACION", "1"],
-  ["1", "MANUELA", "1 MES", "OTROPANEL", "", "", "FACTURACION", "0"],
-  ["1", "MANUELA", "1 MES", "DUP", "04-11-26", "", "FACTURACION", "1"],
-  ["1", "MANUELA", "1 MES", "SINBASE", "", "", "FACTURACION", "0"],
-  ["15", "COMPRA CREDITOS", "", "", "", "", "COMPRA", "0"],
+  ["TC", "ASESOR", "RECARGA", "ID", "USUARIO", "CONTRASEÑA", "PANEL", "FECHA", "F.VENCIMIENTO", "ORIGEN", "CREDITO"],
+  ["1", "MANUELA", "1 MES", "23203", "UNICO1", "NO USAR", "colombia78DM", "04-11-26", "2026-12-04\n10:00", "FACTURACION", "1"],
+  ["1", "MANUELA", "1 MES", "18241", "OTROPANEL", "NO USAR", "colombia78DM", "", "", "FACTURACION", "0"],
+  ["1", "MANUELA", "1 MES", "23215", "DUP", "NO USAR", "colombia78DM", "04-11-26", "", "FACTURACION", "1"],
+  ["1", "MANUELA", "1 MES", "23169", "SINBASE", "NO USAR", "colombia78DM", "", "", "FACTURACION", "0"],
+  ["15", "COMPRA CREDITOS", "", "", "", "", "", "", "", "COMPRA", "0"],
 ];
 
 describe("CONTROL Panel 3: lectura sin desbloquear ejecuciones", () => {
