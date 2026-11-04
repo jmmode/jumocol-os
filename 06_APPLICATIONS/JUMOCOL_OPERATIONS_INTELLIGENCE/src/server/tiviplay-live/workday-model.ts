@@ -65,15 +65,15 @@ export type QueueItem = {
   classification: string;
   collectionStatus: string;
   /** F: gestión estructurada, no confirma pagos. */
-  gestionObservation: string;
+  gestionObservation?: string;
   /** W: observación libre del asesor. */
-  advisorObservation: string;
+  advisorObservation?: string;
   /** X: estado de confirmación de cartera; no acredita el ciclo actual por sí solo. */
-  paymentConfirmation: string;
+  paymentConfirmation?: string;
   /** AG: confirmación financiera procedente del ciclo anterior. */
-  priorCycleConfirmation: string;
+  priorCycleConfirmation?: string;
   /** Evidencia separada: pago confirmado del mes en hoja de método y pendiente de sincronización. */
-  confirmedMethodReference: string | null;
+  confirmedMethodReference?: string | null;
   /** Última gestión registrada en la fuente, o "" si no hay historial (no se deduce etapa de gestión). */
   lastManaged: string;
   reason: string;
