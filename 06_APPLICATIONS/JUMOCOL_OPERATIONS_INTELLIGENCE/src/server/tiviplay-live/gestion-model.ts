@@ -27,6 +27,15 @@ export function cleanGestionDetail(input: string) {
   return input.replace(/[\r\n\t]+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 220);
 }
 
+/** Fecha y hora de Bogotá en el formato de las gestiones. */
+export function bogotaStamp(now = new Date()) {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "America/Bogota",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(now);
+}
+
 export function gestionEntry(
   estado: GestionEstado,
   asesor: string,
@@ -34,11 +43,7 @@ export function gestionEntry(
   requestId: string,
   now = new Date(),
 ) {
-  const stamp = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "America/Bogota",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  }).format(now);
+  const stamp = bogotaStamp(now);
   const safeActor = cleanGestionDetail(asesor).slice(0, 70) || "ASESOR AUTENTICADO";
   const safeDetail = cleanGestionDetail(detalle);
   return `${stamp} | ${safeActor} | ${estado}${safeDetail ? ` | ${safeDetail}` : ""} [JOS:${requestId}]`;
