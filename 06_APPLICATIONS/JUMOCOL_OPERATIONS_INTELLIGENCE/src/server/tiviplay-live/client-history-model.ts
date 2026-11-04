@@ -13,7 +13,7 @@ export type ClientHistory = {
   renewals: HistoryRenewal[];
   monthsRead: string[];
   ambiguousMonths: string[];
-  /** Último F.VENCIMIENTO en CONTROL P1/P2, para contrastar con BASE GENERAL. */
+  /** Último F.VENCIMIENTO con crédito registrado en CONTROL P1/P2/P3; solo evidencia. */
   controlDue: string | null;
 };
 
@@ -62,7 +62,11 @@ export type TechnicalDue = { status: "VERIFICADO" | "REQUIERE VALIDACIÓN"; date
 
 /** Vencimiento técnico: F.VENCIMIENTO de BASE GENERAL. Nunca se confunde con F. PRÓXIMO PAGO. */
 export function technicalDue(input: { panel: string; due: string | null; userRepeated: boolean; controlDue: string | null }): TechnicalDue {
-  if (/PANEL\s*3|^P3\b/i.test(input.panel)) return { status: "REQUIERE VALIDACIÓN", date: null, reason: "Panel 3 sigue bloqueado por Dirección." };
+  if (/PANEL\s*3|^P3\b/i.test(input.panel)) return { status: "REQUIERE VALIDACIÓN", date: input.due,
+    reason: input.controlDue && input.due === input.controlDue
+      ? "BASE GENERAL coincide con vencimiento de CONTROL P3, pero los créditos siguen bloqueados para ejecución."
+      : input.controlDue ? `CONTROL P3 registra ${input.controlDue}; cotejar con BASE GENERAL antes de validar el servicio. Créditos bloqueados.`
+      : "Vencimiento de BASE GENERAL informativo; sin ejecución vinculada de CONTROL P3. Créditos bloqueados." };
   if (input.userRepeated) return { status: "REQUIERE VALIDACIÓN", date: null, reason: "El USUARIO aparece repetido en la fuente." };
   if (!input.due) return { status: "REQUIERE VALIDACIÓN", date: null, reason: "F.VENCIMIENTO vacío o no interpretable." };
   if (input.controlDue && input.controlDue > input.due) return { status: "REQUIERE VALIDACIÓN", date: input.due, reason: `CONTROL registra ${input.controlDue}, posterior a BASE GENERAL.` };
