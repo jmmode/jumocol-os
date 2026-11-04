@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildRuntimeReadModel } from "./runtime-read-model";
-import { buildClientDirectory, buildWorkday } from "./workday-model";
+import { buildClientDirectory, buildWorkday, calculateReleaseAlert } from "./workday-model";
 import { gestionHeadersValid, gestionNovemberHeadersValid } from "./gestion-sheets";
 
 /** Contrato A:AQ verificado en el libro de noviembre de 2026. Solo datos sintéticos. */
@@ -94,4 +94,27 @@ describe("contrato de columnas TiviPlay noviembre 2026", () => {
     expect(workday.queue[0].confirmedMethodReference).toBe("ZELLE (NOV)!4");
     expect(workday.toCollectToday.USD).toBe(0);
   });
+  it("D0 y vencidos generan alerta para el asesor sin simular liberación", () => {
+    const { model, workday } = scenario(false);
+    expect(workday.releaseAlerts).toBe(1);
+    expect(workday.queue[0].releaseAlert?.type).toBe("ALERTA_LIBERACION_LINEA");
+    expect(workday.queue[0].releaseAlert?.owner).toBe("ASESOR_QUE_ATIENDE");
+    expect(workday.queue[0].releaseAlert?.state).toBe("PENDIENTE_VERIFICACION_FINANCIERA"); // X histórico exige revisar ciclo.
+
+    const synthetic = { ...model.operations.items[0], paymentConfirmation: "", priorCycleConfirmation: "" };
+    const now = calculateReleaseAlert(synthetic, "2026-11-04", [], null, true);
+    expect(now?.state).toBe("PENDIENTE_VERIFICAR_LIBERACION");
+    expect(now?.daysOverdue).toBe(2);
+    expect(calculateReleaseAlert(synthetic, "2026-11-01", [], null, true)).toBeNull(); // antes de D0 no alerta.
+    expect(calculateReleaseAlert(synthetic, "2026-11-04", [], null, false)?.state).toBe("PENDIENTE_VERIFICACION_FINANCIERA");
+  });
+
+  it("un pago JM confirmado del mismo ciclo no genera alerta de liberación", () => {
+    const { model, workday } = scenario(true);
+    expect(model.payments.month).toHaveLength(1);
+    expect(workday.releaseAlerts).toBe(0);
+    expect(workday.queue[0].releaseAlert).toBeNull();
+    expect(workday.queue[0].lane).toBe("VERIFICAR"); // Todavía falta conciliar cartera, nunca liberar.
+  });
+
 });
