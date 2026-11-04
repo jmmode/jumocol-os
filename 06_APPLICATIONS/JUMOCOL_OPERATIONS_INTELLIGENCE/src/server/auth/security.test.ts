@@ -156,6 +156,7 @@ describe("server policy and transport", () => {
     expect(allowed("OPERADOR", "/operaciones/tiviplay/hoy")).toBe(true);
     expect(allowed("OPERADOR", "/operaciones/tiviplay/hoy", "POST")).toBe(false);
     expect(allowed("OPERADOR", "/operaciones/tiviplay/atencion")).toBe(true);
+    expect(allowed("OPERADOR", "/operaciones/tiviplay/contexto")).toBe(false);
     expect(allowed("OPERADOR", "/operaciones/tiviplay/turno")).toBe(true);
     expect(allowed("OPERADOR", "/operaciones/tiviplay/atencion", "POST")).toBe(false);
     expect(allowed("OPERADOR", "/operaciones/tiviplay/turno", "POST")).toBe(false);
