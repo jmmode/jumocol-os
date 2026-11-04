@@ -12,7 +12,7 @@
 import crypto from "node:crypto";
 
 import type { CreditosHoy, CreditState } from "@/server/tiviplay-live/creditos-hoy-projection";
-import { canon, clean, parseAmount, parseDate, type CarteraItem, type Currency, type Money, type RuntimeReadModel, type SheetValues } from "@/server/tiviplay-live/runtime-read-model";
+import { canon, clean, parseAmount, parseDate, type CarteraItem, type Currency, type Money, type PaymentRecord, type RuntimeReadModel, type SheetValues } from "@/server/tiviplay-live/runtime-read-model";
 import { findHeaderRow, headerKey, isSensitiveHeader } from "@/server/tiviplay-live/sheet-columns";
 
 export type DirectoryEntry = {
@@ -172,6 +172,40 @@ export function searchDirectory(directory: readonly DirectoryEntry[], rawQuery: 
   return out.sort((a, b) => rank[a.by] - rank[b.by] || a.entry.name.localeCompare(b.entry.name, "es")).slice(0, limit);
 }
 
+
+/**
+ * Una confirmación JM en la hoja de método NO actualiza por sí sola la cartera.
+ * Cuando nombre, método, valor y fila de BASE son únicos, se detiene el cobro normal
+ * para reconciliar el ciclo. Nunca se transforma el estado financiero ni se otorga crédito.
+ */
+export function confirmedPaymentNeedsSync(
+  item: CarteraItem,
+  cartera: readonly CarteraItem[],
+  directory: readonly DirectoryEntry[],
+  payments: readonly PaymentRecord[],
+  month: string,
+): PaymentRecord | null {
+  const name = canon(item.client);
+  if (!name || !item.baseRow || cartera.filter((r) => canon(r.client) === name).length !== 1) return null;
+  const identities = directory.filter((r) => r.baseRow != null && canon(r.name) === name);
+  if (identities.length !== 1 || identities[0].baseRow !== item.baseRow) return null;
+
+  const confirmed = payments.filter((p) => canon(p.client) === name && p.confirmation === "CONFIRMADO");
+  if (confirmed.length !== 1) return null;
+  const payment = confirmed[0];
+  if (!payment.date || payment.date.slice(0, 7) !== month) return null;
+
+  const collectionMethod = canon(item.method);
+  const methodAgrees = payment.method === "ZELLE" || payment.method === "PAYPAL"
+    ? collectionMethod === payment.method
+    : collectionMethod === "TRANSFERENCIA" || /^(BANCOLOMBIA|NEQUI|DAVIPLATA|DAVIVIENDA|TRANSFERENCIA BANCARIA)$/.test(collectionMethod);
+  if (!methodAgrees) return null;
+
+  const expected = item.nominal[payment.currency];
+  if (!expected || Math.abs(expected - payment.amount) > 0.01) return null;
+  return payment;
+}
+
 function laneOf(item: CarteraItem): QueueLane {
   if (item.state === "PAGO_POR_CONFIRMAR") return "CONFIRMAR_PAGO";
   if (item.signals.some((s) => s.startsWith("BLOQUEADO"))) return "BLOQUEADO";
@@ -190,6 +224,11 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
   const byBaseRow = new Map(directory.filter((d) => d.baseRow).map((d) => [d.baseRow!, d]));
   const byName = new Map(directory.map((d) => [canon(d.name), d]));
   const carteraSheet = model.sources.included.find((r) => r.role === "CARTERA" && r.month === model.currentMonth)?.title ?? null;
+  const paymentsToReconcile = new Map<number, PaymentRecord>();
+  for (const item of model.operations.items) {
+    const payment = confirmedPaymentNeedsSync(item, model.operations.items, directory, model.payments.month, model.currentMonth);
+    if (payment) paymentsToReconcile.set(item.row, payment);
+  }
   const blockers: string[] = [];
   if (!carteraSheet) blockers.push(`Sin hoja de cartera para ${model.currentMonth}: no hay cola de cobro verificable.`);
 
@@ -206,7 +245,9 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
     if (item.state === "PAGADO_VALIDADO") continue;
     const due = item.dueDate;
     const bucket: QueueBucket = !due ? "VENCIDO" : due < today ? "VENCIDO" : due === today ? "HOY" : due <= advanceUntil ? "ANTICIPADO" : "MES";
-    const lane = laneOf(item);
+    const matchedPayment = paymentsToReconcile.get(item.row);
+    const initialLane = laneOf(item);
+    const lane = matchedPayment && initialLane !== "BLOQUEADO" ? "VERIFICAR" : initialLane;
     counts[bucket] += 1;
     lanes[lane].count += 1;
     add(lanes[lane].amount, item.nominal);
@@ -228,9 +269,11 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
       classification: item.classification ?? item.state,
       collectionStatus: item.collectionStatus ?? "",
       lastManaged: item.lastManaged ?? "",
-      reason: item.signals.join(" · "),
-      nextAction: item.nextAction,
-      suggestedFicha: FICHA_BY_LANE[lane],
+      reason: [item.signals.join(" · "), matchedPayment ? "Pago confirmado JM en " + matchedPayment.sheet + "!" + matchedPayment.row + "; estado de cartera sin sincronizar. Vinculación del ciclo por validar." : ""].filter(Boolean).join(" · "),
+      nextAction: matchedPayment && initialLane !== "BLOQUEADO"
+        ? "NO COBRAR: pago CONFIRMADO JM en " + matchedPayment.sheet + "!" + matchedPayment.row + ". Verificar identidad y actualizar estado de cartera; sin cambios automáticos en Sheets."
+        : item.nextAction,
+      suggestedFicha: matchedPayment && initialLane !== "BLOQUEADO" ? "A3" : FICHA_BY_LANE[lane],
       source: `${carteraSheet ?? "cartera"}!${item.row}`,
     });
   }
@@ -269,6 +312,11 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
 
   const exceptions = [
     ...model.operations.exceptions.map((e) => ({ source: `${e.sheet}!${e.row}`, type: e.type, detail: e.detail })),
+    ...[...paymentsToReconcile.entries()].map(([row, p]) => ({
+      source: (carteraSheet ?? "CARTERA") + "!" + row,
+      type: "PAGO_CONFIRMADO_NO_SINCRONIZADO",
+      detail: "Pago confirmado JM en " + p.sheet + "!" + p.row + ". Requiere vinculación verificada del ciclo y sincronización de cartera; sin modificación financiera.",
+    })),
     ...(credits?.cycle.exceptions ?? []).map((e) => ({ source: e.references.join(", "), type: `CRÉDITO · ${e.kind}`, detail: e.title })),
   ];
   const scope = input.scope ?? { status: "COMPLETO", detail: "Lectura completa de las hojas del mes." };
