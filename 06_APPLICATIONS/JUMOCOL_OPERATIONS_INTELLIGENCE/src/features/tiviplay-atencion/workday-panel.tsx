@@ -4,7 +4,7 @@ import type { Money } from "@/server/tiviplay-live/runtime-read-model";
 import type { QueueBucket, QueueLane, WorkdayResult } from "@/server/tiviplay-live/workday";
 import { ADVANCE_WINDOW } from "@/server/tiviplay-live/workday-model";
 
-const card = "rounded-2xl border border-brand-border bg-brand-background p-5";
+const card = "rounded-xl border border-brand-border bg-brand-background p-3";
 const blocked = "rounded-2xl border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-sm text-status-error";
 const BUCKET_LABEL: Record<QueueBucket, string> = { VENCIDO: "Vencido", HOY: "Vence hoy", ANTICIPADO: "Gestión anticipada", MES: "Resto del mes" };
 const LANE_LABEL: Record<QueueLane, string> = { COBRAR: "Cobrar", CONFIRMAR_PAGO: "Confirmar pago", VERIFICAR: "Verificar antes de cobrar", BLOQUEADO: "Bloqueado · Dirección" };
@@ -23,7 +23,10 @@ function Stat({ label, value, source, scope, tone }: { label: string; value: str
   return <div className={card}>
     <p className="text-[10px] font-black uppercase tracking-[0.12em] text-brand-muted">{label}</p>
     <p className={`mt-1 text-2xl font-semibold tabular-nums ${toneClass}`}>{value}</p>
-    <p className="mt-1 text-[11px] leading-4 text-brand-muted">Fuente: {source} · Alcance: {scope}</p>
+    <details className="mt-1 text-[11px] leading-4 text-brand-muted">
+      <summary className="cursor-pointer">Fuente y alcance · {scope}</summary>
+      <p className="mt-1">Fuente: {source}</p>
+    </details>
   </div>;
 }
 
@@ -43,10 +46,17 @@ export function WorkdayPanel({ result }: { result: WorkdayResult }) {
   const creditScope = w.credits.status === "OK" ? scope : `${w.credits.status} (${w.credits.panels.filter((p) => p.status === "OK").map((p) => p.panel).join(", ") || "ningún panel"})`;
 
   return <div className="mt-6 space-y-5">
-    <p className={`rounded-2xl border px-4 py-3 text-xs ${source.mode === "SNAPSHOT" ? "border-brand-yellow/50 bg-brand-yellow/10 text-status-warning" : "border-brand-border bg-brand-surface text-brand-muted"}`}>
-      Fecha operativa <strong>{w.today}</strong> (America/Bogota, automática) · Fuente: <strong>{source.mode === "SNAPSHOT" ? "CAPTURA LOCAL de solo lectura — no es lectura en vivo" : "Google Sheets en vivo (solo lectura)"}</strong> · {source.workbook} · hojas {source.sheetsRead.join(", ")} · firma <code>{source.signature.slice(0, 12)}…</code>
-    </p>
-    {w.blockers.map((b) => <p className={blocked} key={b} role="note">{b}</p>)}
+    <div className={`rounded-xl border px-3 py-2 text-xs ${source.mode === "SNAPSHOT" ? "border-brand-yellow/50 bg-brand-yellow/10 text-status-warning" : "border-brand-border bg-brand-surface text-brand-muted"}`}>
+      <strong>{w.today}</strong> · {source.mode === "SNAPSHOT" ? "CAPTURA LOCAL · alcance parcial" : "Google Sheets en vivo · solo lectura"}
+      <details className="mt-1">
+        <summary className="cursor-pointer">Ver procedencia de los datos</summary>
+        <p className="mt-1">{source.workbook} · hojas: {source.sheetsRead.join(", ")} · firma <code>{source.signature.slice(0, 12)}…</code></p>
+      </details>
+    </div>
+    {w.blockers.map((b) => <details className={blocked} key={b}>
+      <summary className="cursor-pointer font-semibold">{b.includes("P3:") || b.includes("P3 ") ? "Panel 3 bloqueado: identidad no verificable. No se incluyen sus créditos." : "Excepción operacional: revisar antes de actuar"}</summary>
+      <p className="mt-1">{b}</p>
+    </details>)}
 
     <section aria-labelledby="indicadores">
       <h2 className="text-lg font-semibold" id="indicadores">Cartera y cobranza</h2>
