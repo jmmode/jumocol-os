@@ -204,3 +204,17 @@ describe("Créditos disponibles (USUARIOS LIBERADOS · ESTADO = DISPONIBLE) — 
     expect(available).toHaveLength(2);
   });
 });
+
+describe("identidad verificable por panel (CONTROL con columnas desplazadas)", () => {
+  it("bloquea el panel cuando los usuarios de BASE están en RECARGA y USUARIO trae otros valores, sin proyectar esos valores", () => {
+    const shifted = (user: string, i: number) => ["1", "MANUELA", user, `PW-SHIFT-${i}`, "x", "panel", "2026-10-22", "2026-11-22", "Facturación", "1", "9", ""];
+    const base = input().base!;
+    const users = ["USRA", "USRB", "USRC", "USRD", "USRE", "EJ3"];
+    const result = projectCreditosHoy(input({ base, controls: { ...input().controls, P3: { sheet: "CONTROL (OCT) P3", rows: ctl("P3", users.map(shifted)) } } }));
+    const p3 = result.panels.find((p) => p.panel === "P3")!;
+    expect(p3.status).toBe("REQUIERE_DECISION");
+    expect(p3.reason).toMatch(/columnas desplazadas/);
+    expect(p3.tasks).toEqual([]);
+    expect(JSON.stringify(result)).not.toContain("PW-SHIFT");
+  });
+});

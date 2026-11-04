@@ -120,6 +120,8 @@ export type CarteraItem = {
   collectionStatus?: string;
   /** Fila de BASE GENERAL declarada en ORIGEN BASE (p. ej. «BASE GENERAL!8»). */
   baseRow?: number | null;
+  /** Última gestión registrada en la hoja (FECHA_GESTION · GESTIONADO_POR). Vacío = sin historial; no se deduce etapa. */
+  lastManaged?: string;
 };
 
 export type ClientCard = {
@@ -583,6 +585,8 @@ function normalizeCartera(title: string, rows: unknown[][], today: string) {
     cause: col("CAUSA / ACCIÓN"),
     collection: col("ESTADO_COBRO"),
     origin: col("ORIGEN BASE"),
+    managedAt: col("FECHA_GESTION"),
+    managedBy: col("GESTIONADO_POR"),
   };
   const draftContract = c.fin == null && c.classification != null && c.collection != null;
 
@@ -686,6 +690,7 @@ function normalizeCartera(title: string, rows: unknown[][], today: string) {
         classification: at(row, c.classification),
         collectionStatus: at(row, c.collection),
         baseRow: Number(at(row, c.origin).match(/!(\d+)$/)?.[1]) || null,
+        lastManaged: [at(row, c.managedAt), at(row, c.managedBy)].filter(Boolean).join(" · "),
       } : {}),
     });
   }

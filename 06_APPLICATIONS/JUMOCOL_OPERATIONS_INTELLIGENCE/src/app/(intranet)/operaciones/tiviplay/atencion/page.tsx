@@ -123,8 +123,9 @@ export default async function TiviplayAtencionPage({ searchParams }: { searchPar
               <div><dt className="text-xs text-brand-muted">Método</dt><dd>{client.entry.method || "—"}</dd></div>
               <div><dt className="text-xs text-brand-muted">Jornada de hoy</dt><dd>{client.queue ? `${client.queue.bucket} · ${client.queue.lane}` : "No está en la cola de hoy"}</dd></div>
             </dl>
+            {client.queue ? <p className="mt-2 text-sm"><strong>Gestión:</strong> {client.queue.lastManaged || "sin historial en la fuente; no se asume etapa"} · <Link className="font-semibold underline" href={`${ROUTE}?cliente=${client.entry.id}&ficha=${client.queue.suggestedFicha}#ficha`} prefetch={false}>Ficha de la cola: {client.queue.suggestedFicha}</Link></p> : null}
             {client.queue ? <p className="mt-2 text-sm"><strong>Siguiente acción:</strong> {client.queue.nextAction}{client.queue.reason ? ` · ${client.queue.reason}` : ""}</p> : null}
-            <ServiceCredentials clientId={client.entry.id} key={client.entry.id} panel={client.entry.panel} />
+            <ServiceCredentials clientId={client.entry.id} key={client.entry.id} panel={client.entry.panel} user={client.entry.user} />
           </div> : null}
         </section>
 
@@ -158,6 +159,7 @@ export default async function TiviplayAtencionPage({ searchParams }: { searchPar
           <p className="text-xs font-bold uppercase tracking-[0.1em] text-brand-muted">{selected.categoryLabel} · {selected.motive}</p>
           <h2 className="mt-2 text-2xl font-semibold" id="ficha-titulo">{selected.id} · {selected.title}</h2>
           <div className="mt-3 flex flex-wrap items-center gap-2"><Validation value={selected.validation} /><span className="text-xs text-brand-muted">Fichas versión {source.version}</span></div>
+          {selected.validation === "PENDIENTE DE VALIDACIÓN" ? <p className="mt-3 rounded-xl border border-brand-yellow/50 bg-brand-yellow/10 px-4 py-3 text-sm text-status-warning">Texto pendiente de validación de Dirección: envíalo tal cual. No agregues tarifas, promociones, enlaces, plazos ni fechas que no muestre la fuente.</p> : null}
           {selected.validation === "REQUIERE DECISIÓN" ? <p className="mt-3 rounded-xl border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-sm text-status-error">Falta una decisión de Dirección. El mensaje es neutro: no agregues oferta, condición ni fecha.</p> : null}
           {personalized ? <section aria-labelledby="respuesta" className="mt-5 rounded-2xl border border-brand-primary/40 p-4">
             <h3 className="font-semibold" id="respuesta">Respuesta {client.entry ? `para ${greetingName(client.entry.name)}` : "lista para copiar"}</h3>

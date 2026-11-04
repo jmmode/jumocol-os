@@ -440,6 +440,22 @@ function extensionTask(ex: CycleException, ctx: Ctx, normal: () => Pick<CreditTa
   return normal(); // FALTA_CREDITO: el asesor registra el crédito real; se aplica la habilitación normal.
 }
 
+/** Mínimo de filas con USUARIO y proporción de coincidencia con BASE GENERAL para considerar verificable la identidad. */
+export const IDENTITY_MIN_ROWS = 5;
+export const IDENTITY_MIN_MATCH = 0.5;
+
+function identityCheck(rows: unknown[][], userCol: number, rechargeCol: number | null, originCol: number, base: BaseIndex): string | null {
+  if (!base || rechargeCol == null) return null; // sin BASE el motor ya deja la habilitación financiera en REQUIERE_REVISION
+  const data = rows.filter((r) => canon((r ?? [])[originCol]) !== "COMPRA" && canon((r ?? [])[userCol]));
+  if (data.length < IDENTITY_MIN_ROWS) return null;
+  const rate = (col: number) => data.filter((r) => base.byUser.has(canon((r ?? [])[col]))).length / data.length;
+  const users = rate(userCol);
+  const recharge = rate(rechargeCol);
+  // Desplazamiento: los usuarios de BASE aparecen en RECARGA y no en USUARIO (patrón observado en CONTROL (NOV) P3).
+  if (users >= IDENTITY_MIN_MATCH || recharge < IDENTITY_MIN_MATCH) return null;
+  return `Identidad no verificable: USUARIO coincide con BASE GENERAL en ${Math.round(users * 100)}% de ${data.length} filas y RECARGA en ${Math.round(recharge * 100)}% (columnas desplazadas). Panel bloqueado; sus valores no se muestran hasta que Dirección corrija la hoja.`;
+}
+
 function projectPanel(panel: PanelId, sheet: string | null, rows: unknown[][] | null, input: CreditosHoyInput, ctx: Ctx): PanelCredits {
   const empty = (status: PanelCredits["status"], reason: string): PanelCredits => ({ panel, sheet, status, reason, columns: null, warning: null, kpi: null, sheetKpi: null, dataRange: null, tasks: [], pending: [], cycles: [] });
   if (input.readError) return empty("REQUIERE_REVISION", input.readError);
@@ -467,6 +483,12 @@ function projectPanel(panel: PanelId, sheet: string | null, rows: unknown[][] | 
     if (value != null && sheetKpi[match[0]] == null) sheetKpi[match[0]] = value;
   }
   const dataRange = { first: h + 2, last: end };
+
+  // Identidad verificable: la columna USUARIO de CONTROL debe corresponder a usuarios de BASE GENERAL. En CONTROL (NOV) P3
+  // se observó la columna USUARIO con valores que no son usuarios (desplazamiento de columnas). Si la mayoría no existe en
+  // BASE, el panel queda bloqueado y sus valores nunca se proyectan ni se muestran.
+  const identity = identityCheck(rows.slice(h + 1, end), c.user, c.recharge, c.origin, baseIndex);
+  if (identity) return empty("REQUIERE_DECISION", identity);
 
   // Aviso de coherencia (no cambia la regla): si ninguna FECHA cae en el mes de la hoja, se informa el rango real.
   const dated = rows.slice(h + 1, end).map((r) => parseDate((r ?? [])[c.date])).filter((d): d is string => !!d).sort();

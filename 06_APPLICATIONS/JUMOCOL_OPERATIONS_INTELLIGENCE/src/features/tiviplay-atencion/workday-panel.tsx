@@ -102,6 +102,7 @@ export function WorkdayPanel({ result }: { result: WorkdayResult }) {
           <p className="mt-1 text-sm tabular-nums">Vence {q.dueDate ?? "POR VALIDAR"} · <strong>{money(q.amount)}</strong> <span className="text-[10px] text-brand-muted">nominal</span></p>
           <p className="mt-1 text-xs"><strong>Motivo:</strong> {q.reason || BUCKET_LABEL[q.bucket]}</p>
           <p className="text-xs"><strong>Acción:</strong> {q.nextAction}</p>
+          <p className="text-xs">{q.lastManaged ? <><strong>Última gestión:</strong> {q.lastManaged}</> : <span className="text-brand-muted">Sin historial de gestión en la fuente: no se asume etapa (primer contacto o seguimiento).</span>}</p>
           <p className="text-[10px] text-brand-muted">Estado de cobro en hoja: {q.collectionStatus || "—"} · {q.source}</p>
           <Link className="mt-3 self-start rounded-lg bg-brand-primary-dark px-4 py-2 text-sm font-semibold text-white" href={`/operaciones/tiviplay/atencion?cliente=${q.id}&ficha=${q.suggestedFicha}#ficha`} prefetch={false}>ATENDER · {q.suggestedFicha}</Link>
         </li>)}

@@ -60,6 +60,8 @@ export type QueueItem = {
   amount: Money;
   classification: string;
   collectionStatus: string;
+  /** Última gestión registrada en la fuente, o "" si no hay historial (no se deduce etapa de gestión). */
+  lastManaged: string;
   reason: string;
   nextAction: string;
   suggestedFicha: string;
@@ -221,6 +223,7 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
       amount: item.nominal,
       classification: item.classification ?? item.state,
       collectionStatus: item.collectionStatus ?? "",
+      lastManaged: item.lastManaged ?? "",
       reason: item.signals.join(" · "),
       nextAction: item.nextAction,
       suggestedFicha: FICHA_BY_LANE[lane],

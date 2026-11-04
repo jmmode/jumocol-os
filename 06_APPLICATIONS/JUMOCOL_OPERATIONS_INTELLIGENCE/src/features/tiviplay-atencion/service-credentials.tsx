@@ -4,7 +4,7 @@ import { useState } from "react";
 
 /** Acceso controlado: la credencial llega únicamente después de una acción explícita.
  *  El padre monta el componente con key={clientId}: al cambiar de cliente el estado (y el secreto) se descarta. */
-export function ServiceCredentials({ clientId, panel }: { clientId: string; panel: string }) {
+export function ServiceCredentials({ clientId, panel, user }: { clientId: string; panel: string; user: string }) {
   const [secret, setSecret] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -36,13 +36,13 @@ export function ServiceCredentials({ clientId, panel }: { clientId: string; pane
     }
   }
 
-  async function copy() {
-    if (!secret) return;
+  async function copy(value: string, label: string) {
+    if (!value) return;
     try {
-      await navigator.clipboard.writeText(secret);
-      setMessage("Contraseña copiada. Verifica el destinatario antes de enviarla.");
+      await navigator.clipboard.writeText(value);
+      setMessage(`${label} copiado. Verifica el destinatario antes de enviarlo.`);
     } catch {
-      setMessage("El navegador no permitió copiar. Utiliza Mostrar contraseña.");
+      setMessage("El navegador no permitió copiar. Selecciona el dato y cópialo manualmente.");
     }
   }
 
@@ -51,11 +51,16 @@ export function ServiceCredentials({ clientId, panel }: { clientId: string; pane
     <h3 className="text-sm font-semibold">Credencial de servicio · {panel || "panel por validar"}</h3>
     <p className="mt-1 text-xs text-brand-muted">Acceso autorizado y auditado. Solo consulta; no modifica el servicio.</p>
     <div className="mt-3 flex flex-wrap items-center gap-2">
-      <button className={button} type="button" onClick={reveal} disabled={busy}>{busy ? "Consultando…" : "Consultar contraseña"}</button>
+      <span className="text-xs text-brand-muted">Usuario</span>
+      <input aria-label="Usuario de servicio" className="min-w-0 rounded-lg border px-2 py-1.5 font-mono text-sm" readOnly value={user || "—"} />
+      <button className={button} type="button" onClick={() => copy(user, "Usuario")} disabled={!user}>Copiar usuario</button>
+    </div>
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <button className={button} type="button" onClick={reveal} disabled={busy || !user}>{busy ? "Consultando…" : "Consultar contraseña"}</button>
       {secret ? <>
         <input aria-label="Contraseña de servicio" className="min-w-0 rounded-lg border px-2 py-1.5 font-mono text-sm" readOnly type={visible ? "text" : "password"} value={secret} autoComplete="off" spellCheck={false} />
         <button className={button} type="button" onClick={() => setVisible((v) => !v)}>{visible ? "Ocultar" : "Mostrar"}</button>
-        <button className={button} type="button" onClick={copy}>Copiar contraseña</button>
+        <button className={button} type="button" onClick={() => copy(secret, "Contraseña")}>Copiar contraseña</button>
         <button className={button} type="button" onClick={() => { setSecret(""); setVisible(false); setMessage("Credencial oculta."); }}>Limpiar</button>
       </> : null}
     </div>
