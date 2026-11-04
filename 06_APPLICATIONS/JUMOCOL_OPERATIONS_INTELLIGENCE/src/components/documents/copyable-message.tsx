@@ -1,24 +1,26 @@
 "use client";
 import { useState } from "react";
 
-/** Mensaje o dato de uso frecuente con botón Copiar. Sin dependencias: Clipboard API y, si no está disponible, selección + execCommand. */
+function legacyCopy(text: string) {
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.setAttribute("readonly", "");
+  area.style.position = "fixed";
+  area.style.opacity = "0";
+  document.body.appendChild(area);
+  area.select();
+  const ok = document.execCommand("copy");
+  area.remove();
+  if (!ok) throw new Error("copy");
+}
+
+/** Mensaje o dato de uso frecuente con botón Copiar. Sin dependencias: Clipboard API y, si no está disponible o la rechaza, selección + execCommand. */
 export function CopyableMessage({ text }: { text: string }) {
   const [state, setState] = useState<"idle" | "copied" | "error">("idle");
   async function copy() {
     try {
-      if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
-      else {
-        const area = document.createElement("textarea");
-        area.value = text;
-        area.setAttribute("readonly", "");
-        area.style.position = "fixed";
-        area.style.opacity = "0";
-        document.body.appendChild(area);
-        area.select();
-        const ok = document.execCommand("copy");
-        area.remove();
-        if (!ok) throw new Error("copy");
-      }
+      if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text).catch(() => legacyCopy(text));
+      else legacyCopy(text);
       setState("copied");
     } catch {
       setState("error");

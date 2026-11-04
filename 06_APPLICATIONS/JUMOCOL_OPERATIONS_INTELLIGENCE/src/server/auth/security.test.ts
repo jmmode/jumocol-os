@@ -155,6 +155,10 @@ describe("server policy and transport", () => {
     expect(allowed("OPERADOR", "/operaciones/tiviplay/runtime")).toBe(true);
     expect(allowed("OPERADOR", "/operaciones/tiviplay/hoy")).toBe(true);
     expect(allowed("OPERADOR", "/operaciones/tiviplay/hoy", "POST")).toBe(false);
+    expect(allowed("OPERADOR", "/operaciones/tiviplay/atencion")).toBe(true);
+    expect(allowed("OPERADOR", "/operaciones/tiviplay/turno")).toBe(true);
+    expect(allowed("OPERADOR", "/operaciones/tiviplay/atencion", "POST")).toBe(false);
+    expect(allowed("OPERADOR", "/operaciones/tiviplay/turno", "POST")).toBe(false);
     expect(allowed("OPERADOR", "/api/operations/tiviplay/monthly-close")).toBe(true);
     expect(allowed("OPERADOR", "/api/operations/tiviplay/monthly-close", "POST")).toBe(false);
     expect(allowed("OPERADOR", "/api/operations/tiviplay/confirmado-jm", "POST")).toBe(false);
@@ -184,7 +188,7 @@ const STANDARD = [...OPERATIONAL_STANDARD_KEYS];
 describe("governed document library", () => {
   it("excludes unapproved documents and metadata from operator inventory", async () => {
     expect(await libraryInventory(operator)).toEqual([]);
-    expect((await libraryInventory(admin)).length).toBe(9);
+    expect((await libraryInventory(admin)).length).toBe(10);
     expect(await libraryEntry("tiviplay-context", operator)).toBeNull();
   });
   it("rejects arbitrary filesystem paths and IDs", async () => {

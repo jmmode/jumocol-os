@@ -7,6 +7,8 @@ import { Suspense } from "react";
 import { LIBRARY_SECTIONS } from "@/server/documents/curation";
 
 const LINKS = [
+  { href: "/operaciones/tiviplay/turno", label: "Apertura de turno" },
+  { href: "/operaciones/tiviplay/atencion", label: "Atención" },
   { href: "/operaciones/tiviplay/manuales", label: "Manuales y procesos" },
   { href: "/operaciones/tiviplay/hoy", label: "HOY" },
   { href: "/operaciones/tiviplay/conciliacion", label: "Conciliación" },

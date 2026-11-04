@@ -12,6 +12,13 @@ const COMPONENTS = [
   { index: "06", name: "Plugin", documentary: "FUTURE PACKAGE", technical: "NOT IMPLEMENTED", enabled: false },
 ] as const;
 
+const ATTENTION = [
+  { title: "Apertura de turno", detail: "Checklist y entrega de turno.", href: "/operaciones/tiviplay/turno" },
+  { title: "Financiera", detail: "Cobros, comprobantes y facturación.", href: "/operaciones/tiviplay/atencion#categoria-A" },
+  { title: "Servicio", detail: "Ventas, renovaciones y referidos.", href: "/operaciones/tiviplay/atencion#categoria-B" },
+  { title: "Soporte técnico", detail: "Apps, conexión, acceso y canales.", href: "/operaciones/tiviplay/atencion#categoria-C" },
+] as const;
+
 export function TiviplayCommandCenter({ admin = false }: { admin?: boolean }) {
   return (
     <div>
@@ -28,6 +35,15 @@ export function TiviplayCommandCenter({ admin = false }: { admin?: boolean }) {
         title="Command Center TiviPlay"
       />
       <TiviplayNavigation />
+
+      <section aria-label="Atención al cliente" className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {ATTENTION.map((item) => (
+          <Link className="rounded-2xl border border-brand-border bg-brand-background p-5 transition hover:border-brand-primary" href={item.href} key={item.href}>
+            <h2 className="font-semibold text-brand-text">{item.title}</h2>
+            <p className="mt-1 text-xs leading-5 text-brand-muted">{item.detail}</p>
+          </Link>
+        ))}
+      </section>
 
       <Link
         aria-label="Abrir Runtime Operativo de TiviPlay"

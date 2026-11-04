@@ -13,6 +13,8 @@ export const ACCESS_DIRECTORY: ReadonlyArray<AccessEntry> = [
   { label: "Administración · Biblioteca", path: "/administracion/biblioteca", audience: "Dirección (ADMIN)", purpose: "Revisión del inventario documental." },
   { label: "Operador · TiviPlay", path: "/operaciones/tiviplay", audience: "Operador", purpose: "Pantalla de llegada del operador." },
   { label: "Operador · HOY", path: "/operaciones/tiviplay/hoy", audience: "Operador", purpose: "Lista de clientes a gestionar en el día." },
+  { label: "Operador · Apertura de turno", path: "/operaciones/tiviplay/turno", audience: "Operador", purpose: "Checklist de inicio y entrega de turno." },
+  { label: "Operador · Atención", path: "/operaciones/tiviplay/atencion", audience: "Operador", purpose: "Clasificación, procedimiento y scripts copiables." },
   { label: "Operador · Manuales y procesos", path: "/operaciones/tiviplay/manuales", audience: "Operador", purpose: "Manuales publicados, guía rápida de turno y búsqueda." },
 ];
 

@@ -2,7 +2,7 @@ import type { Role } from "./store";
 
 const operatorPages = new Set([
   "/operaciones/tiviplay", "/operaciones/tiviplay/hoy", "/operaciones/tiviplay/contexto", "/operaciones/tiviplay/runtime",
-  "/operaciones/tiviplay/manuales", "/operaciones/tiviplay/conciliacion", "/acceso-denegado",
+  "/operaciones/tiviplay/manuales", "/operaciones/tiviplay/conciliacion", "/operaciones/tiviplay/atencion", "/operaciones/tiviplay/turno", "/acceso-denegado",
 ]);
 export function allowed(role: Role, pathname: string, method = "GET") {
   if (role === "ADMIN") return true;
