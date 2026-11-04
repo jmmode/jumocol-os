@@ -4,7 +4,7 @@ import Link from "next/link";
 import { CopyableMessage } from "@/components/documents/copyable-message";
 import { MarkdownDocument } from "@/components/documents/markdown-document";
 import { PageHeader } from "@/components/ui/page-header";
-import { ClientSearch, MessageClassifier } from "@/features/tiviplay-atencion/atencion-assistant";
+import { ClientSearch, MessageClassifier } from "@/features/tiviplay-atencion/atencion-assistant";\nimport { ServiceCredentials } from "@/features/tiviplay-atencion/service-credentials";
 import { scriptOf } from "@/features/tiviplay-atencion/classify";
 import { ATENCION_CATEGORIES, FICHAS_DOCUMENT_ID, parseFichas, searchFichas, type Ficha } from "@/features/tiviplay-atencion/fichas";
 import { TiviplayNavigation } from "@/features/tiviplay-command-center/tiviplay-navigation";
@@ -122,7 +122,7 @@ export default async function TiviplayAtencionPage({ searchParams }: { searchPar
               <div><dt className="text-xs text-brand-muted">Método</dt><dd>{client.entry.method || "—"}</dd></div>
               <div><dt className="text-xs text-brand-muted">Jornada de hoy</dt><dd>{client.queue ? `${client.queue.bucket} · ${client.queue.lane}` : "No está en la cola de hoy"}</dd></div>
             </dl>
-            {client.queue ? <p className="mt-2 text-sm"><strong>Siguiente acción:</strong> {client.queue.nextAction}{client.queue.reason ? ` · ${client.queue.reason}` : ""}</p> : null}
+            {client.queue ? <p className="mt-2 text-sm"><strong>Siguiente acción:</strong> {client.queue.nextAction}{client.queue.reason ? ` · ${client.queue.reason}` : ""}</p> : null}\n            <ServiceCredentials clientId={client.entry.id} panel={client.entry.panel} />
           </div> : null}
         </section>
 
