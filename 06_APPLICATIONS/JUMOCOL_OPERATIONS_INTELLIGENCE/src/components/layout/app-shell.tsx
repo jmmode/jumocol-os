@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { BrandLockup } from "@/components/brand/brand-lockup";
 import { AreaNavigation } from "@/components/layout/area-navigation";
 import { Topbar } from "@/components/layout/topbar";
+import { OperatorNavigationProvider } from "@/components/layout/operator-navigation-context";
 import { CORPORATE_BRAND } from "@/config/brand";
 
 type AppShellProps = {
@@ -13,6 +14,7 @@ type AppShellProps = {
 
 export function AppShell({ children, user }: AppShellProps) {
   return (
+    <OperatorNavigationProvider operator={user.role === "OPERADOR"}>
     <div className="min-h-screen">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[292px] flex-col overflow-hidden bg-brand-primary-dark px-5 py-6 text-white lg:flex">
         <div className="absolute -top-24 -right-24 size-64 rounded-full bg-brand-cyan/10 blur-3xl" />
@@ -63,5 +65,6 @@ export function AppShell({ children, user }: AppShellProps) {
         </footer> : null}
       </div>
     </div>
+    </OperatorNavigationProvider>
   );
 }
