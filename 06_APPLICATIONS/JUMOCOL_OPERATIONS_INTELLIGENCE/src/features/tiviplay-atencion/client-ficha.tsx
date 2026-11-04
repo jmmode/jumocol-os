@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { CopyableMessage } from "@/components/documents/copyable-message";
 import { cobranzaStage } from "@/features/tiviplay-atencion/cobranza";
 import { GestionRegistro } from "@/features/tiviplay-atencion/gestion-registro";
@@ -50,7 +52,7 @@ function History({ history }: { history: ClientHistory }) {
     {payments("Pagos pendientes de confirmación", pending)}
     {payments("Pagos confirmados", confirmed)}
     {!history.payments.length ? <p className="mt-2 text-xs text-brand-muted">Sin pagos con enlace verificable a esta ficha.</p> : null}
-    {history.renewals.length ? <div className="mt-3"><h4 className="text-xs font-bold">Renovaciones en CONTROL P1/P2</h4>
+    {history.renewals.length ? <div className="mt-3"><h4 className="text-xs font-bold">Renovaciones registradas en CONTROL P1/P2/P3 (solo lectura)</h4>
       <div className="overflow-x-auto"><table className="w-full"><thead><tr><th className={th}>Fecha</th><th className={th}>Crédito</th><th className={th}>Nuevo vencimiento</th></tr></thead>
         <tbody>{history.renewals.map((r) => <tr key={r.source}><td className={td}>{displayDate(r.date) ?? "—"}</td><td className={td}>{r.credit}</td><td className={td}>{displayDate(r.due) ?? "—"}</td></tr>)}</tbody></table></div></div> : null}
     {history.plans.length ? <div className="mt-3"><h4 className="text-xs font-bold">Plan por mes</h4>
@@ -60,14 +62,52 @@ function History({ history }: { history: ClientHistory }) {
   </>;
 }
 
+
+/** El historial remoto es una sección independiente; nunca bloquea el renderizado de las capas. */
+async function HistoryContent({ client }: { client: DirectoryEntry }) {
+  const result = await getClientHistory(client);
+  return result.ok ? <History history={result.history} />
+    : <p className="mt-2 text-sm text-status-warning">Historial no disponible: {result.reason}. Las capas del cliente siguen visibles.</p>;
+}
+
+/** CONTROL P3: evidencias ejecutadas, solo lectura; sin habilitar nuevos créditos. */
+async function Panel3ControlSummary({ client, unverified }: { client: DirectoryEntry; unverified: boolean }) {
+  if (unverified) return <p className="mt-3 text-xs text-status-warning">CONTROL P3: identidad ambigua o ausente; requiere cotejo.</p>;
+  const result = await getClientHistory(client);
+  if (!result.ok) return <p className="mt-3 text-xs text-status-warning">CONTROL P3 no disponible temporalmente: {result.reason}</p>;
+  const rows = result.history.renewals.filter((r) => /^CONTROL.*P3$/i.test(r.source.split("!")[0]));
+  if (!rows.length) return <p className="mt-3 text-xs text-brand-muted">CONTROL P3: no se localizó crédito registrado para este USUARIO en las hojas leídas. No implica desactivación.</p>;
+  const last = rows[0];
+  const aligned = !!last.due && last.due === client.technicalDue;
+  return <div className="mt-3 rounded-xl border border-brand-border bg-brand-background p-3 text-xs" role="note">
+    <p className="font-bold">CONTROL P3 · Evidencia de crédito registrada</p>
+    <p>Fuente: {last.source} · Crédito: {last.credit} · Fecha: {displayDate(last.date) ?? "POR VALIDAR"} · Vencimiento: {displayDate(last.due) ?? "POR VALIDAR"}</p>
+    <p className="mt-1 text-brand-muted">{aligned ? "Coincide con el vencimiento de BASE GENERAL. " : "Requiere cotejo con el vencimiento de BASE GENERAL. "}Esta lectura no autoriza otro crédito.</p>
+  </div>;
+}
+
+/** Verifica unicidad de USUARIO en la cartera seleccionada sin consultar historial remoto. */
+function duplicateInCartera(client: DirectoryEntry) {
+  if (!client.user) return true;
+  const cache = getRuntimeValuesCached();
+  if (!cache) return true;
+  const sheet = Object.keys(cache).find((key) => /^PAGOS .*20\d\d$/.test(key) && client.source.startsWith(key + "!"));
+  if (!sheet) return false;
+  const rows = cache[sheet] ?? [];
+  const h = rows.slice(0, 8).findIndex((r) => (r ?? []).some((v) => headerKey(v) === "OBSERVACIONES GESTION"));
+  if (h < 0) return true;
+  const col = (rows[h] ?? []).findIndex((v) => headerKey(v) === "USUARIO");
+  if (col < 0) return true;
+  return rows.slice(h + 1).filter((r) => headerKey(r?.[col]) === headerKey(client.user)).length !== 1;
+}
+
 type Fallback = { title: string; text: string; pending: number; validation: string };
 
 export async function ClientFicha({ client, queue, actor, admin, cobranza, today, userRepeated, fallback }: { client: DirectoryEntry; queue: QueueItem | null; actor: string; admin: boolean; cobranza: Record<string, string> | null; today: string; userRepeated: boolean; fallback: Fallback | null }) {
-  const result = await getClientHistory(client);
-  const history = result.ok ? result.history : null;
-  const unverified = userRepeated || !client.user || (history?.ambiguousMonths.length ?? 0) > 0;
-  const panelThree = /PANEL\s*3/i.test(client.panel);
-  const due = technicalDue({ panel: client.panel, due: client.technicalDue, userRepeated: unverified, controlDue: history?.controlDue ?? null });
+  // Datos principales primero; la consulta histórica se renderiza en componentes Suspense.
+  const unverified = userRepeated || !client.user || duplicateInCartera(client);
+  const panelThree = /PANEL\\s*3/i.test(client.panel);
+  const due = technicalDue({ panel: client.panel, due: client.technicalDue, userRepeated: unverified, controlDue: null });
   const cell = observations(client);
   const advisorNote = queue?.advisorObservation ?? carteraField(client, "OBSERVACIONES ASESOR");
   const confirmationX = queue?.paymentConfirmation ?? carteraField(client, "CONFIRMACION");
@@ -131,6 +171,7 @@ export async function ClientFicha({ client, queue, actor, admin, cobranza, today
           <Item name="Estado técnico" value={due.status} />
           <Item name="Vencimiento técnico" value={<>{displayDate(due.date) ?? "REQUIERE VALIDACIÓN"}<span className="block text-[11px] font-normal text-brand-muted">{due.reason}</span></>} wide />
         </dl>
+        {panelThree ? <Suspense fallback={<p className="mt-3 text-xs text-brand-muted">Consultando evidencia CONTROL P3…</p>}><Panel3ControlSummary client={client} unverified={unverified} /></Suspense> : null}
         <ServiceCredentials clientId={client.id} key={client.id} panel={client.panel} user={client.user} />
       </section>
     </div>
@@ -151,7 +192,7 @@ export async function ClientFicha({ client, queue, actor, admin, cobranza, today
 
     <details className={card}>
       <summary className="cursor-pointer font-semibold">Historial</summary>
-      {history ? <History history={history} /> : <p className="mt-2 text-sm text-status-warning">REQUIERE VALIDACIÓN: {!result.ok ? result.reason : ""}</p>}
+      <Suspense fallback={<p className="mt-2 text-xs text-brand-muted">Consultando historial financiero y de CONTROL…</p>}><HistoryContent client={client} /></Suspense>
       {gestiones.length ? <div className="mt-3"><h4 className="text-xs font-bold">Gestiones registradas</h4><ul className="mt-1 space-y-1 text-xs">{[...gestiones].reverse().map((g, i) => <li key={i}>{g.at} · {g.actor} · {GESTION_ETIQUETAS[g.estado]}{g.detail ? ` · ${g.detail}` : ""}</li>)}</ul></div> : null}
     </details>
   </div>;
