@@ -1,21 +1,21 @@
 // Bloque 4 de HOY — CRÉDITOS DE HOY. Proyección pura (sin I/O) sobre CONTROL P1/P2/P3 del mes.
 //
 // Regla de Dirección (22/10/2026):
-//   G (FECHA)          = fecha en que corresponde otorgar el crédito técnico → población del día: G = hoy.
-//   H (F.VENCIMIENTO)  = vencimiento resultante, registrado después de ejecutar el crédito. Es el dato que se lleva
-//                        a BASE GENERAL (F.VENCIMIENTO): el match CONTROL.H ↔ BASE.F.VENCIMIENTO cierra el ciclo.
+//   FECHA (por encabezado) = fecha de la tarea técnica → población del día; P3 noviembre usa columna H.
+//   F.VENCIMIENTO (por encabezado) = vencimiento técnico; P3 noviembre usa columna I. Se lleva
+//                        a BASE GENERAL (F.VENCIMIENTO): solo un match validado cierra el ciclo.
 // La regla es la misma para P1, P2 y P3 (Dirección, 23/10/2026): ningún panel tiene una regla distinta.
 // Habilitación financiera: contrato S0 v0.3 §7.1, sin reglas nuevas:
 //   NECESIDAD TÉCNICA + HABILITACIÓN FINANCIERA + IDENTIDAD INEQUÍVOCA = CRÉDITO EJECUTABLE
 //   Caso A: CONFIRMADO JM + ESTADO_ENLACE = ENLAZADO + FILA_BASE = fila del USUARIO.
 //   Caso B: TC=1 + F. PRÓXIMO PAGO posterior a la fecha del crédito + cobertura coherente con PLAN ACTIVO (+k).
-// Columnas canónicas de CONTROL (WO-TIVI-HOY-CREDITOS, 23/10/2026): A TC = crédito programado, J CREDITO = crédito
-// efectivamente ejecutado, I ORIGEN = motivo; I = COMPRA es carga de inventario del panel (K), nunca un crédito de cliente.
+// Columnas CONTROL: A TC = crédito programado; CREDITO se resuelve por encabezado (P3 noviembre K).
+// ORIGEN se resuelve por encabezado (P3 noviembre J). COMPRA es inventario, nunca crédito de cliente.
 // KPI = mismas fórmulas de la hoja, sin hardcodear rangos: el bloque resumen («⬅️ …») marca el fin de los datos.
 //   programados = Σ A (I ≠ COMPRA) · otorgados = Σ J (I ≠ COMPRA) · faltantes = programados − otorgados
-//   hoy = Σ A con fecha(G) = hoy (I ≠ COMPRA). La hoja calcula «hoy» con G = TODAY(), pero G es texto con hora,
-//   así que su celda siempre da 0; aquí se compara la fecha de G y se reporta la diferencia (paridad visible).
-// Ejecución = J > 0 (o TC 0 con ORIGEN y H: movimiento sin consumo de crédito). H por sí sola no es ejecución.
+//   hoy = Σ A con FECHA = hoy (ORIGEN ≠ COMPRA). La columna FECHA varía por panel;
+//   este motor lee el encabezado real y contrasta la fecha sin confiar en posiciones fijas.
+// Ejecución = CREDITO > 0 (o TC 0 con ORIGEN y F.VENCIMIENTO). Fecha de vencimiento sola no demuestra ejecución.
 // CRÉDITO EJECUTADO ≠ BASE GENERAL ACTUALIZADA. Nunca se lee ni se expone la columna CONTRASEÑA.
 import { canon, clean, parseDate, type PanelId } from "@/server/tiviplay-live/runtime-read-model";
 
@@ -465,7 +465,7 @@ function identityCheck(rows: unknown[][], userCol: number, rechargeCol: number |
   const rate = (col: number) => data.filter((r) => base.byUser.has(canon((r ?? [])[col]))).length / data.length;
   const users = rate(userCol);
   const recharge = rate(rechargeCol);
-  // Desplazamiento: los usuarios de BASE aparecen en RECARGA y no en USUARIO (patrón observado en CONTROL (NOV) P3).
+  // Detección genérica de columnas desplazadas; P3 noviembre actual usa USUARIO=E (encabezado real).
   if (users >= IDENTITY_MIN_MATCH || recharge < IDENTITY_MIN_MATCH) return null;
   return `Identidad no verificable: USUARIO coincide con BASE GENERAL en ${Math.round(users * 100)}% de ${data.length} filas y RECARGA en ${Math.round(recharge * 100)}% (columnas desplazadas). Panel bloqueado; sus valores no se muestran hasta que Dirección corrija la hoja.`;
 }
@@ -537,7 +537,7 @@ function projectPanel(panel: PanelId, sheet: string | null, rows: unknown[][] | 
   const dataRange = { first: h + 2, last: end };
 
   // Identidad verificable: la columna USUARIO de CONTROL debe corresponder a usuarios de BASE GENERAL. En CONTROL (NOV) P3
-  // se observó la columna USUARIO con valores que no son usuarios (desplazamiento de columnas). Si la mayoría no existe en
+  // se puede detectar un desfase entre campos. Si la mayoría no existe en
   // BASE, el panel queda bloqueado y sus valores nunca se proyectan ni se muestran.
   const identity = identityCheck(rows.slice(h + 1, end), c.user, c.recharge, c.origin, baseIndex);
   if (identity) return empty("REQUIERE_DECISION", identity);
