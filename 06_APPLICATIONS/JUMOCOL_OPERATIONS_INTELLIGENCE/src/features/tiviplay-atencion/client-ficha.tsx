@@ -135,6 +135,13 @@ export async function ClientFicha({ client, queue, actor, admin, cobranza, today
       </section>
     </div>
 
+    {queue?.releaseAlert ? <section aria-label="Alerta de liberación de línea" className="rounded-2xl border border-brand-yellow/50 bg-brand-yellow/10 p-4" role="alert">
+      <h3 className="font-bold text-status-warning">Cola Operacional · Alerta de liberación de línea</h3>
+      <p className="mt-2 text-sm">Responsable: asesor que atiende · {queue.releaseAlert.state === "PENDIENTE_VERIFICACION_FINANCIERA" ? "Primero verificar confirmación financiera e identidad" : "Pendiente de revisión técnica"}</p>
+      <p className="mt-1 text-sm">{queue.releaseAlert.instruction}</p>
+      <p className="mt-1 text-xs text-brand-muted">La alerta es de solo lectura. No confirma liberación ni cambia el estado del panel; el cierre requiere evidencia de suspensión y registro de gestión verificado.</p>
+    </section> : null}
+
     <section aria-label="Acción" className={card}>
       <h3 className="font-semibold">Acción{stage ? ` · ${stage.label}` : ""}</h3>
       {stage ? <p className="text-xs text-brand-muted">Canal: {stage.channel}. {stage.note}</p> : null}
