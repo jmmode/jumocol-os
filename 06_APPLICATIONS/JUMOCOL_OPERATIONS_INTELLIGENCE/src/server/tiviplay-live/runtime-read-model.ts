@@ -115,6 +115,14 @@ export type CarteraItem = {
   signals: string[];
   nextAction: string;
   note: string;
+  /** F: registro estructurado de la gestión de cobranza (no acredita pagos). */
+  gestionObservation?: string;
+  /** W: observación libre que redacta el asesor. */
+  advisorObservation?: string;
+  /** X: confirmación financiera visible en la cartera; requiere asociar el ciclo. */
+  paymentConfirmation?: string;
+  /** AG: confirmación financiera del ciclo anterior, NO del cobro corriente. */
+  priorCycleConfirmation?: string;
   /** Contrato de cartera noviembre+: CLASIFICACION_BORRADOR y ESTADO_COBRO, literales de la hoja. */
   classification?: string;
   collectionStatus?: string;
@@ -567,7 +575,10 @@ function normalizeCartera(title: string, rows: unknown[][], today: string) {
     tc: col("TC"),
     client: col("CLIENTE"),
     status: col("ESTADO"),
-    note: col("OBSERVACIONES", "OBSERVACIONES GESTION"),
+    note: col("OBSERVACIONES GESTION", "OBSERVACIONES"),
+    advisorObservation: col("OBSERVACIONES ASESOR"),
+    paymentConfirmation: col("CONFIRMACION"),
+    priorCycleConfirmation: col("CONFIRMACION_FINANCIERA"),
     plan: col("PLAN ACTIVO"),
     usd: col("USD"),
     cop: col("COP"),
@@ -692,6 +703,10 @@ function normalizeCartera(title: string, rows: unknown[][], today: string) {
       nextAction,
       note: latestNote(at(row, c.note)),
       ...(draftContract ? {
+        gestionObservation: at(row, c.note),
+        advisorObservation: at(row, c.advisorObservation),
+        paymentConfirmation: at(row, c.paymentConfirmation),
+        priorCycleConfirmation: at(row, c.priorCycleConfirmation),
         classification: at(row, c.classification),
         collectionStatus: at(row, c.collection),
         baseRow: Number(at(row, c.origin).match(/!(\d+)$/)?.[1]) || null,
