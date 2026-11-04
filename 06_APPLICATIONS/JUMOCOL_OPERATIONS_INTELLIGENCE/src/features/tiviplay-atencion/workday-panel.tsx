@@ -56,7 +56,7 @@ export function WorkdayPanel({ result, admin }: { result: WorkdayResult; admin: 
         <p className="mt-1">{source.workbook} · hojas: {source.sheetsRead.join(", ")} · firma <code>{source.signature.slice(0, 12)}…</code></p>
       </details> : null}
     </div>
-    {!admin && w.blockers.some(isP3) ? <p className={blocked} role="note">Panel 3: los créditos están detenidos hasta validar la información. No asignes créditos de este panel.</p> : null}
+    {!admin && w.blockers.some(isP3) ? <p className={blocked} role="note">Panel 3: CONTROL disponible para auditoría de lectura; la autorización de nuevos créditos sigue bloqueada por excepciones de identidad y cobertura. Revisa el detalle en Créditos técnicos. No asignes créditos sin validación.</p> : null}
     {admin ? w.blockers.map((b) => <details className={blocked} key={b}>
       <summary className="cursor-pointer font-semibold">{isP3(b) ? "Panel 3 bloqueado: identidad no verificable. No se incluyen sus créditos." : "Excepción operacional: revisar antes de actuar"}</summary>
       <p className="mt-1">{b}</p>
