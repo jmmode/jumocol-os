@@ -51,7 +51,7 @@ function FichaLink({ ficha, clienteId }: { ficha: Ficha; clienteId: string | nul
 async function loadFichas(actor: Awaited<ReturnType<typeof requirePage>>) {
   try {
     const entry = await libraryEntry(FICHAS_DOCUMENT_ID, actor);
-    return entry ? { fichas: parseFichas(entry.document.markdown), markdown: entry.document.markdown, published: entry.published, version: entry.document.version } : null;
+    return entry ? { fichas: parseFichas(entry.document.markdown), published: entry.published, version: entry.document.version } : null;
   } catch {
     return null;
   }
@@ -62,6 +62,16 @@ async function loadClient(id: string | undefined): Promise<{ entry: DirectoryEnt
   const result = await getTiviplayWorkday();
   if (!result.ok) return { entry: null, queue: null, error: result.reason };
   return { entry: result.directory.find((d) => d.id === id) ?? null, queue: result.workday.queue.find((q) => q.id === id) ?? null, error: null };
+}
+
+/** Mensajes de cobro: documento propio para no invalidar la publicación de las fichas. */
+async function loadCobranza(actor: Awaited<ReturnType<typeof requirePage>>) {
+  try {
+    const entry = await libraryEntry("tiviplay-mensajes-cobro", actor);
+    return entry ? parseCobranza(entry.document.markdown) : null;
+  } catch {
+    return null;
+  }
 }
 
 export default async function TiviplayAtencionPage({ searchParams }: { searchParams: Promise<{ q?: string; ficha?: string; cliente?: string }> }) {
@@ -104,7 +114,7 @@ export default async function TiviplayAtencionPage({ searchParams }: { searchPar
           <ClientSearch selectedFicha={selected?.id ?? null} />
           {client.error ? <p className="mt-3 rounded-xl border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-sm text-status-error">BLOQUEADO: {client.error}</p> : null}
           {clienteId && !client.entry && !client.error ? <p className="mt-3 text-sm text-status-warning">El cliente seleccionado ya no aparece en la fuente. Vuelve a buscarlo.</p> : null}
-          {client.entry ? <ClientFicha actor={actor.name} client={client.entry} cobranza={source ? parseCobranza(source.markdown) : null} queue={client.queue} today={bogotaToday()} /> : null}
+          {client.entry ? <ClientFicha actor={actor.name} client={client.entry} cobranza={await loadCobranza(actor)} queue={client.queue} today={bogotaToday()} /> : null}
         </section>
 
       {!source ? <section className={`${card} mt-5`} role="note">

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { cobranzaStage, parseCobranza } from "./cobranza";
 
-const doc = readFileSync(path.resolve(process.cwd(), "../../03_AREAS/01_OPERACION/TIVIPLAY/07_GUIAS/TIVIPLAY_FICHAS_ATENCION_V1.md"), "utf8");
+const doc = readFileSync(path.resolve(process.cwd(), "../../03_AREAS/01_OPERACION/TIVIPLAY/07_GUIAS/TIVIPLAY_MENSAJES_COBRO_V1.md"), "utf8");
 const today = "2026-11-10";
 const stage = (next: string, method = "ZELLE") => cobranzaStage(next, today, method)?.key ?? null;
 

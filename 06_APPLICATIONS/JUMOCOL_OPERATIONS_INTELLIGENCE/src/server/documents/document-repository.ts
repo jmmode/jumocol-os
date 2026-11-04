@@ -7,7 +7,7 @@ import { discoverLifeosDocuments, readSourceMarkdown } from "./lifeos-discovery"
 import { extractHeadings, extractMetadata, extractTitle, type DocumentHeading } from "./markdown-metadata";
 
 export type { DocumentHeading };
-export type StaticDocumentId = "tiviplay-context" | "tiviplay-s0-contract" | "tiviplay-s0-baseline" | "tiviplay-cycle-close" | "tiviplay-operations-guide" | "tiviplay-manual-financiero-renovacion" | "tiviplay-manual-lista-octubre-hoy" | "tiviplay-guia-rapida-turno" | "tiviplay-fichas-atencion";
+export type StaticDocumentId = "tiviplay-context" | "tiviplay-s0-contract" | "tiviplay-s0-baseline" | "tiviplay-cycle-close" | "tiviplay-operations-guide" | "tiviplay-manual-financiero-renovacion" | "tiviplay-manual-lista-octubre-hoy" | "tiviplay-guia-rapida-turno" | "tiviplay-fichas-atencion" | "tiviplay-mensajes-cobro";
 // Static canonical IDs plus IDs discovered (read-only) in LIFE-OS; every ID is resolved against an allowlist.
 export type DocumentId = string;
 
@@ -38,6 +38,7 @@ const DOCUMENT_ALLOWLIST: Readonly<Record<StaticDocumentId, { relativePath: stri
   "tiviplay-manual-lista-octubre-hoy": { relativePath: "03_AREAS/01_OPERACION/TIVIPLAY/07_GUIAS/TIVIPLAY_MANUAL_LISTA_OCTUBRE_HOY_V1.md" },
   "tiviplay-guia-rapida-turno": { relativePath: "03_AREAS/01_OPERACION/TIVIPLAY/07_GUIAS/TIVIPLAY_GUIA_RAPIDA_ATENCION_Y_SOPORTE_V1.md" },
   "tiviplay-fichas-atencion": { relativePath: "03_AREAS/01_OPERACION/TIVIPLAY/07_GUIAS/TIVIPLAY_FICHAS_ATENCION_V1.md" },
+  "tiviplay-mensajes-cobro": { relativePath: "03_AREAS/01_OPERACION/TIVIPLAY/07_GUIAS/TIVIPLAY_MENSAJES_COBRO_V1.md" },
 
   "tiviplay-context": {
     relativePath:
