@@ -102,8 +102,11 @@ export async function ClientFicha({ client, queue, actor, admin, cobranza, today
           <Item name="Valor registrado" value={amounts.join(" + ") || "POR VALIDAR"} />
           <Item name="Moneda" value={(["USD", "COP", "CAD"] as const).filter((c) => client.tariff[c]).join(" + ")} />
           <Item name="Método de pago" value={client.method} />
-          <Item name="Estado financiero" value={queue ? `${queue.collectionStatus || queue.bucket} · ${queue.lane}` : "Fuera de la cola de hoy"} />
+          <Item name="Estado de cobro (AN)" value={queue ? `${queue.collectionStatus || "SIN ESTADO"} · ${queue.lane}` : "Fuera de la cola de hoy"} />
+          <Item name="Confirmación (X)" value={<>{queue?.paymentConfirmation || "SIN CONFIRMACIÓN EN X"}<span className="block text-[11px] font-normal text-brand-muted">Requiere cruce con el pago del ciclo actual.</span></>} />
+          {queue?.confirmedMethodReference ? <Item name="Pago confirmado del mes" value={`CONFIRMADO JM · ${queue.confirmedMethodReference} · pendiente de sincronización con cartera`} wide /> : null}
           <Item name="Último pago" value={displayDate(client.lastPayment)} />
+          <Item name="Observaciones asesor (W)" value={queue?.advisorObservation || "SIN OBSERVACIÓN"} wide />
           <Item name="Última gestión" value={last ? `${last.at} · ${last.actor}` : queue?.lastManaged || "SIN GESTIÓN"} wide />
         </dl>
       </section>
