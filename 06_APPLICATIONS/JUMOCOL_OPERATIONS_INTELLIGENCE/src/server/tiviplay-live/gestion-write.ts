@@ -3,7 +3,7 @@ import "server-only";
 import { GoogleAuth } from "google-auth-library";
 import { getGoogleSheetsLeadConfig } from "@/server/leads/google-sheets/config";
 import { commitGestion, type GestionCommitStatus } from "@/server/tiviplay-live/gestion-core";
-import { GESTION_WRITE_SCOPE, gestionCell, gestionHeadersValid } from "@/server/tiviplay-live/gestion-sheets";
+import { GESTION_WRITE_SCOPE, gestionCell, gestionHeadersValid, gestionNovemberHeadersValid } from "@/server/tiviplay-live/gestion-sheets";
 import { invalidateTiviplayRuntimeCache } from "@/server/tiviplay-live/runtime-source";
 import { getTiviplayWorkday } from "@/server/tiviplay-live/workday";
 import { getSheetsAccessToken, getTiviplaySpreadsheetId, batchReadRanges, quoteSheet } from "@/server/tiviplay-live/sheets-client";
@@ -100,10 +100,10 @@ export async function saveGestionInObservaciones(
       const readToken = await getSheetsAccessToken();
       const sh = quoteSheet(sheet);
       const [headerRows, tcRows, names, users] = await batchReadRanges(id, readToken, [
-        `${sh}!A3:M3`, `${sh}!A${row}`, `${sh}!B${row}`, `${sh}!M${row}`,
+        `${sh}!A3:AN3`, `${sh}!A${row}`, `${sh}!B${row}`, `${sh}!M${row}`,
       ]);
       const headers = (headerRows?.[0] ?? []).map(headerKey);
-      if (!gestionHeadersValid(headers) ||
+      if (!gestionHeadersValid(headers) || (sheet === "PAGOS NOVIEMBRE 2026" && !gestionNovemberHeadersValid(headers)) ||
           String(tcRows?.[0]?.[0] ?? "") !== "1" ||
           !same(names?.[0]?.[0], client.name) || !same(users?.[0]?.[0], client.user)) {
         return { status: "CLIENT_MISMATCH", message: "La fila o los encabezados cambiaron. No se escribió ninguna celda." };
