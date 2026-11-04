@@ -22,6 +22,11 @@ export function getRuntimeValuesCached() {
   return cache?.values ?? null;
 }
 
+/** Invalidar el caché después de una escritura autorizada sobre observaciones. */
+export function invalidateTiviplayRuntimeCache() {
+  cache = null;
+}
+
 export function bogotaToday(now = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
