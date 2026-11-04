@@ -32,6 +32,10 @@ export type DirectoryEntry = {
   tariff: Money;
   source: string; // «HOJA!fila»
   baseRow: number | null;
+  /** BASE GENERAL!F: gestiones históricas, no necesariamente estructuradas. */
+  baseGestionObservation?: string;
+  /** BASE GENERAL!W: nota libre independiente, sin impacto financiero. */
+  baseAdvisorObservation?: string;
 };
 
 export type QueueBucket = "VENCIDO" | "HOY" | "ANTICIPADO" | "MES";
@@ -128,7 +132,7 @@ export function buildClientDirectory(values: SheetValues, sheets: string[]): Dir
     };
     const c = {
       tc: col("TC"), name: col("CLIENTE"), phone: col("TELEFONO"), user: col("USUARIO"), status: col("ESTADO"), plan: col("PLAN ACTIVO"),
-      panel: col("PANEL"), method: col("MÉTODO DE PAGO"), next: col("F. PRÓXIMO PAGO", "F.PRÓXIMO PAGO"), due: col("F.VENCIMIENTO"), last: col("F.ULTIMO PAGO"), screens: col("PANTALLAS"), usd: col("USD"), cop: col("COP"), origin: col("ORIGEN BASE"),
+      panel: col("PANEL"), method: col("MÉTODO DE PAGO"), next: col("F. PRÓXIMO PAGO", "F.PRÓXIMO PAGO"), due: col("F.VENCIMIENTO"), last: col("F.ULTIMO PAGO"), screens: col("PANTALLAS"), usd: col("USD"), cop: col("COP"), origin: col("ORIGEN BASE"), gestion: col("OBSERVACIONES GESTION", "OBSERVACIONES"), advisorNote: col("OBSERVACIONES ASESOR"),
     };
     const at = (row: unknown[], i: number) => (i < 0 ? "" : clean(row[i]));
     for (let r = h + 1; r < rows.length; r++) {
@@ -146,6 +150,7 @@ export function buildClientDirectory(values: SheetValues, sheets: string[]): Dir
         id: opaqueId(baseRow ? `BASE GENERAL!${baseRow}` : source, at(row, c.user), name),
         name, phone: at(row, c.phone), user: at(row, c.user), status: at(row, c.status), plan: at(row, c.plan), panel: at(row, c.panel),
         method: at(row, c.method), nextPayment: parseDate(at(row, c.next)), technicalDue: parseDate(at(row, c.due)), lastPayment: parseDate(at(row, c.last)), screens: at(row, c.screens), tariff, source, baseRow,
+        ...(sheet === "BASE GENERAL" ? { baseGestionObservation: at(row, c.gestion), baseAdvisorObservation: at(row, c.advisorNote) } : {}),
       });
     }
   }
