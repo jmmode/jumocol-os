@@ -70,3 +70,21 @@ export function scrubSensitiveColumns(rows: unknown[][], headerScan = 6): unknow
     return r.map((cell, i) => (sensitive.has(i) ? "" : cell));
   });
 }
+
+
+/**
+ * BASE GENERAL (2026-11): F corresponde a gestión estructurada, W a observación libre.
+ * La inserción de W desplaza CUMPLEAÑOS a X y CLIENTE_KEY a AH.
+ * Valida el mapa sin consultar ni exponer columnas sensibles; los lectores usan nombres.
+ */
+export function baseGeneralGestionHeadersValid(header: readonly unknown[]) {
+  const h = header.map(headerKey);
+  return h[0] === "TC" &&
+    h[1] === "CLIENTE" &&
+    h[5] === "OBSERVACIONES GESTION" &&
+    h[12] === "ID" &&
+    h[13] === "USUARIO" &&
+    h[22] === "OBSERVACIONES ASESOR" &&
+    h[23] === "CUMPLEAÑOS" &&
+    h[33] === "CLIENTE_KEY";
+}
