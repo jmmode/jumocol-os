@@ -8,6 +8,7 @@ import { observationsHash } from "@/server/tiviplay-live/gestion-core";
 import { GESTION_ETIQUETAS, parseGestiones } from "@/server/tiviplay-live/gestion-model";
 import { gestionWriteEnabled } from "@/server/tiviplay-live/gestion-write";
 import { getRuntimeValuesCached } from "@/server/tiviplay-live/runtime-source";
+import { headerKey } from "@/server/tiviplay-live/sheet-columns";
 import { displayDate, greetingName, personalizeScript, type DirectoryEntry, type QueueItem } from "@/server/tiviplay-live/workday-model";
 import { readPaymentReferences } from "@/server/tiviplay-live/payment-references";
 
@@ -27,7 +28,10 @@ function observations(client: DirectoryEntry) {
   const [sheet, row] = client.source.split("!");
   const values = getRuntimeValuesCached()?.[sheet];
   if (!/^PAGOS /.test(sheet) || !values) return null;
-  return String(values[Number(row) - 1]?.[5] ?? "");
+  const header = values.slice(0, 8).find((cells) => (cells ?? []).some((cell) => headerKey(cell) === "OBSERVACIONES GESTION"));
+  const col = header?.findIndex((cell) => headerKey(cell) === "OBSERVACIONES GESTION") ?? -1;
+  if (col < 0) return null;
+  return String(values[Number(row) - 1]?.[col] ?? "");
 }
 
 function History({ history }: { history: ClientHistory }) {
