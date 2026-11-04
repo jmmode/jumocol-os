@@ -62,12 +62,13 @@ export type TechnicalDue = { status: "VERIFICADO" | "REQUIERE VALIDACIÓN"; date
 
 /** Vencimiento técnico: F.VENCIMIENTO de BASE GENERAL. Nunca se confunde con F. PRÓXIMO PAGO. */
 export function technicalDue(input: { panel: string; due: string | null; userRepeated: boolean; controlDue: string | null }): TechnicalDue {
+  if (input.userRepeated) return { status: "REQUIERE VALIDACIÓN", date: null, reason: "El USUARIO aparece repetido en la fuente." };
   if (/PANEL\s*3|^P3\b/i.test(input.panel)) return { status: "REQUIERE VALIDACIÓN", date: input.due,
     reason: input.controlDue && input.due === input.controlDue
       ? "BASE GENERAL coincide con vencimiento de CONTROL P3, pero los créditos siguen bloqueados para ejecución."
       : input.controlDue ? `CONTROL P3 registra ${input.controlDue}; cotejar con BASE GENERAL antes de validar el servicio. Créditos bloqueados.`
       : "Vencimiento de BASE GENERAL informativo; sin ejecución vinculada de CONTROL P3. Créditos bloqueados." };
-  if (input.userRepeated) return { status: "REQUIERE VALIDACIÓN", date: null, reason: "El USUARIO aparece repetido en la fuente." };
+
   if (!input.due) return { status: "REQUIERE VALIDACIÓN", date: null, reason: "F.VENCIMIENTO vacío o no interpretable." };
   if (input.controlDue && input.controlDue > input.due) return { status: "REQUIERE VALIDACIÓN", date: input.due, reason: `CONTROL registra ${input.controlDue}, posterior a BASE GENERAL.` };
   return { status: "VERIFICADO", date: input.due, reason: "F.VENCIMIENTO de BASE GENERAL." };
