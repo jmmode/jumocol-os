@@ -1,8 +1,10 @@
-import { currentUser } from "@/server/auth/access";
+"use client";
+
+import { useOperatorNavigation } from "@/components/layout/operator-navigation-context";
 import { TiviplayNavigationClient } from "@/features/tiviplay-command-center/tiviplay-navigation-client";
 
-/** Rol comprobado en servidor; los operadores solo ven Turno, Atención y Manuales. */
-export async function TiviplayNavigation() {
-  const actor = await currentUser();
-  return <TiviplayNavigationClient operator={actor?.role === "OPERADOR"} />;
+/** Navegación client-safe: puede importarse desde páginas Server o componentes Client. */
+export function TiviplayNavigation() {
+  const operator = useOperatorNavigation();
+  return <TiviplayNavigationClient operator={operator} />;
 }
