@@ -1,19 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-/** Acceso controlado: la credencial llega únicamente después de una acción explícita. */
+/** Acceso controlado: la credencial llega únicamente después de una acción explícita.
+ *  El padre monta el componente con key={clientId}: al cambiar de cliente el estado (y el secreto) se descarta. */
 export function ServiceCredentials({ clientId, panel }: { clientId: string; panel: string }) {
   const [secret, setSecret] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    setSecret("");
-    setMessage("");
-    setVisible(false);
-  }, [clientId]);
 
   async function reveal() {
     setBusy(true);

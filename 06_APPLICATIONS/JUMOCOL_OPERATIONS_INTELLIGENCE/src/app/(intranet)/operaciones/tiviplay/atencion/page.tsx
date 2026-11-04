@@ -124,7 +124,7 @@ export default async function TiviplayAtencionPage({ searchParams }: { searchPar
               <div><dt className="text-xs text-brand-muted">Jornada de hoy</dt><dd>{client.queue ? `${client.queue.bucket} · ${client.queue.lane}` : "No está en la cola de hoy"}</dd></div>
             </dl>
             {client.queue ? <p className="mt-2 text-sm"><strong>Siguiente acción:</strong> {client.queue.nextAction}{client.queue.reason ? ` · ${client.queue.reason}` : ""}</p> : null}
-            <ServiceCredentials clientId={client.entry.id} panel={client.entry.panel} />
+            <ServiceCredentials clientId={client.entry.id} key={client.entry.id} panel={client.entry.panel} />
           </div> : null}
         </section>
 
