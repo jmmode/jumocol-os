@@ -97,12 +97,6 @@ export default async function TiviplayAtencionPage({ searchParams }: { searchPar
         {STEPS.map((step, index) => <li aria-current={index === active ? "step" : undefined} className={`rounded-full border px-3 py-1 ${index === active ? "border-brand-primary-dark bg-brand-primary-dark text-white" : "border-brand-border text-brand-muted"}`} key={step}>{index + 1}. {step}</li>)}
       </ol>
 
-      {!source ? <section className={`${card} mt-6`} role="note">
-        <h2 className="text-lg font-semibold">BLOQUEADO: fichas pendientes de publicación</h2>
-        <p className="mt-2 text-sm leading-6 text-brand-graphite">Dirección aún no publica esta versión para operadores. Mientras tanto usa la <Link className="font-semibold underline" href="/operaciones/tiviplay/manuales/tiviplay-guia-rapida-turno">Guía rápida de turno</Link>.</p>
-      </section> : <>
-        {!source.published ? <p className="mt-5 rounded-xl border border-brand-yellow/50 bg-brand-yellow/10 px-4 py-3 text-sm text-status-warning" role="note">Vista de Dirección: los operadores no ven estas fichas hasta publicar esta versión en <Link className="font-semibold underline" href={`/operaciones/tiviplay/manuales/${FICHAS_DOCUMENT_ID}`}>su documento</Link>.</p> : null}
-
         <section aria-labelledby="identificar" className={`${card} mt-6`}>
           <h2 className="text-lg font-semibold" id="identificar">1. Identifica al cliente</h2>
           <p className="mt-1 text-xs text-brand-muted">Búsqueda de solo lectura sobre BASE GENERAL y la cartera del mes. El texto buscado no queda en la dirección del navegador.</p>
@@ -128,6 +122,12 @@ export default async function TiviplayAtencionPage({ searchParams }: { searchPar
             <ServiceCredentials clientId={client.entry.id} key={client.entry.id} panel={client.entry.panel} user={client.entry.user} />
           </div> : null}
         </section>
+
+      {!source ? <section className={`${card} mt-5`} role="note">
+        <h2 className="font-semibold">Procedimientos pendientes de publicación</h2>
+        <p className="mt-2 text-sm text-brand-muted">Puedes consultar el cliente y sus credenciales de servicio. Para habilitar clasificación y respuestas copiables, Dirección debe publicar la versión vigente de las fichas desde Manuales y procesos.</p>
+      </section> : <>
+      {!source.published ? <p className="mt-5 rounded-xl border border-brand-yellow/50 bg-brand-yellow/10 px-4 py-3 text-sm text-status-warning" role="note">Vista de Dirección: los operadores no ven estas fichas hasta publicar esta versión en <Link className="font-semibold underline" href={`/operaciones/tiviplay/manuales/${FICHAS_DOCUMENT_ID}`}>su documento</Link>.</p> : null}
 
         <section aria-labelledby="entrada" className="mt-6">
           <h2 className="text-lg font-semibold" id="entrada">2. ¿Qué dice el cliente?</h2>
