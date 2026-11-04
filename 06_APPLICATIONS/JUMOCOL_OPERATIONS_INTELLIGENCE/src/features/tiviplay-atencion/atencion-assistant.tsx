@@ -9,11 +9,11 @@ type Match = { id: string; by: string; name: string; phone: string; user: string
 
 const ROUTE = "/operaciones/tiviplay/atencion";
 const chip = "rounded-full border border-brand-border px-3 py-1.5 text-xs font-semibold text-brand-primary-dark hover:border-brand-primary";
-const href = (cliente: string | null, ficha?: string) => {
+const href = (cliente: string | null, ficha?: string, anchor = "ficha") => {
   const p = new URLSearchParams();
   if (cliente) p.set("cliente", cliente);
   if (ficha) p.set("ficha", ficha);
-  return `${ROUTE}?${p.toString()}${ficha ? "#ficha" : ""}`;
+  return `${ROUTE}?${p.toString()}#${anchor}`;
 };
 
 /** Búsqueda por nombre, teléfono o usuario. La consulta va en el cuerpo de un POST: no queda en la URL ni en el historial. */
@@ -46,7 +46,7 @@ export function ClientSearch({ selectedFicha }: { selectedFicha: string | null }
           <p className="font-semibold">{m.name} <span className="ml-1 text-[10px] font-black uppercase text-brand-muted">por {m.by.toLowerCase()}</span></p>
           <p className="text-xs text-brand-graphite">{m.phone || "Sin teléfono"} · usuario {m.user || "—"}</p>
           <p className="text-xs text-brand-muted">{m.plan || "Plan sin dato"} · {m.panel || "panel sin dato"} · {m.status || "sin estado"} · próximo pago {m.nextPayment ?? "POR VALIDAR"}</p>
-          <Link className="mt-2 inline-block rounded-lg border border-brand-primary-dark px-3 py-1.5 text-xs font-bold text-brand-primary-dark" href={href(m.id, selectedFicha ?? undefined)} prefetch={false}>ATENDER</Link>
+          <Link className="mt-2 inline-block rounded-lg border border-brand-primary-dark px-3 py-1.5 text-xs font-bold text-brand-primary-dark" href={href(m.id, selectedFicha ?? undefined, "cliente")} prefetch={false}>ATENDER</Link>
         </li>)}
       </ul>
     </div>
@@ -63,7 +63,7 @@ export function MessageClassifier({ fichas, clienteId }: { fichas: Ficha[]; clie
       {result.suggestions.length === 0 ? <p className="text-sm text-brand-muted">Sin regla aplicable. Clasifica con los cajones A/B/C de abajo.</p> : <>
         <p className="text-sm">{result.ambiguous ? "Varias causas posibles: elige la que confirme el diagnóstico." : "Ficha sugerida:"}{result.category ? ` Categoría ${result.category}.` : ""}</p>
         <ul className="mt-2 space-y-2">{result.suggestions.map((s) => <li className="flex flex-wrap items-center gap-2" key={s.ficha.id}>
-          <Link className={chip} href={href(clienteId, s.ficha.id)} prefetch={false}>{s.ficha.id} · {s.ficha.title}</Link>
+          <Link className={chip} href={`${href(clienteId, s.ficha.id, "ficha").replace("#ficha", "")}&proc=1#ficha`} prefetch={false}>{s.ficha.id} · {s.ficha.title}</Link>
           <span className="text-xs text-brand-muted">Regla: {s.rules.join(" · ")}</span>
         </li>)}</ul>
       </>}

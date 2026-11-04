@@ -52,11 +52,14 @@ function History({ history }: { history: ClientHistory }) {
   </>;
 }
 
-export async function ClientFicha({ client, queue, actor, cobranza, today }: { client: DirectoryEntry; queue: QueueItem | null; actor: string; cobranza: Record<string, string> | null; today: string }) {
+type Fallback = { title: string; text: string; pending: number; validation: string };
+
+export async function ClientFicha({ client, queue, actor, admin, cobranza, today, userRepeated, fallback }: { client: DirectoryEntry; queue: QueueItem | null; actor: string; admin: boolean; cobranza: Record<string, string> | null; today: string; userRepeated: boolean; fallback: Fallback | null }) {
   const result = await getClientHistory(client);
   const history = result.ok ? result.history : null;
-  const userRepeated = !client.user || (history?.ambiguousMonths.length ?? 0) > 0;
-  const due = technicalDue({ panel: client.panel, due: client.technicalDue, userRepeated, controlDue: history?.controlDue ?? null });
+  const unverified = userRepeated || !client.user || (history?.ambiguousMonths.length ?? 0) > 0;
+  const panelThree = /PANEL\s*3/i.test(client.panel);
+  const due = technicalDue({ panel: client.panel, due: client.technicalDue, userRepeated: unverified, controlDue: history?.controlDue ?? null });
   const cell = observations(client);
   const gestiones = cell ? parseGestiones(cell) : [];
   const last = gestiones.at(-1);
@@ -72,13 +75,14 @@ export async function ClientFicha({ client, queue, actor, cobranza, today }: { c
     VALOR: amounts.length === 1 ? amounts[0] : null, DATOS_PAGO: method ? references?.[method] ?? null : null,
   }) : null;
 
-  const blocked = !gestionWriteEnabled() ? "registro deshabilitado hasta validar la escritura en hoja de ensayo."
+  const shown = message ?? fallback;
+  const blocked = !gestionWriteEnabled() ? (admin ? "registro deshabilitado hasta validar la escritura en hoja de ensayo." : "el guardado aún no está disponible. Anota el resultado en la planilla de pendientes.")
     : cell === null ? "el cliente no tiene fila verificable en la cartera del mes."
-    : userRepeated ? "identidad requiere validación." : null;
+    : unverified ? "identidad requiere validación." : null;
 
-  return <div className="mt-4 space-y-3" id="cliente">
+  return <div className="mt-4 scroll-mt-24 space-y-3" id="cliente">
     <header className={card}>
-      <p className={label}>Cliente en atención · {client.source}</p>
+      <p className={label}>Cliente en atención{admin ? ` · ${client.source}` : ""}</p>
       <div className="mt-1 flex flex-wrap items-center gap-2"><h3 className="text-xl font-semibold">{client.name}</h3><span className="rounded-full border border-brand-border px-2 py-0.5 text-[10px] font-black">{gestionState}</span></div>
       <dl className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Item name="Teléfono" value={client.phone} />
@@ -87,6 +91,8 @@ export async function ClientFicha({ client, queue, actor, cobranza, today }: { c
         <Item name="Estado" value={client.status} />
       </dl>
     </header>
+
+    {panelThree ? <p className="rounded-xl border border-brand-yellow/50 bg-brand-yellow/10 px-4 py-2 text-sm text-status-warning" role="note">Panel 3: el vencimiento técnico requiere validación y los créditos están detenidos. Puedes gestionar el cobro; no asignes créditos.</p> : null}
 
     <div className="grid gap-3 md:grid-cols-2">
       <section aria-label="Capa financiera" className={card}>
@@ -117,9 +123,8 @@ export async function ClientFicha({ client, queue, actor, cobranza, today }: { c
 
     <section aria-label="Acción" className={card}>
       <h3 className="font-semibold">Acción{stage ? ` · ${stage.label}` : ""}</h3>
-      {stage ? <p className="text-xs text-brand-muted">Canal: {stage.channel}. {stage.note}</p> : <p className="text-xs text-brand-muted">Sin etapa de cobro para hoy: usa la ficha que corresponda.</p>}
-      {stage && !cobranza ? <p className="mt-2 text-sm text-status-warning">Mensaje pendiente de publicación por Dirección.</p> : null}
-      {message ? <><CopyableMessage text={message.text} />{message.pending ? <p className="mt-1 text-xs text-status-warning">{message.pending} dato(s) sin confirmar quedan entre corchetes. No envíes datos de pago que no sean los autorizados.</p> : null}</> : null}
+      {stage ? <p className="text-xs text-brand-muted">Canal: {stage.channel}. {stage.note}</p> : null}
+      {shown ? <><p className="mt-2 text-xs font-semibold">Mensaje recomendado{message ? "" : ` · ${fallback?.title}`}</p><CopyableMessage text={shown.text} />{shown.pending ? <p className="mt-1 text-xs text-status-warning">{shown.pending} dato(s) sin confirmar quedan entre corchetes. No envíes datos de pago que no sean los autorizados.</p> : null}</> : <p className="mt-2 text-sm text-status-warning">Sin mensaje publicado para este caso.</p>}
       <GestionRegistro blocked={blocked} clientId={client.id} expectedHash={cell === null ? null : observationsHash(cell)} key={client.id} />
     </section>
 

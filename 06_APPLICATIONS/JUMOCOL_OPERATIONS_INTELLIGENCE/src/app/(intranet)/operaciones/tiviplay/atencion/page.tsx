@@ -38,7 +38,7 @@ const OUTCOMES = [
 
 const card = "rounded-2xl border border-brand-border bg-brand-background p-5";
 const chip = "rounded-full border border-brand-border px-3 py-1.5 text-xs font-semibold text-brand-primary-dark hover:border-brand-primary";
-const fichaHref = (id: string, clienteId: string | null) => `${ROUTE}?${clienteId ? `cliente=${clienteId}&` : ""}ficha=${id}#ficha`;
+const fichaHref = (id: string, clienteId: string | null) => `${ROUTE}?${clienteId ? `cliente=${clienteId}&` : ""}ficha=${id}&proc=1#ficha`;
 
 function Validation({ value }: { value: string }) {
   return <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${VALIDATION_CLASS[value] ?? "border-brand-border text-brand-muted"}`}>{value}</span>;
@@ -57,11 +57,11 @@ async function loadFichas(actor: Awaited<ReturnType<typeof requirePage>>) {
   }
 }
 
-async function loadClient(id: string | undefined): Promise<{ entry: DirectoryEntry | null; queue: QueueItem | null; error: string | null }> {
-  if (!id || !/^[a-f0-9]{16}$/.test(id)) return { entry: null, queue: null, error: null };
+async function loadClient(id: string | undefined): Promise<{ entry: DirectoryEntry | null; queue: QueueItem | null; error: string | null; directory: DirectoryEntry[] | null }> {
+  if (!id || !/^[a-f0-9]{16}$/.test(id)) return { entry: null, queue: null, error: null, directory: null };
   const result = await getTiviplayWorkday();
-  if (!result.ok) return { entry: null, queue: null, error: result.reason };
-  return { entry: result.directory.find((d) => d.id === id) ?? null, queue: result.workday.queue.find((q) => q.id === id) ?? null, error: null };
+  if (!result.ok) return { entry: null, queue: null, error: result.reason, directory: null };
+  return { entry: result.directory.find((d) => d.id === id) ?? null, queue: result.workday.queue.find((q) => q.id === id) ?? null, error: null, directory: result.directory };
 }
 
 /** Mensajes de cobro: documento propio para no invalidar la publicación de las fichas. */
@@ -74,7 +74,7 @@ async function loadCobranza(actor: Awaited<ReturnType<typeof requirePage>>) {
   }
 }
 
-export default async function TiviplayAtencionPage({ searchParams }: { searchParams: Promise<{ q?: string; ficha?: string; cliente?: string }> }) {
+export default async function TiviplayAtencionPage({ searchParams }: { searchParams: Promise<{ q?: string; ficha?: string; cliente?: string; proc?: string }> }) {
   const actor = await requirePage(ROUTE);
   const params = await searchParams;
   const clienteId = params.cliente && /^[a-f0-9]{16}$/.test(params.cliente) ? params.cliente : null;
@@ -83,7 +83,11 @@ export default async function TiviplayAtencionPage({ searchParams }: { searchPar
   const fichas = source?.fichas ?? [];
   const query = (params.q ?? "").slice(0, 120).trim();
   const matches = query ? searchFichas(fichas, query) : [];
-  const selected = fichas.find(f => f.id === params.ficha) ?? null;
+  // Sin ficha elegida, ATENDER usa la sugerida por la cola: la respuesta debe estar lista en la tarjeta Acción.
+  const selected = fichas.find(f => f.id === (params.ficha ?? (client.entry ? client.queue?.suggestedFicha ?? "A1" : ""))) ?? null;
+  const showProcedure = !client.entry || params.proc === "1" || !!query;
+  const admin = actor.role === "ADMIN";
+  const repeated = client.entry ? (client.directory ?? []).filter((d) => d.user && d.user.toUpperCase() === client.entry?.user.toUpperCase()).length > 1 : false;
   const active = selected ? 4 : query ? 2 : client.entry ? 1 : 0;
   const script = selected ? scriptOf(selected) : null;
   const personalized = script ? personalizeScript(script, {
@@ -104,23 +108,26 @@ export default async function TiviplayAtencionPage({ searchParams }: { searchPar
       />
       <TiviplayNavigation />
 
-      <ol aria-label="Pasos de la atención" className="mt-5 flex flex-wrap gap-2 text-[11px] font-bold">
+      {!client.entry ? <ol aria-label="Pasos de la atención" className="mt-5 flex flex-wrap gap-2 text-[11px] font-bold">
         {STEPS.map((step, index) => <li aria-current={index === active ? "step" : undefined} className={`rounded-full border px-3 py-1 ${index === active ? "border-brand-primary-dark bg-brand-primary-dark text-white" : "border-brand-border text-brand-muted"}`} key={step}>{index + 1}. {step}</li>)}
-      </ol>
+      </ol> : null}
 
         <section aria-labelledby="identificar" className={`${card} mt-6`}>
+          {client.entry ? <details><summary className="cursor-pointer text-sm font-semibold" id="identificar">Buscar otro cliente</summary><ClientSearch selectedFicha={null} /></details> : <>
           <h2 className="text-lg font-semibold" id="identificar">1. Identifica al cliente</h2>
           <p className="mt-1 text-xs text-brand-muted">Búsqueda de solo lectura sobre BASE GENERAL y la cartera del mes. El texto buscado no queda en la dirección del navegador.</p>
-          <ClientSearch selectedFicha={selected?.id ?? null} />
+          <ClientSearch selectedFicha={selected?.id ?? null} /></>}
           {client.error ? <p className="mt-3 rounded-xl border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-sm text-status-error">BLOQUEADO: {client.error}</p> : null}
           {clienteId && !client.entry && !client.error ? <p className="mt-3 text-sm text-status-warning">El cliente seleccionado ya no aparece en la fuente. Vuelve a buscarlo.</p> : null}
-          {client.entry ? <ClientFicha actor={actor.name} client={client.entry} cobranza={await loadCobranza(actor)} queue={client.queue} today={bogotaToday()} /> : null}
+          {client.entry ? <ClientFicha actor={actor.name} admin={admin} client={client.entry} cobranza={await loadCobranza(actor)} fallback={selected && personalized ? { title: `${selected.id} · ${selected.title}`, text: personalized.text, pending: personalized.pending, validation: selected.validation } : null} queue={client.queue} today={bogotaToday()} userRepeated={repeated} /> : null}
         </section>
 
       {!source ? <section className={`${card} mt-5`} role="note">
         <h2 className="font-semibold">Procedimientos pendientes de publicación</h2>
         <p className="mt-2 text-sm text-brand-muted">Puedes consultar el cliente y sus credenciales de servicio. Para habilitar clasificación y respuestas copiables, Dirección debe publicar la versión vigente de las fichas desde Manuales y procesos.</p>
       </section> : <>
+      <details className="mt-5" open={showProcedure}>
+      <summary className="cursor-pointer text-sm font-semibold">{client.entry ? "Otro motivo: clasificar o abrir el procedimiento" : "Clasificación y procedimientos"}</summary>
       {!source.published ? <p className="mt-5 rounded-xl border border-brand-yellow/50 bg-brand-yellow/10 px-4 py-3 text-sm text-status-warning" role="note">Vista de Dirección: los operadores no ven estas fichas hasta publicar esta versión en <Link className="font-semibold underline" href={`/operaciones/tiviplay/manuales/${FICHAS_DOCUMENT_ID}`}>su documento</Link>.</p> : null}
 
         <section aria-labelledby="entrada" className="mt-6">
@@ -169,10 +176,11 @@ export default async function TiviplayAtencionPage({ searchParams }: { searchPar
 
           <section aria-labelledby="resultado" className="mt-8 border-t pt-5">
             <h3 className="font-semibold" id="resultado">6. Resultado o escalamiento</h3>
-            <p className="mt-1 text-sm text-brand-graphite">Esta vista no guarda el resultado. Anótalo en la planilla de pendientes con fecha y hora si queda algo abierto.</p>
+            <p className="mt-1 text-sm text-brand-graphite">Anota en la planilla de pendientes lo que quede abierto.</p>
             <dl className="mt-3 grid gap-2 sm:grid-cols-2">{OUTCOMES.map(([label, detail]) => <div className="rounded-xl border border-brand-border p-3" key={label}><dt className="text-sm font-semibold">{label}</dt><dd className="text-xs leading-5 text-brand-muted">{detail}</dd></div>)}</dl>
           </section>
         </article> : null}
+      </details>
       </>}
     </div>
   );

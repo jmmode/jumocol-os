@@ -15,22 +15,24 @@ const LANE_CLASS: Record<QueueLane, string> = {
   BLOQUEADO: "border-brand-red/30 bg-brand-red/8 text-status-error",
 };
 
+const isP3 = (b: string) => b.includes("P3:") || b.includes("P3 ");
+
 export const money = (m: Money) => (["USD", "COP", "CAD"] as const).filter((c) => m[c]).map((c) => `${c} ${m[c].toLocaleString("es-CO")}`).join(" + ") || "—";
 
 /** Indicador con su procedencia: fuente · fecha · alcance. */
-function Stat({ label, value, source, scope, tone }: { label: string; value: string | number; source: string; scope: string; tone?: "warn" | "error" }) {
+function Stat({ label, value, source, scope, tone, admin = true }: { label: string; value: string | number; source: string; scope: string; tone?: "warn" | "error"; admin?: boolean }) {
   const toneClass = tone === "error" ? "text-status-error" : tone === "warn" ? "text-status-warning" : "";
   return <div className={card}>
     <p className="text-[10px] font-black uppercase tracking-[0.12em] text-brand-muted">{label}</p>
     <p className={`mt-1 text-2xl font-semibold tabular-nums ${toneClass}`}>{value}</p>
-    <details className="mt-1 text-[11px] leading-4 text-brand-muted">
+    {admin ? <details className="mt-1 text-[11px] leading-4 text-brand-muted">
       <summary className="cursor-pointer">Fuente y alcance · {scope}</summary>
       <p className="mt-1">Fuente: {source}</p>
-    </details>
+    </details> : null}
   </div>;
 }
 
-export function WorkdayPanel({ result }: { result: WorkdayResult }) {
+export function WorkdayPanel({ result, admin }: { result: WorkdayResult; admin: boolean }) {
   if (!result.ok) return <p className={`${blocked} mt-6`} role="alert">BLOQUEADO: {result.reason} No se muestran clientes ni importes sin fuente verificable.</p>;
   const { workday: w, source } = result;
   const partial = w.scope.status === "PARCIAL";
@@ -48,16 +50,24 @@ export function WorkdayPanel({ result }: { result: WorkdayResult }) {
   return <div className="mt-6 space-y-5">
     <div className={`rounded-xl border px-3 py-2 text-xs ${source.mode === "SNAPSHOT" ? "border-brand-yellow/50 bg-brand-yellow/10 text-status-warning" : "border-brand-border bg-brand-surface text-brand-muted"}`}>
       <strong>{w.today}</strong> · {source.mode === "SNAPSHOT" ? "CAPTURA LOCAL · alcance parcial" : "Google Sheets en vivo · solo lectura"}
-      <details className="mt-1">
+      {admin ? <details className="mt-1">
         <summary className="cursor-pointer">Ver procedencia de los datos</summary>
         <p className="mt-1">{source.workbook} · hojas: {source.sheetsRead.join(", ")} · firma <code>{source.signature.slice(0, 12)}…</code></p>
-      </details>
+      </details> : null}
     </div>
-    {w.blockers.map((b) => <details className={blocked} key={b}>
-      <summary className="cursor-pointer font-semibold">{b.includes("P3:") || b.includes("P3 ") ? "Panel 3 bloqueado: identidad no verificable. No se incluyen sus créditos." : "Excepción operacional: revisar antes de actuar"}</summary>
+    {!admin && w.blockers.some(isP3) ? <p className={blocked} role="note">Panel 3: los créditos están detenidos hasta validar la información. No asignes créditos de este panel.</p> : null}
+    {admin ? w.blockers.map((b) => <details className={blocked} key={b}>
+      <summary className="cursor-pointer font-semibold">{isP3(b) ? "Panel 3 bloqueado: identidad no verificable. No se incluyen sus créditos." : "Excepción operacional: revisar antes de actuar"}</summary>
       <p className="mt-1">{b}</p>
-    </details>)}
+    </details>) : null}
 
+    {!admin ? <div className="grid gap-3 sm:grid-cols-3">
+      <Stat admin={false} label="Por gestionar hoy" value={w.queue.length} source={cartera} scope={scope} />
+      <Stat admin={false} label="Vencidos" value={w.counts.VENCIDO} source={cartera} scope={scope} tone={w.counts.VENCIDO ? "warn" : undefined} />
+      <Stat admin={false} label="Vencen hoy" value={w.counts.HOY} source={cartera} scope={scope} />
+    </div> : null}
+
+    {admin ? <>
     <section aria-labelledby="indicadores">
       <h2 className="text-lg font-semibold" id="indicadores">Cartera y cobranza</h2>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -96,9 +106,11 @@ export function WorkdayPanel({ result }: { result: WorkdayResult }) {
       <p className="mt-2 text-xs text-brand-muted">Un comprobante no habilita un crédito: lo habilita el motor con CONFIRMADO JM y cobertura. Las decisiones se toman en <Link className="font-semibold underline" href="/operaciones/tiviplay/hoy">HOY</Link>; esta vista no otorga créditos.</p>
     </section>
 
+    </> : null}
+
     <section aria-labelledby="cola">
       <h2 className="text-lg font-semibold" id="cola">Contactos priorizados de hoy ({w.queue.length})</h2>
-      <p className="mt-1 text-xs text-brand-muted">Orden: vencidos → hoy → anticipada; en cada grupo: cobrar → confirmar → verificar → bloqueado. ATENDER abre Atención con el cliente y la ficha sugerida. Fuente: {cartera} · Alcance: {scope}.</p>
+      {admin ? <p className="mt-1 text-xs text-brand-muted">Orden: vencidos → hoy → anticipada; en cada grupo: cobrar → confirmar → verificar → bloqueado. ATENDER abre Atención con el cliente y la ficha sugerida. Fuente: {cartera} · Alcance: {scope}.</p> : null}
       {w.queue.length === 0 ? <p className="mt-3 text-sm text-brand-muted">La cartera no tiene clientes por gestionar en la jornada.</p> : <ul className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {w.queue.map((q, i) => <li className={`${card} flex flex-col`} key={`${q.source}`}>
           <div className="flex flex-wrap items-center gap-2">
@@ -113,17 +125,19 @@ export function WorkdayPanel({ result }: { result: WorkdayResult }) {
           <p className="mt-1 text-xs"><strong>Motivo:</strong> {q.reason || BUCKET_LABEL[q.bucket]}</p>
           <p className="text-xs"><strong>Acción:</strong> {q.nextAction}</p>
           <p className="text-xs">{q.lastManaged ? <><strong>Última gestión:</strong> {q.lastManaged}</> : <span className="text-brand-muted">Sin historial de gestión en la fuente: no se asume etapa (primer contacto o seguimiento).</span>}</p>
-          <p className="text-[10px] text-brand-muted">Estado de cobro en hoja: {q.collectionStatus || "—"} · {q.source}</p>
-          <Link className="mt-3 self-start rounded-lg bg-brand-primary-dark px-4 py-2 text-sm font-semibold text-white" href={`/operaciones/tiviplay/atencion?cliente=${q.id}&ficha=${q.suggestedFicha}#ficha`} prefetch={false}>ATENDER · {q.suggestedFicha}</Link>
+          {admin ? <p className="text-[10px] text-brand-muted">Estado de cobro en hoja: {q.collectionStatus || "—"} · {q.source}</p> : null}
+          <Link className="mt-3 self-start rounded-lg bg-brand-primary-dark px-4 py-2 text-sm font-semibold text-white" href={`/operaciones/tiviplay/atencion?cliente=${q.id}&ficha=${q.suggestedFicha}#cliente`} prefetch={false}>ATENDER · {q.suggestedFicha}</Link>
         </li>)}
       </ul>}
     </section>
 
+    {admin ? <>
     <section aria-labelledby="excepciones" className={card}>
       <h2 className="text-lg font-semibold" id="excepciones">Excepciones ({w.exceptions.length})</h2>
       {w.exceptions.length === 0 ? <p className="mt-2 text-sm text-brand-muted">Sin excepciones en las fuentes leídas ({scope}).</p> : <ul className="mt-2 space-y-1 text-xs">
         {w.exceptions.slice(0, 40).map((e) => <li key={`${e.type}-${e.source}`}><strong>{e.type}</strong> · {e.detail} <span className="text-brand-muted">({e.source})</span></li>)}
       </ul>}
     </section>
+    </> : null}
   </div>;
 }

@@ -25,7 +25,7 @@ export default async function TiviplayTurnoPage() {
         title="Apertura de turno"
       />
       <TiviplayNavigation />
-      <WorkdayPanel result={result} />
+      <WorkdayPanel admin={actor.role === "ADMIN"} result={result} />
       <ShiftChecklist today={bogotaToday()} />
     </div>
   );
