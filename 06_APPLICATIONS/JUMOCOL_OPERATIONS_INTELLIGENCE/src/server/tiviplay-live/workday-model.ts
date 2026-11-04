@@ -186,6 +186,7 @@ export function confirmedPaymentNeedsSync(
   month: string,
 ): PaymentRecord | null {
   const name = canon(item.client);
+  if (/PAGADO|COBRADO|CONFIRMADO/.test(canon(item.collectionStatus ?? ""))) return null;
   if (!name || !item.baseRow || cartera.filter((r) => canon(r.client) === name).length !== 1) return null;
   const identities = directory.filter((r) => r.baseRow != null && canon(r.name) === name);
   if (identities.length !== 1 || identities[0].baseRow !== item.baseRow) return null;
