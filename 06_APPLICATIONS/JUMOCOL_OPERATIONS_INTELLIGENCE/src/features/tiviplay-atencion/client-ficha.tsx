@@ -78,11 +78,12 @@ async function Panel3ControlSummary({ client, unverified }: { client: DirectoryE
   const rows = result.history.renewals.filter((r) => /^CONTROL.*P3$/i.test(r.source.split("!")[0]));
   if (!rows.length) return <p className="mt-3 text-xs text-brand-muted">CONTROL P3: no se localizó crédito registrado para este USUARIO en las hojas leídas. No implica desactivación.</p>;
   const last = rows[0];
-  const aligned = !!last.due && last.due === client.technicalDue;
+  const dateIncoherent = !!last.date && !!last.due && last.date > last.due;
+  const aligned = !!last.due && last.due === client.technicalDue && !dateIncoherent;
   return <div className="mt-3 rounded-xl border border-brand-border bg-brand-background p-3 text-xs" role="note">
     <p className="font-bold">CONTROL P3 · Evidencia de crédito registrada</p>
     <p>Fuente: {last.source} · Crédito: {last.credit} · Fecha: {displayDate(last.date) ?? "POR VALIDAR"} · Vencimiento: {displayDate(last.due) ?? "POR VALIDAR"}</p>
-    <p className="mt-1 text-brand-muted">{aligned ? "Coincide con el vencimiento de BASE GENERAL. " : "Requiere cotejo con el vencimiento de BASE GENERAL. "}Esta lectura no autoriza otro crédito.</p>
+    <p className="mt-1 text-brand-muted">{dateIncoherent ? "REQUIERE REVISIÓN: la fecha de crédito es posterior al vencimiento registrado en CONTROL. " : aligned ? "Coincide con el vencimiento de BASE GENERAL. " : "Requiere cotejo con el vencimiento de BASE GENERAL. "}Esta lectura no autoriza otro crédito.</p>
   </div>;
 }
 
