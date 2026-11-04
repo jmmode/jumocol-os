@@ -8,7 +8,7 @@ import { snapshotFile } from "@/server/tiviplay-live/sheets-snapshot";
 
 const TTL_MS = 5 * 60_000;
 const CHUNK = 60;
-// P3 queda fuera: su correspondencia sigue sin validar. Ninguna columna sensible está en estas listas.
+// CONTROL P3 se consulta solo para historial, sin habilitar créditos. Nunca se solicitan credenciales.
 const PAGOS = ["USUARIO", "PLAN ACTIVO", "PANTALLAS", "USD", "COP", "F.ULTIMO PAGO", "CONFIRMACION"];
 const CONTROL = ["USUARIO", "FECHA", "F.VENCIMIENTO", "CREDITO"];
 const PAGO = ["CLIENTE_KEY", "ESTADO_ENLACE", "COINCIDENCIAS_BASE", "FILA_BASE", "VALOR_PAGO", "MONEDA_PAGO", "CONFIRMACION", "PLAN_CANONICO"];
@@ -17,7 +17,7 @@ type Plan = { title: string; kind: HistoryTab["kind"]; wanted: string[]; dateHea
 
 function planTab(title: string): Plan | null {
   if (/^PAGOS\s/i.test(title)) return { title, kind: "PAGOS", wanted: PAGOS, required: ["TC", "USUARIO"] };
-  if (/^CONTROL\s*\(.*\)\s*P[12]$/i.test(title)) return { title, kind: "CONTROL", wanted: CONTROL, required: ["TC", "USUARIO"] };
+  if (/^CONTROL\s*\(.*\)\s*P[123]$/i.test(title)) return { title, kind: "CONTROL", wanted: CONTROL, required: ["TC", "USUARIO"] };
   if (/^(ZELLE|PAYPAL|TRANSF)\s*\(/i.test(title)) return { title, kind: "PAGO", wanted: PAGO, required: ["CLIENTE_KEY", "ESTADO_ENLACE"] };
   return null;
 }
