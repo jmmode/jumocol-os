@@ -70,10 +70,22 @@ export type PanelCredits = {
   /** Filas de datos detectadas (encabezado+1 … fila anterior al bloque resumen). */
   dataRange: { first: number; last: number } | null;
   tasks: CreditTask[];
+  /** Auditoría informativa sobre panel retenido; NO habilita créditos ni cambia semáforo. */
+  observed?: BlockedPanelObservation | null;
   /** Días anteriores con crédito programado y no ejecutado (J < A), excluido COMPRA. */
   pending: CreditTask[];
   /** Semáforo E2E de cada fila de cliente del mes. */
   cycles: CycleItem[];
+};
+
+export type BlockedPanelObservation = {
+  records: number;
+  recordedCredits: number;
+  noCredit: number;
+  matchedUnique: number;
+  noBase: number;
+  ambiguousBase: number;
+  otherPanel: number;
 };
 
 export type CreditKpi = { programados: number; otorgados: number; faltantes: number; hoy: number; avance: number | null };
@@ -458,9 +470,46 @@ function identityCheck(rows: unknown[][], userCol: number, rechargeCol: number |
   return `Identidad no verificable: USUARIO coincide con BASE GENERAL en ${Math.round(users * 100)}% de ${data.length} filas y RECARGA en ${Math.round(recharge * 100)}% (columnas desplazadas). Panel bloqueado; sus valores no se muestran hasta que Dirección corrija la hoja.`;
 }
 
+/**
+ * Extrae evidencia agregada de CONTROL sin quitar el bloqueo de asignación.
+ * Solo correlaciona por USUARIO exacto. No interpreta H como crédito, ni adivina duplicados.
+ */
+export function observeBlockedPanel(panel: PanelId, rows: unknown[][] | null, base: unknown[][] | null): BlockedPanelObservation | null {
+  if (!rows || !base) return null;
+  const h = headerIndex(rows, ["TC", "USUARIO", "ORIGEN", "CREDITO"]);
+  const b = indexBase(base);
+  if (h < 0 || !b) return null;
+  const columns = (rows[h] ?? []).map(canon);
+  const tcIndex = columns.indexOf("TC"), userIndex = columns.indexOf("USUARIO");
+  const originIndex = columns.indexOf("ORIGEN"), creditIndex = columns.indexOf("CREDITO");
+  if ([tcIndex, userIndex, originIndex, creditIndex].some((i) => i < 0)) return null;
+  const result: BlockedPanelObservation = { records: 0, recordedCredits: 0, noCredit: 0, matchedUnique: 0, noBase: 0, ambiguousBase: 0, otherPanel: 0 };
+  for (const r of rows.slice(h + 1)) {
+    if (canon((r ?? [])[originIndex]) === "COMPRA" || clean((r ?? [])[tcIndex]) !== "1") continue;
+    const user = canon((r ?? [])[userIndex]);
+    if (!user) continue;
+    result.records++;
+    if ((num((r ?? [])[creditIndex]) ?? 0) > 0) result.recordedCredits++;
+    else result.noCredit++;
+    const matches = b.byUser.get(user) ?? [];
+    if (matches.length === 0) result.noBase++;
+    else if (matches.length > 1) result.ambiguousBase++;
+    else {
+      result.matchedUnique++;
+      const basePanel = clean(b.rows[matches[0]]?.[b.col.panel ?? -1]);
+      const digit = panelDigit(basePanel);
+      if (digit && `P${digit}` !== panel) result.otherPanel++;
+    }
+  }
+  return result;
+}
+
 function projectPanel(panel: PanelId, sheet: string | null, rows: unknown[][] | null, input: CreditosHoyInput, ctx: Ctx): PanelCredits {
   const empty = (status: PanelCredits["status"], reason: string): PanelCredits => ({ panel, sheet, status, reason, columns: null, warning: null, kpi: null, sheetKpi: null, dataRange: null, tasks: [], pending: [], cycles: [] });
-  if (input.blockedPanels?.includes(panel)) return empty("REQUIERE_DECISION", "Bloqueado por Dirección hasta corregir la estructura de la hoja CONTROL.");
+  if (input.blockedPanels?.includes(panel)) {
+    return { ...empty("REQUIERE_DECISION", "Créditos bloqueados por Dirección. Auditoría de CONTROL disponible en solo lectura; no autoriza ejecutar créditos."),
+      observed: observeBlockedPanel(panel, rows, input.base) };
+  }
   if (input.readError) return empty("REQUIERE_REVISION", input.readError);
   if (!sheet) return empty("REQUIERE_REVISION", `No existe la hoja CONTROL ${panel} del mes ${input.targetMonth}.`);
   if (!rows) return empty("REQUIERE_REVISION", "Lectura fallida de la hoja CONTROL.");
