@@ -46,7 +46,7 @@ export function ClientSearch({ selectedFicha }: { selectedFicha: string | null }
           <p className="font-semibold">{m.name} <span className="ml-1 text-[10px] font-black uppercase text-brand-muted">por {m.by.toLowerCase()}</span></p>
           <p className="text-xs text-brand-graphite">{m.phone || "Sin teléfono"} · usuario {m.user || "—"}</p>
           <p className="text-xs text-brand-muted">{m.plan || "Plan sin dato"} · {m.panel || "panel sin dato"} · {m.status || "sin estado"} · próximo pago {m.nextPayment ?? "POR VALIDAR"}</p>
-          <Link className="mt-2 inline-block rounded-lg border border-brand-primary-dark px-3 py-1.5 text-xs font-bold text-brand-primary-dark" href={href(m.id, selectedFicha ?? undefined, "cliente")} prefetch={false}>ATENDER</Link>
+          <Link className="mt-2 inline-block rounded-lg border border-brand-primary-dark px-3 py-1.5 text-xs font-bold text-brand-primary-dark" href={href(m.id, selectedFicha ?? undefined, "cliente")} prefetch={false}>ABRIR FICHA INTEGRAL</Link>
         </li>)}
       </ul>
     </div>
