@@ -106,7 +106,7 @@ type Fallback = { title: string; text: string; pending: number; validation: stri
 export async function ClientFicha({ client, queue, actor, admin, cobranza, today, userRepeated, fallback }: { client: DirectoryEntry; queue: QueueItem | null; actor: string; admin: boolean; cobranza: Record<string, string> | null; today: string; userRepeated: boolean; fallback: Fallback | null }) {
   // Datos principales primero; la consulta histórica se renderiza en componentes Suspense.
   const unverified = userRepeated || !client.user || duplicateInCartera(client);
-  const panelThree = /PANEL\\s*3/i.test(client.panel);
+  const panelThree = /PANEL\s*3/i.test(client.panel);
   const due = technicalDue({ panel: client.panel, due: client.technicalDue, userRepeated: unverified, controlDue: null });
   const cell = observations(client);
   const advisorNote = queue?.advisorObservation ?? carteraField(client, "OBSERVACIONES ASESOR");
