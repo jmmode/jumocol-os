@@ -65,6 +65,8 @@ export type PaymentRecord = {
   origin: string;
   needsDecision: boolean;
   decisionReason: string;
+  /** Enlace formal de la hoja de pago con BASE GENERAL; vacío si la hoja no lo tiene. */
+  baseLink: { state: string; row: number | null; matches: number | null };
 };
 
 export type PanelSummary = {
@@ -409,6 +411,8 @@ export function normalizePayments(title: string, month: string, method: PaymentM
     origin: col("ORIGEN"),
     note: col("OBSERVACION"),
     link: col("ESTADO_ENLACE"),
+    linkRow: col("FILA_BASE"),
+    linkMatches: col("COINCIDENCIAS_BASE"),
     tariff: col("VALIDACION_TARIFA"),
     proposal: col("ESTADO_PROPUESTA"),
     gate: col("GATE_CAMBIO_PLAN"),
@@ -476,6 +480,7 @@ export function normalizePayments(title: string, month: string, method: PaymentM
       origin: at(row, c.origin),
       needsDecision: reasons.length > 0,
       decisionReason: reasons.join(" · "),
+      baseLink: { state: canon(at(row, c.link)), row: parseAmount(at(row, c.linkRow)), matches: parseAmount(at(row, c.linkMatches)) },
     });
   }
   return { payments, openInvoices, error: null };
