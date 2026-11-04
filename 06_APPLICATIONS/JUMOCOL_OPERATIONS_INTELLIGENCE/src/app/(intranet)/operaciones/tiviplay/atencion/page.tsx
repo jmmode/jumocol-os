@@ -5,8 +5,9 @@ import { CopyableMessage } from "@/components/documents/copyable-message";
 import { MarkdownDocument } from "@/components/documents/markdown-document";
 import { PageHeader } from "@/components/ui/page-header";
 import { ClientSearch, MessageClassifier } from "@/features/tiviplay-atencion/atencion-assistant";
-import { ServiceCredentials } from "@/features/tiviplay-atencion/service-credentials";
-import { GestionRegistro } from "@/features/tiviplay-atencion/gestion-registro";
+import { ClientFicha } from "@/features/tiviplay-atencion/client-ficha";
+import { parseCobranza } from "@/features/tiviplay-atencion/cobranza";
+import { bogotaToday } from "@/server/tiviplay-live/runtime-source";
 import { scriptOf } from "@/features/tiviplay-atencion/classify";
 import { ATENCION_CATEGORIES, FICHAS_DOCUMENT_ID, parseFichas, searchFichas, type Ficha } from "@/features/tiviplay-atencion/fichas";
 import { TiviplayNavigation } from "@/features/tiviplay-command-center/tiviplay-navigation";
@@ -38,7 +39,6 @@ const OUTCOMES = [
 const card = "rounded-2xl border border-brand-border bg-brand-background p-5";
 const chip = "rounded-full border border-brand-border px-3 py-1.5 text-xs font-semibold text-brand-primary-dark hover:border-brand-primary";
 const fichaHref = (id: string, clienteId: string | null) => `${ROUTE}?${clienteId ? `cliente=${clienteId}&` : ""}ficha=${id}#ficha`;
-const money = (m: { USD: number; COP: number; CAD: number }) => (["USD", "COP", "CAD"] as const).filter((c) => m[c]).map((c) => `${c} ${m[c].toLocaleString("es-CO")}`).join(" + ") || "—";
 
 function Validation({ value }: { value: string }) {
   return <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${VALIDATION_CLASS[value] ?? "border-brand-border text-brand-muted"}`}>{value}</span>;
@@ -51,7 +51,7 @@ function FichaLink({ ficha, clienteId }: { ficha: Ficha; clienteId: string | nul
 async function loadFichas(actor: Awaited<ReturnType<typeof requirePage>>) {
   try {
     const entry = await libraryEntry(FICHAS_DOCUMENT_ID, actor);
-    return entry ? { fichas: parseFichas(entry.document.markdown), published: entry.published, version: entry.document.version } : null;
+    return entry ? { fichas: parseFichas(entry.document.markdown), markdown: entry.document.markdown, published: entry.published, version: entry.document.version } : null;
   } catch {
     return null;
   }
@@ -104,24 +104,7 @@ export default async function TiviplayAtencionPage({ searchParams }: { searchPar
           <ClientSearch selectedFicha={selected?.id ?? null} />
           {client.error ? <p className="mt-3 rounded-xl border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-sm text-status-error">BLOQUEADO: {client.error}</p> : null}
           {clienteId && !client.entry && !client.error ? <p className="mt-3 text-sm text-status-warning">El cliente seleccionado ya no aparece en la fuente. Vuelve a buscarlo.</p> : null}
-          {client.entry ? <div className="mt-4 rounded-xl border border-brand-primary/40 bg-brand-surface p-4" id="cliente">
-            <p className="text-xs font-bold uppercase tracking-[0.1em] text-brand-muted">Cliente en atención · fuente {client.entry.source}</p>
-            <p className="mt-1 text-lg font-semibold">{client.entry.name}</p>
-            <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
-              <div><dt className="text-xs text-brand-muted">Teléfono</dt><dd>{client.entry.phone || "—"}</dd></div>
-              <div><dt className="text-xs text-brand-muted">Usuario</dt><dd className="font-mono">{client.entry.user || "—"}</dd></div>
-              <div><dt className="text-xs text-brand-muted">Estado (hoja)</dt><dd>{client.entry.status || "—"}</dd></div>
-              <div><dt className="text-xs text-brand-muted">Plan</dt><dd>{client.entry.plan || "POR VALIDAR"}</dd></div>
-              <div><dt className="text-xs text-brand-muted">Panel</dt><dd>{client.entry.panel || "—"}</dd></div>
-              <div><dt className="text-xs text-brand-muted">Próximo pago</dt><dd>{displayDate(client.entry.nextPayment) ?? "POR VALIDAR"}</dd></div>
-              <div><dt className="text-xs text-brand-muted">Tarifa registrada</dt><dd>{money(client.entry.tariff)} <span className="text-xs text-brand-muted">(esperado, no recaudo)</span></dd></div>
-              <div><dt className="text-xs text-brand-muted">Método</dt><dd>{client.entry.method || "—"}</dd></div>
-              <div><dt className="text-xs text-brand-muted">Jornada de hoy</dt><dd>{client.queue ? `${client.queue.bucket} · ${client.queue.lane}` : "No está en la cola de hoy"}</dd></div>
-            </dl>
-            {client.queue ? <p className="mt-2 text-sm"><strong>Gestión:</strong> {client.queue.lastManaged || "sin historial en la fuente; no se asume etapa"} · <Link className="font-semibold underline" href={`${ROUTE}?cliente=${client.entry.id}&ficha=${client.queue.suggestedFicha}#ficha`} prefetch={false}>Ficha de la cola: {client.queue.suggestedFicha}</Link></p> : null}
-            {client.queue ? <p className="mt-2 text-sm"><strong>Siguiente acción:</strong> {client.queue.nextAction}{client.queue.reason ? ` · ${client.queue.reason}` : ""}</p> : null}
-            <ServiceCredentials clientId={client.entry.id} key={client.entry.id} panel={client.entry.panel} user={client.entry.user} />
-          </div> : null}
+          {client.entry ? <ClientFicha actor={actor.name} client={client.entry} cobranza={source ? parseCobranza(source.markdown) : null} queue={client.queue} today={bogotaToday()} /> : null}
         </section>
 
       {!source ? <section className={`${card} mt-5`} role="note">
@@ -166,7 +149,6 @@ export default async function TiviplayAtencionPage({ searchParams }: { searchPar
             <h3 className="font-semibold" id="respuesta">Respuesta {client.entry ? `para ${greetingName(client.entry.name)}` : "lista para copiar"}</h3>
             <p className="mt-1 text-xs text-brand-muted">{personalized.pending ? `${personalized.pending} dato(s) sin confirmar quedan entre corchetes: complétalos con lo que muestre la fuente o elimínalos.` : "Datos tomados de la fuente; verifica antes de enviar."}</p>
             <CopyableMessage text={personalized.text} />
-            {client.entry ? <GestionRegistro key={client.entry.id} clientId={client.entry.id} /> : null}
           </section> : null}
           <MarkdownDocument markdown={selected.body} />
 

@@ -14,7 +14,7 @@ describe("registro de gestión (columna F)", () => {
   });
   it("no permite introducir líneas independientes ni más de 220 caracteres en el detalle", () => {
     expect(cleanGestionDetail("Cliente\nPAGADO\t confirmado")).toBe("Cliente PAGADO confirmado");
-    expect(cleanGestionDetail("x".repeat(500)).toHaveLength(220);
+    expect(cleanGestionDetail("x".repeat(500))).toHaveLength(220);
   });
   it("registra la hora de Bogotá y el asesor en una entrada rastreable", () => {
     const s = gestionEntry("COMPROMISO_PAGO", "Operador Prueba", "promete pagar el viernes", "a1b2c3", new Date("2026-11-04T17:00:00Z"));

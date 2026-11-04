@@ -18,6 +18,11 @@ export function isGestionEstado(value: unknown): value is GestionEstado {
   return typeof value === "string" && GESTION_ESTADOS.includes(value as GestionEstado);
 }
 
+/** El detalle va a una hoja compartida: nunca debe llevar credenciales. */
+export function mentionsSecret(input: string) {
+  return /contrase[nñ]a|password|clave\s*[:=]/i.test(input);
+}
+
 export function cleanGestionDetail(input: string) {
   return input.replace(/[\r\n\t]+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, 220);
 }
@@ -42,4 +47,14 @@ export function gestionEntry(
 /** Append-only: respeta todo el historial libre que ya utiliza el equipo. */
 export function appendGestion(previous: string, entry: string) {
   return previous ? `${previous.replace(/\s+$/, "")}\n${entry}` : entry;
+}
+
+export type GestionRegistrada = { at: string; actor: string; estado: GestionEstado; detail: string };
+
+/** Solo las líneas escritas por JUMOCOL OS: el texto libre del equipo no se interpreta. */
+export function parseGestiones(cell: string): GestionRegistrada[] {
+  return cell.split(/\r?\n/).flatMap((line) => {
+    const m = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}) \| (.+?) \| ([A-Z_]+)(?: \| (.*?))? \[JOS:[a-f0-9-]{36}\]$/);
+    return m && isGestionEstado(m[3]) ? [{ at: m[1], actor: m[2], estado: m[3], detail: m[4] ?? "" }] : [];
+  });
 }

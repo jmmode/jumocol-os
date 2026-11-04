@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   if (access.response) return access.response;
   if (!trustedOrigin(request))
     return NextResponse.json({ error: "Origen no autorizado." }, { status: 403 });
-  let body: { clientId?: unknown; estado?: unknown; detalle?: unknown; requestId?: unknown };
+  let body: { clientId?: unknown; estado?: unknown; detalle?: unknown; requestId?: unknown; expectedHash?: unknown };
   try { body = (await request.json()) as typeof body; }
   catch { return NextResponse.json({ error: "Solicitud inválida." }, { status: 400 }); }
 
@@ -21,10 +21,11 @@ export async function POST(request: Request) {
     estado: typeof body.estado === "string" ? body.estado : "",
     detalle: typeof body.detalle === "string" ? body.detalle : "",
     requestId: typeof body.requestId === "string" ? body.requestId : "",
+    expectedHash: typeof body.expectedHash === "string" ? body.expectedHash : "",
   });
   audit(access.user.id, "tiviplay-gestion", "observaciones-append", result.status);
   const status = result.status === "SAVED" || result.status === "DUPLICATE" ? 200 :
-    result.status === "BAD_INPUT" ? 400 : result.status === "CLIENT_MISMATCH" || result.status === "CONFLICT" ? 409 :
+    result.status === "BAD_INPUT" ? 400 : result.status === "CLIENT_MISMATCH" || result.status === "CONFLICT" || result.status === "UNVERIFIED" ? 409 :
     result.status === "WRITE_DENIED" ? 403 : 503;
   return NextResponse.json(result, { status, headers: { "Cache-Control": "private, no-store" } });
 }
