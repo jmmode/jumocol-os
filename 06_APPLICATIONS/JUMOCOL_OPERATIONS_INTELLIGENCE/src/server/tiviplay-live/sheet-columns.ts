@@ -85,6 +85,6 @@ export function baseGeneralGestionHeadersValid(header: readonly unknown[]) {
     h[12] === "ID" &&
     h[13] === "USUARIO" &&
     h[22] === "OBSERVACIONES ASESOR" &&
-    h[23] === "CUMPLEAÑOS" &&
+    h[23] === "CUMPLEANOS" &&
     h[33] === "CLIENTE_KEY";
 }
