@@ -1,145 +1,212 @@
-# TiviPlay — Manual de cobros y retención · SOP v0.3 (auditoría de fuentes)
+# TIVIPLAY · Manual de cobranza y ciclo de retención — SOP de integración v0.3
 
-**Estado:** REQUIERE VALIDACIÓN · BORRADOR DOCUMENTAL · NO PUBLICAR COMO PROCEDIMIENTO VIGENTE  
-**Fecha de auditoría:** 2026-11-04  
-**Ámbito:** operaciones TiviPlay; puesto de atención y cobranza de JUMOCOL OS  
-**Ubicación:** `03_AREAS/01_OPERACION/TIVIPLAY/07_GUIAS/`  
-**Documento de mensajes actualmente consumido por la aplicación:** `TIVIPLAY_MENSAJES_COBRO_V1.md`  
-**Responsable de aprobación:** Dirección TiviPlay
+**Estado:** PARCIAL · FUENTE DOCX LEÍDA · REQUIERE DECISIÓN EN TRANSICIÓN Y PUBLICACIÓN  
+**Corte:** 2026-11-04 (America/Bogota)  
+**Fuente primaria:** archivo adjunto por Dirección, \`📆 MANUAL DE COBRO – TIVIPLAY (2)(1).docx\`, SHA-256 \`60bfa4d37b8135adf18b030d30a0bd643dae273003d1885aa77262a0439c9916\`.  
+**Ubicación canónica propuesta:** \`03_AREAS/01_OPERACION/TIVIPLAY/07_GUIAS/\`.  
+**Documento actual de mensajes en la intranet:** \`TIVIPLAY_MENSAJES_COBRO_V1.md\` (no modificar ni publicar sin el gate).  
+**Ámbito:** Operaciones → TiviPlay → Turno → ATENDER → Gestión de cobro.  
+**Responsable de decisiones sobre suspensión, campañas y cuentas:** Dirección.
 
-> Este documento ordena lo que realmente se pudo verificar. **NO reemplaza aún el DOCX más reciente del usuario**, indicado únicamente como ruta local `C:\Users\USUARIO\Downloads\📆 MANUAL DE COBRO – TIVIPLAY (2).docx`, porque esa ruta no es accesible desde el entorno de auditoría. Cuando se reciba ese archivo, cotejar párrafo, tabla, imagen y cuenta de pago antes de promover la versión.
+> El archivo DOCX sí fue leído y auditado. La presente versión define contrato de datos y diseño operativo; **no declara implementación en 3002 ni habilita escrituras**. Se conserva el texto original y se diferencian hechos del manual, solicitudes nuevas de Dirección y propuestas técnicas.
 
-## 1. Inventario de fuentes y jerarquía
+## 1. Principio de operación
 
-| Fuente | Versión / fecha visible | Aporta | Restricción |
-|---|---|---|---|
-| [Manual de cobro, Google Docs](https://docs.google.com/document/d/1fJmzWr7sQO38rpefE6TgZnITb4CLHY3YHGtcx07Oggo/edit) | modificado 2026-02-01 | D-5, D-1, D0, retención 1–4, muestras Zelle/Bancolombia, texto de retención | Es una **versión anterior**; no acredita vigencia de fechas, cuentas ni contenido en imágenes |
-| `TIVIPLAY_MENSAJES_COBRO_V1.md` | fechado 2026-11-04; estado pendiente de validación | Scripts D-5, D-2 por método, D-1, D0, D+ y contrato de marcadores | Es propuesta de software, **no evidencia** de aprobación del manual |
-| `src/features/tiviplay-atencion/cobranza.ts` | consultado 2026-11-04 | Calcula etapa y canal desde `F. PRÓXIMO PAGO` | Su calendario contradice al Google Doc |
-| `📆 MANUAL DE COBRO – TIVIPLAY (2).docx` del usuario | **pendiente de lectura** | Fuente necesaria para aprobación final y datos de pago solicitados | Ruta de Windows no es archivo adjunto ni enlace Drive |
+El asesor debe ver **una línea de tiempo por día**, conocer en qué etapa está el cliente, elegir una acción predeterminada, revisar/editar el mensaje, copiarlo, realizar efectivamente la comunicación y **confirmar el resultado**. Solo esa confirmación permite registrar la gestión.
 
-**Regla de precedencia por definir:** el DOCX reciente será el candidato a fuente canónica, pero no se aplican cambios silenciosos contra fuentes históricas. Registrar y resolver contradicciones con Dirección.
+**Días relativos:** \`días_para_pago = fecha(F. PRÓXIMO PAGO) - hoy(Bogotá)\`. Por ejemplo, \`+5\` en cálculo equivale a **D−5**, cinco días antes del vencimiento; \`0\` equivale a **D0**; \`−2\` equivale a **D+2**, dos días vencido. **No usar F.VENCIMIENTO técnico para calcular la etapa comercial.**
 
-## 2. Mapa de fechas y contradicciones
+Estados de un evento de gestión **no son** estados financieros. \`MENSAJE_ENVIADO\` y \`COMPROBANTE_RECIBIDO\` nunca equivalen a \`CONFIRMADO JM\`.
 
-Definición temporal: `D = fecha de F. PRÓXIMO PAGO − fecha de Bogotá`. Ejemplo: `D-5` significa cinco días **antes** del pago; `D+2` dos días **después**.
+## 2. Línea de tiempo: evidencia del DOCX y contrato de interfaz
 
-| Momento | Google Doc 2026-02 | Implementación 2026-11-04 | Estado / acción |
-|---|---|---|---|
-| D-5 | Recordatorio por WhatsApp con beneficio elegido por asesor | D-5: recordatorio | Coincidencia parcial; beneficio requiere reglas vigentes |
-| D-4 | No aparece como etapa textual | Llamada de refuerzo | REQUIERE VALIDACIÓN documental |
-| D-3 | No aparece como etapa textual | WhatsApp con imagen | REQUIERE VALIDACIÓN del recurso gráfico |
-| D-2 | No aparece como envío de datos | Envío de Zelle, PayPal o transferencia | **CONFLICTO** con la fuente 2026-02 |
-| D-1 | Envío de datos o enlace de pago por método | Alerta de suspensión | **CONFLICTO** que debe resolverse antes de publicar |
-| D0 | Fecha de vencimiento; WhatsApp/llamada | Retención 1 (como si estuviese suspendido) | **CONFLICTO**; no afirmar suspensión sin evidencia |
-| D+1 | Retención 1 de recarga vencida (notación antigua «Día -1» respecto al vencido) | Retención 2 genérica | REQUIERE VALIDACIÓN de equivalencia e inicio |
-| D+2 | Retención 2; mensaje de reactivación y acuerdo de pago | Retención 2 genérica | Mensaje textual parcialmente recuperado |
-| D+3 | Retención 3 | Retención 2 genérica | Faltan texto o recursos legibles |
-| D+4 | Retención 4; mensaje persuasivo de reactivación | Retención 2 genérica | Faltan detalles sobre promociones vigentes |
-
-**Gate:** no reprogramar `cobranzaStage()` hasta revisar el DOCX exacto y resolver el calendario. Esta tabla es un mapa de contradicciones, no una autorización para cambiar procesos.
-
-## 3. Acciones operacionales por etapa (candidatas para revisión)
-
-| Código propuesto | Etapa | Acción | Canal | Contenido esperado | Evidencia de ejecución |
+| Etapa | Disparador por fecha | Acción ofrecida al asesor | Canal | Evidencia del DOCX | Automatización permitida |
 |---|---|---|---|---|---|
-| `REC_D5` | Antes, cinco días | Recordar próximo pago; seleccionar beneficio solo si está autorizado | WhatsApp | Mensaje personalizado, plan, fecha y beneficio verificado | Asesor confirma envío o resultado |
-| `CALL_PRE` | Refuerzo | Intentar llamada | Llamada | Motivo de contacto, verificación de renovación | Contestó / no contestó / compromiso |
-| `IMG_PRE` | Refuerzo | Enviar imagen publicada | WhatsApp | Imagen por plan/etapa vigente | Asesor confirma envío |
-| `METHOD_PAY` | Datos de pago | Seleccionar Zelle, PayPal o transferencia según cliente | WhatsApp / llamada | Medio, titular, cuenta/enlace, monto/moneda, vencimiento | Confirmación de envío, nunca confirmación del pago |
-| `DUE_D0` | Día de vencimiento | Recordatorio o llamada | WhatsApp / llamada | Texto por validar de fuente reciente | Resultado |
-| `RET_1` | Vencido: primer contacto | Retención 1 | WhatsApp / llamada | Texto específico por validar | Resultado |
-| `RET_2` | Vencido: segundo contacto | Retención 2 | WhatsApp / llamada | Usuario recuperable y posibilidad de reactivación | Resultado |
-| `RET_3` | Vencido: tercer contacto | Retención 3 | WhatsApp / llamada | Texto específico por validar | Resultado |
-| `RET_4` | Vencido: cuarto contacto | Retención 4 | WhatsApp / llamada | Invitación a reactivar; promociones solo si están vigentes | Resultado |
+| **D−5** | faltan 5 días | **Recordatorio + beneficio**. Elegir \`REFERIDO\` o \`RECARGA_EXTENDIDA\` | WhatsApp | Dos copys textuales | Sugerir y copiar; beneficio sujeto a vigencia aprobada |
+| **D−4** | faltan 4 días | **Llamada de refuerzo** al beneficio enviado | Llamada | Instrucción, **sin libreto literal** | Mostrar tarea y resultado de llamada |
+| **D−3** | faltan 3 días | **Imagen del beneficio** correspondiente | WhatsApp | Instrucción, **sin recurso adjunto en este DOCX** | Selección de imagen solo si existe recurso publicado |
+| **D−2** | faltan 2 días | **Datos o enlace de pago**: \`ZELLE\`, \`PAYPAL\` o \`TRANSFERENCIA\` | WhatsApp / llamada | Tres mensajes y datos de cobro | Mostrar solo método y datos pertinentes, con monto verificado |
+| **D−1** | falta 1 día | **Alerta de suspensión por pago pendiente** | WhatsApp / llamada | Texto literal de advertencia | Avisar, **no desactivar** |
+| **D0** | día de pago | **Verificación del ciclo**; si no hay pago confirmado del ciclo, **alertar a Back Office para evaluar suspensión** | Validación + alerta | El DOCX titula «Día 0: Mensaje de retención 1» y supone servicio suspendido | **No cambiar estado técnico sin comprobar panel y autorización** |
+| **POST-SUSPENSIÓN** | existe desactivación verificada | **Retención 1** (texto de DOCX etiquetado D0) | WhatsApp / llamada / correo | Mensaje de reactivación | Solo después de verificación real de suspensión |
+| **RETENCIÓN 2** | posterior a primera retención | Mensaje de usuario recuperable | WhatsApp | DOCX vuelve a titular «Día 0: Mensaje de retención 2» | **Día exacto REQUIERE DECISIÓN**; no asignar D+1 por suposición |
+| **PROMO_REACTIVACIÓN** | post-retención; condiciones por definir | Oferta promocional de reactivación | WhatsApp / llamada | **Solicitud de Dirección en este chat, NO definida en el DOCX** | Solo si oferta, elegibilidad, fechas y responsable están autorizados |
 
-La asignación exacta de `CALL_PRE` e `IMG_PRE` a D-4/D-3 procede **solo de la implementación de noviembre**. No se valida como texto del Google Doc de febrero.
+**Alertas visuales propuestas:** la etapa del día debe resaltar; las ya ejecutadas deben mostrar fecha, asesor y resultado; las vencidas sin ejecución deben aparecer como pendientes; las bloqueadas, con motivo y escalamiento. La operación real debe prevalecer sobre un simple cálculo de fecha.
 
-## 4. Scripts y referencias de pago: evidencia recuperada
+**Conflictos que impiden automatismo:** el DOCX etiqueta Retención 1 y Retención 2 como «Día 0»; el texto de D−2 afirma «HOY es tu día oportuno de pago» pese a que faltan dos días; y D0 afirma que el servicio fue suspendido sin incluir una comprobación. Estos hechos deben conservarse y resolverse, no reinterpretarse silenciosamente.
 
-### 4.1. Datos observados en el Google Doc histórico
+## 3. Datos y mensajes existentes en el DOCX (fuente, no aprobación de vigencia)
 
-- **Zelle:** correo `info@jumocol.net`; titular descrito como **Jumocol LLC**.
-- **Transferencia Bancolombia:** cuenta de ahorros `33828577331`; titular indicado como **Julián Montealegre**.
-- **PayPal:** se menciona envío de enlace, **pero el texto recuperado no incluye una URL utilizable**.
-- **Transferencias:** el manual hace referencia a una «imagen del cambio del día»; el contenido gráfico no se recuperó de la extracción de texto.
-- Ejemplos de precio y plan del texto antiguo: `2 meses / 2 pantallas → USD 30` y `1 mes / 1 pantalla → USD 15`; **son ejemplos históricos, no catálogo de tarifas vigentes**.
+### Beneficio D−5 · opción 1, referido
 
-**Estado de las referencias:** REQUIERE VALIDACIÓN CON DOCX RECIENTE Y DIRECCIÓN. Se conservan para confrontar la fuente, pero no se autoriza su publicación ni reemplazar automáticamente `[DATOS_PAGO]` en producción. No se declara confidencialidad como razón para excluirlas: la restricción aquí es la **vigencia no verificada**.
+> Hola [Nombre del cliente], te saluda [Nombre del asesor] de *TIVIPLAY*.
+>
+> Recuerda que tu recarga vence pronto. Si hoy nos envías un referido que active el servicio, tu recarga de este mes será *GRATIS*.
+>
+> ¡Así de simple! Es nuestra manera de agradecerte por recomendarnos. ¿Te animas a aprovechar esta promo exclusiva?
+>
+> — TIVIPLAY
 
-### 4.2. Contrato mínimo para mensajes copiables
+**Control:** «gratis» es una promesa comercial sujeta a vigencia, condiciones y aprobación. No enviar si no está autorizada.
 
-Variables permitidas y su origen:
+### Beneficio D−5 · opción 2, recarga extendida
 
-| Variable | Fuente | Condición |
+> Buen día [Nombre del cliente], te saluda [Nombre del asesor] de *TIVIPLAY*.
+>
+> Recuerda que tu recarga vence pronto. ¿Sabías que puedes ahorrar más si recargas por *6 meses o 1 año*? Además, obtienes beneficios adicionales.
+>
+> Si te interesa cambiar tu plan, escríbeme y con gusto te explico cómo hacerlo.
+>
+> — TIVIPLAY
+
+**Control:** las tarifas y beneficios deben venir del catálogo vigente, no se inventan.
+
+### D−4 · llamada
+
+El manual instruye «Reforzar la promoción enviada el día anterior. Resolver dudas y motivar la acción». **No contiene un guion de llamada completo.** El guion es entregable pendiente de validación.
+
+### D−3 · imagen
+
+El manual instruye enviar la imagen del beneficio ofrecido. **El DOCX adjunto no contiene imágenes incrustadas**, por lo que el módulo debe requerir una imagen autorizada o mostrar «recurso pendiente». No simular envío.
+
+### D−2 · datos de pago por método
+
+| Método | Datos literalmente localizados en DOCX | Estado de uso |
 |---|---|---|
-| `[NOMBRE]` | Ficha del cliente | Identidad seleccionada |
-| `[ASESOR]` | Sesión autenticada | Obligatorio en registro |
-| `[FECHA]` | `F. PRÓXIMO PAGO` | No confundir con `F.VENCIMIENTO` técnico |
-| `[PLAN]` | Plan activo verificado | No inferir duración |
-| `[VALOR]` | Tarifa y moneda de ficha | No usar precio ejemplo |
-| `[DATOS_PAGO]` | Catálogo vigente por método aprobado por Dirección | Si falta, bloquear la entrega automática de datos y mostrar motivo |
-| `[ETAPA]` | Selector de etapas publicado | Debe coincidir con versión vigente del manual |
+| **ZELLE** | Correo: \`info@jumocol.net\`; a nombre de **Jumocol Llc** | Disponible en fuente, vigencia **REQUIERE VALIDACIÓN** |
+| **PAYPAL** | \`https://www.paypal.com/invoice/p\` | Ruta genérica, **no es un enlace individual de factura**; completar enlace vigente |
+| **TRANSFERENCIA** | **Bancolombia · Cuenta de ahorros 33828577331 · Julián Montealegre** | Disponible en fuente, vigencia **REQUIERE VALIDACIÓN** |
+| **Conversión a COP** | «INCLUIR IMAGEN VALOR A PAGAR EN PESOS» | No está el recurso ni tasa del día; requiere herramienta/imagen aprobada |
 
-El mensaje se presenta únicamente cuando la etapa está publicada; **Copiar ≠ Enviar**. El asesor registra el resultado explícitamente.
+**Texto fuente Zelle:** saludo, fecha, «HOY es tu día oportuno de pago», correo/titular, recarga, agradecimiento y firma.  
+**Texto fuente PayPal:** saludo equivalente, invitación a pagar hoy, URL genérica, agradecimiento y firma.  
+**Texto fuente transferencia:** saludo, cuenta Bancolombia/titular, imagen de conversión COP por aportar, agradecimiento y firma.
 
-## 5. Contrato de registro de gestión: intranet → Sheets
+**Normalización propuesta pendiente de publicación:** personalizar \`[NOMBRE]\`, \`[ASESOR]\`, \`[FECHA_PAGO]\`, \`[PLAN]\`, \`[VALOR]\`, \`[MONEDA]\` y \`[DATOS_PAGO]\`; no dejar «Asesor Luis» ni planes ficticios embebidos. Corregir la frase «HOY es tu día oportuno» para que no confunda la fecha D−2 con vencimiento D0, pero conservarla en el DOCX histórico.
 
-| Libro/hoja | Campo | Propósito | Escritura |
-|---|---|---|---|
-| `PAGOS NOVIEMBRE 2026` | F — `OBSERVACIONES GESTION` | Bitácora estructurada: acción, etapa, fecha, asesor, canal y resultado | Prevista desde intranet tras confirmación del asesor |
-| `PAGOS NOVIEMBRE 2026` | W — `OBSERVACIONES ASESOR` | Texto libre independiente | Prevista: editor con confirmación explícita |
-| `PAGOS NOVIEMBRE 2026` | X — `CONFIRMACION` | Estado financiero | Solo flujo financiero autorizado |
-| `BASE GENERAL` | F — `OBSERVACIONES GESTION` | Continuidad de la bitácora del cliente | Requiere enlace 1:1 y política de sincronización |
-| `BASE GENERAL` | W — `OBSERVACIONES ASESOR` | Nota libre del cliente | Requiere autorización y fuente identificada |
+### D−1 · alerta
 
-**Propuesta de formato de evento** (no ejecutada):
+> Atención [Nombre del cliente]: Tu servicio de *TIVIPLAY* será suspendido automáticamente por pago pendiente.
+>
+> Para la continuidad de tu señal, realiza tu pago hoy mismo. Si necesitas asistencia, estamos aquí para ayudarte.
 
-`EVENT_ID | FECHA_HORA_BOGOTA | ASESOR | ETAPA | CANAL | ACCION | RESULTADO | DETALLE | ORIGEN`
+**Control:** aviso no significa que el panel ya haya suspendido el servicio.
 
-Opciones de resultado mínimas:
+### D0 / Retención 1, solo después de suspender
 
-- `MENSAJE_ENVIADO`
-- `SIN_RESPUESTA`
-- `COMPROMISO_PAGO` (fecha/compromiso documentado)
-- `COMPROBANTE_RECIBIDO` (pendiente de confirmación financiera)
+> Queremos informarte que tu servicio ha sido suspendido. Puedes reactivarlo hoy mismo sin cargos adicionales. Solo necesitas realizar el pago y estaremos encantados de tenerte de vuelta.
+>
+> [Link de pago / datos]
 
-**Invariantes:**
+**Control:** no mostrar como «servicio suspendido» si la suspensión no fue verificada. «Sin cargos adicionales» exige autorización comercial vigente.
 
-1. La misma gestión debe conservar el mismo `EVENT_ID` en F de la cartera y F de BASE. No contar dos eventos.
-2. Ningún texto en F/W puede convertir un pago en `CONFIRMADO JM`.
-3. Solo Dirección confirma en la hoja del método correspondiente; el motor cruza identidad, importe y ciclo antes de actualizar X o BASE.
-4. No sobrescribir el histórico libre existente en F de BASE; preservar, anexar o migrar con decisión explícita y sin doble conteo.
-5. Una escritura en dos hojas no es una transacción atómica: si falla una, devolver `PARCIAL`, conservar evidencia y permitir reconciliación idempotente.
-6. No escribir si el usuario/fila es ambiguo, el valor cambió o la celda está protegida; no declarar éxito sin relectura.
+### Retención 2 (el DOCX la rotula también «Día 0»)
 
-## 6. Prueba de aceptación funcional
+> En *TIVIPLAY* no te hemos olvidado. Tu usuario es único y siempre podrás activar tu servicio recargando en cualquier momento. Estamos listos para ofrecerte el mejor servicio cuando decidas regresar.
 
-Para un cliente ficticio en hoja de ensayo:
+**Control:** definir umbral temporal y frecuencia. Evitar enviar dos mensajes distintos de retención el mismo día por ambigüedad.
 
-1. Abrir `ATENDER` y mostrar etapa correcta según el manual validado.
-2. Seleccionar acción y método; copiar mensaje con datos aprobados.
-3. Confirmar resultado; anotar por separado detalle libre si existe.
-4. Guardar F de cartera; releer la celda y comprobar el `EVENT_ID`.
-5. Sincronizar F de BASE por una identidad única; releer y verificar el mismo `EVENT_ID`.
-6. W de ambas hojas se mantiene independiente; ningún estado de X cambia por registrar la gestión.
-7. Una confirmación financiera hecha en Zelle/PayPal/Transferencia tiene un flujo separado y no dispara un segundo cobro.
-8. Simular concurrencia y fallo parcial sin perder histórico ni duplicar gestiones.
+## 4. Máquina de estados operacional
 
-**Estado real a esta fecha:** MODELO PARCIAL. No hay validación extremo a extremo del guardado simultáneo en F de ambas hojas ni publicación de una versión definitiva del manual.
+Esta es **una propuesta de implementación**, no prueba de estado actual:
 
-## 7. Decisiones pendientes antes de declarar SOP vigente
+\`POR_VENCER → D5/D4/D3/D2/D1 → VENCE_HOY → [PAGO_VALIDADO | PAGO_PENDIENTE] → ALERTA_DESACTIVACION → [SUSPENSION_CONFIRMADA | SUSPENSION_NO_CONFIRMADA] → RETENCION_1 → RETENCION_2 → CAMPANA_REACTIVACION → REACTIVADO\`
 
-- **P0 — Fuente reciente:** recibir y auditar el DOCX exacto `📆 MANUAL DE COBRO – TIVIPLAY (2).docx`, incluida cada imagen y tabla.
-- **P0 — Calendario:** aprobar cuál fuente define D-2/D-1/D0 y la transición a Retenciones 1–4.
-- **P0 — Referencias de pago:** verificar Zelle, URL PayPal, transferencia y vigencia de cada titular/cuenta.
-- **P0 — Beneficios, imágenes y promociones:** registrar cuáles están autorizados y por qué etapa.
-- **P1 — Registro:** precisar opciones de etapa/resultado y cierre de llamada, WhatsApp e imagen.
-- **P1 — Sincronización:** implementar `EVENT_ID` único y propagación consistente entre F de cartera y F de BASE.
-- **P1 — Publicación:** revisar `TIVIPLAY_MENSAJES_COBRO_V1.md`, ajustar el parser de mensajes y publicar como ADMIN tras pruebas.
+Invariantes:
 
-## 8. Gate de aprobación
+1. Si existe **CONFIRMADO JM** para un movimiento inequívoco del **ciclo corriente**, dejar de ofrecer cobro ordinario; la hoja X por sí sola no acredita el ciclo si conserva evidencia de octubre.
+2. \`ALERTA_DESACTIVACION\` crea una tarea para el responsable técnico, **no ejecuta cambios en paneles**.
+3. \`SUSPENSION_CONFIRMADA\` exige evidencia verificable de la desactivación en el panel y responsable, no basta que sea D0.
+4. \`CAMPANA_REACTIVACION\` requiere decisión humana sobre inicio, elegibilidad, descuento y vigencia.
+5. \`COMPROBANTE_RECIBIDO\` solo abre verificación; no cambia \`CONFIRMACION\` a \`CONFIRMADO JM\`.
+6. Si identidad, servicio o datos financieros son ambiguos, estado \`REQUIERE VALIDACIÓN\` y no suspensión ni cobro automático.
+7. El bloqueo de créditos del Panel 3 permanece intacto.
 
-Este archivo es una **auditoría de transición**, no una autorización de cuentas, reglas de vencimiento ni automatización.
+### Estados visibles por tarjeta del cliente
 
-**NEXT ACTION:** adjuntar el DOCX reciente al chat o facilitar el enlace exacto de Google Drive. Cotejar el contenido íntegro con esta matriz; actualizar este mismo MD (no abrir otro manual), generar la versión aprobable y recién entonces integrar selector, scripts y escritura controlada en la intranet.
+- **Etapa sugerida** por la fecha de pago: D−5, D−4, D−3, D−2, D−1, D0 o días vencidos.
+- **Gestión del día**: PENDIENTE, EN EJECUCIÓN, GESTIONADA, REQUIERE REVISIÓN (estado de proceso, no campo X).
+- **Estado financiero**: lectura desde hoja del medio + X de noviembre, con identificación de ciclo; PENDIENTE CONFIRMACIÓN / CONFIRMADO JM / REQUIERE REVISIÓN.
+- **Estado técnico**: ACTIVO, SUSPENDIDO o NO VERIFICADO únicamente según fuente de servicio.
+- **Ruta de retención/promoción**: ingresar únicamente tras cumplir condiciones documentadas.
+
+## 5. Selector que debe consumir la intranet
+
+Campos de una gestión en \`ATENDER\`:
+
+| Campo | Tipo | Fuente / regla |
+|---|---|---|
+| Día del ciclo | Calculado, solo lectura | F. PRÓXIMO PAGO, horario Bogotá |
+| Etapa | Propuesta predeterminada, confirmable | Matriz anterior; no seleccionar dos etapas incompatibles |
+| Acción | Selector por etapa | Beneficio, llamada, imagen, datos de pago, alerta, retención |
+| Método de pago | Selector condicionado | Zelle, PayPal, transferencia; desde fuente vigente |
+| Mensaje | Plantilla editable antes de copiar | Copiar no equivale a enviar |
+| Canal | Selector | WhatsApp, llamada, correo, imagen |
+| Resultado | Selector obligatorio | \`MENSAJE_ENVIADO\`, \`SIN_RESPUESTA\`, \`COMPROMISO_PAGO\`, \`COMPROBANTE_RECIBIDO\`; ampliar por aprobación para \`LLAMADA_ATENDIDA\`, \`IMAGEN_ENVIADA\`, \`ALERTA_ESCALADA\` |
+| Observaciones del asesor | Texto libre independiente | W |
+| Confirmar y guardar | Acción explícita | Persistir solo gestión ejecutada y verificable |
+
+Cada opción debe estar visible con el **día relativo**, el último evento ejecutado, la siguiente acción y el motivo si está bloqueada. La etapa calculada **no** es prueba de que el asesor ya la realizó.
+
+## 6. Contrato de Google Sheets · actualizado 2026-11-04
+
+| Fuente | Campo | Semántica |
+|---|---|---|
+| \`PAGOS NOVIEMBRE 2026\` | **F · OBSERVACIONES GESTION** | Bitácora de acciones/canal/resultado |
+| \`PAGOS NOVIEMBRE 2026\` | **W · OBSERVACIONES ASESOR** | Notas libres independientes |
+| \`PAGOS NOVIEMBRE 2026\` | **X · CONFIRMACION** | Estado financiero bajo control de Dirección |
+| \`PAGOS NOVIEMBRE 2026\` | **AG · CONFIRMACION_FINANCIERA** | Evidencia financiera histórica; no implica noviembre |
+| \`PAGOS NOVIEMBRE 2026\` | **AN · ESTADO_COBRO** | Estado de cartera, no resultado de llamada |
+| \`BASE GENERAL\` | **F · OBSERVACIONES GESTION** | Continuidad del mismo evento de gestión |
+| \`BASE GENERAL\` | **W · OBSERVACIONES ASESOR** | Nota libre del cliente |
+| \`BASE GENERAL\` | **AH · CLIENTE_KEY** | Identificación de fuente, no enlace único por nombre |
+
+**Evento canónico propuesto**:
+\`EVENT_ID | FECHA_HORA_BOGOTA | ASESOR | ETAPA | ACCION | CANAL | RESULTADO | METODO | DETALLE\`
+
+- El mismo \`EVENT_ID\` debe figurar en F de la hoja del mes y F de BASE. **Una gestión, no dos**.
+- Preservar texto histórico de BASE GENERAL!F; no reinterpretarlo como evento estructurado.
+- No trasladar automáticamente el texto libre W a F ni actualizar X al enviar un mensaje.
+- Escribir con permisos mínimos, enlace verificable 1:1, control de cambios y relectura. La doble escritura no es atómica: registrar \`PARCIAL\` y permitir reparación idempotente si una hoja falla.
+- El guardado en las dos hojas **no está validado extremo a extremo** ni activado en esta auditoría.
+
+## 7. Contrato visual de la línea de tiempo
+
+Propuesta para la ficha integral:
+
+\`\`\`text
+CLIENTE · PRÓXIMO PAGO 10/11/2026 · HOY 05/11/2026 · D−5
+[D−5 ● HOY] — [D−4 ○] — [D−3 ○] — [D−2 ○] — [D−1 ○] — [D0 ○]
+   Recordatorio       Llamada     Imagen     Pago       Alerta    Check
+
+ETAPA: D−5 · Elegir beneficio [REFERIDO ▼] [RECARGA_EXTENDIDA ▼]
+MENSAJE: [Editar] [Copiar]
+RESULTADO: [MENSAJE ENVIADO ▼] [CONFIRMAR Y GUARDAR]
+
+Si D0 no tiene pago confirmado del ciclo:
+[ALERTA PARA BACK OFFICE · REVISAR DESACTIVACIÓN]  (NO desactiva sola)
+
+Si el panel evidencia suspensión:
+[SUSPENDIDO VALIDADO] → [RETENCIÓN 1] → [RETENCIÓN 2] → [CAMPAÑA PROMO]
+\`\`\`
+
+La representación anterior es una **especificación de interfaz**; no declara que 3002 ya la muestre.
+
+## 8. Gate de aceptación
+
+**A. Documentación:** revisar scripts y pagos del DOCX; registrar decisión sobre Retención 2, alerta de desactivación, promociones y vigencia de cuentas.  
+**B. Interfaz:** selector de etapa/día con copia y edición, estados separados (gestión / finanzas / servicio), registro explícito y visible.  
+**C. Datos:** hoja de ensayo para verificar F y W en cartera y BASE con un \`EVENT_ID\`; X sin alteración por gestión comercial.  
+**D. Runtime:** tres casos sintéticos: pago confirmado → no cobro; vencido sin confirmación → alerta, no suspensión; suspendido validado → retención y campaña solo cuando corresponda.  
+**E. Despliegue:** typecheck, pruebas, build, navegador OPERADOR/ADMIN, posterior publicación autorizada. Sin datos reales en pruebas.
+
+### Decisiones P0 que no debe inventar el motor
+
+1. **D0 y Retención 1:** ¿la suspensión se solicita en D0 y se espera confirmación técnica antes del mensaje? (Diseño recomendado: SÍ).
+2. **Retención 2:** ¿en qué día relativo inicia? El DOCX dice D0 también; requiere corrección explícita.
+3. **Campaña promocional:** ¿cuándo empieza y qué planes/beneficios son elegibles? Aún no está definido en el DOCX.
+4. **Datos de pago:** validar la vigencia del correo Zelle y la cuenta de transferencia; suministrar URL PayPal de factura válida o regla de generación.
+5. **Beneficio D−5 e imagen D−3:** validar promociones vigentes y recursos publicados.
+
+**NEXT ACTION:** aprobar esas reglas puntuales; entonces ajustar \`cobranzaStage()\` y \`TIVIPLAY_MENSAJES_COBRO_V1.md\` en la misma rama y probar el selector sin habilitar aún escrituras en producción.
