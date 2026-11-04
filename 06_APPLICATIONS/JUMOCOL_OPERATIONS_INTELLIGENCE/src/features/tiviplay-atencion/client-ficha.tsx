@@ -23,16 +23,20 @@ function Item({ name, value, wide }: { name: string; value: React.ReactNode; wid
 
 const money = (t: DirectoryEntry["tariff"]) => (["USD", "COP", "CAD"] as const).filter((c) => t[c]).map((c) => `${c} ${t[c].toLocaleString("es-CO")}`);
 
-/** Celda F de la cartera tal como está en la lectura vigente; solo para gestiones y huella. */
-function observations(client: DirectoryEntry) {
+/** Resuelve siempre por encabezado, incluso cuando la ficha no aparece en la cola inmediata. */
+function carteraField(client: DirectoryEntry, wanted: string) {
   const [sheet, row] = client.source.split("!");
   const values = getRuntimeValuesCached()?.[sheet];
   if (!/^PAGOS /.test(sheet) || !values) return null;
+  const key = headerKey(wanted);
   const header = values.slice(0, 8).find((cells) => (cells ?? []).some((cell) => headerKey(cell) === "OBSERVACIONES GESTION"));
-  const col = header?.findIndex((cell) => headerKey(cell) === "OBSERVACIONES GESTION") ?? -1;
+  const col = header?.findIndex((cell) => headerKey(cell) === key) ?? -1;
   if (col < 0) return null;
   return String(values[Number(row) - 1]?.[col] ?? "");
 }
+
+/** Solo F alimenta el historial estructurado de gestiones y su huella. */
+const observations = (client: DirectoryEntry) => carteraField(client, "OBSERVACIONES GESTION");
 
 function History({ history }: { history: ClientHistory }) {
   const pending = history.payments.filter((p) => p.pending);
@@ -65,6 +69,9 @@ export async function ClientFicha({ client, queue, actor, admin, cobranza, today
   const panelThree = /PANEL\s*3/i.test(client.panel);
   const due = technicalDue({ panel: client.panel, due: client.technicalDue, userRepeated: unverified, controlDue: history?.controlDue ?? null });
   const cell = observations(client);
+  const advisorNote = queue?.advisorObservation ?? carteraField(client, "OBSERVACIONES ASESOR");
+  const confirmationX = queue?.paymentConfirmation ?? carteraField(client, "CONFIRMACION");
+  const collectionAN = queue?.collectionStatus ?? carteraField(client, "ESTADO_COBRO");
   const gestiones = cell ? parseGestiones(cell) : [];
   const last = gestiones.at(-1);
   const gestionState = last ? GESTION_ETIQUETAS[last.estado].toUpperCase() : queue?.lastManaged ? "GESTIONADO EN LA HOJA" : "SIN GESTIÓN";
@@ -106,11 +113,11 @@ export async function ClientFicha({ client, queue, actor, admin, cobranza, today
           <Item name="Valor registrado" value={amounts.join(" + ") || "POR VALIDAR"} />
           <Item name="Moneda" value={(["USD", "COP", "CAD"] as const).filter((c) => client.tariff[c]).join(" + ")} />
           <Item name="Método de pago" value={client.method} />
-          <Item name="Estado de cobro (AN)" value={queue ? `${queue.collectionStatus || "SIN ESTADO"} · ${queue.lane}` : "Fuera de la cola de hoy"} />
-          <Item name="Confirmación (X)" value={<>{queue?.paymentConfirmation || "SIN CONFIRMACIÓN EN X"}<span className="block text-[11px] font-normal text-brand-muted">Requiere cruce con el pago del ciclo actual.</span></>} />
+          <Item name="Estado de cobro (AN)" value={queue ? `${collectionAN || "SIN ESTADO"} · ${queue.lane}` : (collectionAN || "Fuera de la cola de hoy")} />
+          <Item name="Confirmación (X)" value={<>{confirmationX || "SIN CONFIRMACIÓN EN X"}<span className="block text-[11px] font-normal text-brand-muted">Requiere cruce con el pago del ciclo actual.</span></>} />
           {queue?.confirmedMethodReference ? <Item name="Pago confirmado del mes" value={`CONFIRMADO JM · ${queue.confirmedMethodReference} · pendiente de sincronización con cartera`} wide /> : null}
           <Item name="Último pago" value={displayDate(client.lastPayment)} />
-          <Item name="Observaciones asesor (W)" value={queue?.advisorObservation || "SIN OBSERVACIÓN"} wide />
+          <Item name="Observaciones asesor (W)" value={advisorNote || "SIN OBSERVACIÓN"} wide />
           <Item name="Última gestión" value={last ? `${last.at} · ${last.actor}` : queue?.lastManaged || "SIN GESTIÓN"} wide />
         </dl>
       </section>
