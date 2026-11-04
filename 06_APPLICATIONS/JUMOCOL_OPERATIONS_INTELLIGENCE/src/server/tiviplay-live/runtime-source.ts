@@ -12,7 +12,15 @@ export type TiviplayRuntimeLive = RuntimeReadModel & {
 };
 
 const CACHE_TTL_MS = 60_000;
-let cache: { at: number; today: string; value: TiviplayRuntimeLive } | null = null;
+let cache: { at: number; today: string; value: TiviplayRuntimeLive; values: Record<string, unknown[][]> } | null = null;
+
+/**
+ * Valores leídos en la última carga de Runtime (sin CONTRASEÑA: el lector la excluye por encabezado).
+ * Solo para el puesto de trabajo del servidor (directorio de clientes); nunca se serializan en el read model ni en la API.
+ */
+export function getRuntimeValuesCached() {
+  return cache?.values ?? null;
+}
 
 export function bogotaToday(now = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
@@ -72,6 +80,6 @@ export async function getTiviplayRuntimeLive(options: { force?: boolean } = {}):
       cached: false,
     },
   };
-  cache = { at: Date.now(), today, value };
+  cache = { at: Date.now(), today, value, values };
   return value;
 }

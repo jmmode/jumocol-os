@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { CopyableMessage } from "@/components/documents/copyable-message";
 import { MarkdownDocument } from "@/components/documents/markdown-document";
 import { PageHeader } from "@/components/ui/page-header";
+import { ClientSearch, MessageClassifier } from "@/features/tiviplay-atencion/atencion-assistant";
+import { scriptOf } from "@/features/tiviplay-atencion/classify";
 import { ATENCION_CATEGORIES, FICHAS_DOCUMENT_ID, parseFichas, searchFichas, type Ficha } from "@/features/tiviplay-atencion/fichas";
 import { TiviplayNavigation } from "@/features/tiviplay-command-center/tiviplay-navigation";
 import { requirePage } from "@/server/auth/access";
 import { audit } from "@/server/auth/store";
 import { libraryEntry } from "@/server/documents/library";
+import { getTiviplayWorkday, type DirectoryEntry, type QueueItem } from "@/server/tiviplay-live/workday";
+import { displayDate, greetingName, personalizeScript } from "@/server/tiviplay-live/workday-model";
 
 export const metadata: Metadata = { title: "TiviPlay · Atención" };
 export const dynamic = "force-dynamic";
@@ -30,14 +35,15 @@ const OUTCOMES = [
 
 const card = "rounded-2xl border border-brand-border bg-brand-background p-5";
 const chip = "rounded-full border border-brand-border px-3 py-1.5 text-xs font-semibold text-brand-primary-dark hover:border-brand-primary";
-const fichaHref = (id: string) => `${ROUTE}?ficha=${id}#ficha`;
+const fichaHref = (id: string, clienteId: string | null) => `${ROUTE}?${clienteId ? `cliente=${clienteId}&` : ""}ficha=${id}#ficha`;
+const money = (m: { USD: number; COP: number; CAD: number }) => (["USD", "COP", "CAD"] as const).filter((c) => m[c]).map((c) => `${c} ${m[c].toLocaleString("es-CO")}`).join(" + ") || "—";
 
 function Validation({ value }: { value: string }) {
   return <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${VALIDATION_CLASS[value] ?? "border-brand-border text-brand-muted"}`}>{value}</span>;
 }
 
-function FichaLink({ ficha }: { ficha: Ficha }) {
-  return <Link className={chip} href={fichaHref(ficha.id)}>{ficha.id} · {ficha.motive}</Link>;
+function FichaLink({ ficha, clienteId }: { ficha: Ficha; clienteId: string | null }) {
+  return <Link className={chip} href={fichaHref(ficha.id, clienteId)} prefetch={false}>{ficha.id} · {ficha.motive}</Link>;
 }
 
 async function loadFichas(actor: Awaited<ReturnType<typeof requirePage>>) {
@@ -49,15 +55,31 @@ async function loadFichas(actor: Awaited<ReturnType<typeof requirePage>>) {
   }
 }
 
-export default async function TiviplayAtencionPage({ searchParams }: { searchParams: Promise<{ q?: string; ficha?: string }> }) {
+async function loadClient(id: string | undefined): Promise<{ entry: DirectoryEntry | null; queue: QueueItem | null; error: string | null }> {
+  if (!id || !/^[a-f0-9]{16}$/.test(id)) return { entry: null, queue: null, error: null };
+  const result = await getTiviplayWorkday();
+  if (!result.ok) return { entry: null, queue: null, error: result.reason };
+  return { entry: result.directory.find((d) => d.id === id) ?? null, queue: result.workday.queue.find((q) => q.id === id) ?? null, error: null };
+}
+
+export default async function TiviplayAtencionPage({ searchParams }: { searchParams: Promise<{ q?: string; ficha?: string; cliente?: string }> }) {
   const actor = await requirePage(ROUTE);
   const params = await searchParams;
+  const clienteId = params.cliente && /^[a-f0-9]{16}$/.test(params.cliente) ? params.cliente : null;
+  const client = await loadClient(clienteId ?? undefined);
   const source = await loadFichas(actor);
   const fichas = source?.fichas ?? [];
   const query = (params.q ?? "").slice(0, 120).trim();
   const matches = query ? searchFichas(fichas, query) : [];
   const selected = fichas.find(f => f.id === params.ficha) ?? null;
-  const active = selected ? 3 : query ? 2 : 0;
+  const active = selected ? 4 : query ? 2 : client.entry ? 1 : 0;
+  const script = selected ? scriptOf(selected) : null;
+  const personalized = script ? personalizeScript(script, {
+    NOMBRE: client.entry ? greetingName(client.entry.name) : null,
+    ASESOR: actor.name,
+    FECHA: displayDate(client.entry?.nextPayment ?? null),
+    PLAN: client.entry?.plan ?? null,
+  }) : null;
   audit(actor.id, selected ? `ficha:${selected.id}` : "tiviplay-atencion", "read", source ? "SUCCESS" : "UNAVAILABLE");
 
   return (
@@ -80,35 +102,52 @@ export default async function TiviplayAtencionPage({ searchParams }: { searchPar
       </section> : <>
         {!source.published ? <p className="mt-5 rounded-xl border border-brand-yellow/50 bg-brand-yellow/10 px-4 py-3 text-sm text-status-warning" role="note">Vista de Dirección: los operadores no ven estas fichas hasta publicar esta versión en <Link className="font-semibold underline" href={`/operaciones/tiviplay/manuales/${FICHAS_DOCUMENT_ID}`}>su documento</Link>.</p> : null}
 
-        <section aria-labelledby="entrada" className="mt-6">
-          <h2 className="text-lg font-semibold" id="entrada">1. ¿Qué dice el cliente?</h2>
-          <form action={ROUTE} className="mt-3 flex flex-wrap gap-3">
-            <input aria-label="Buscar procedimiento" className="w-full rounded-lg border p-3 sm:w-auto sm:min-w-[320px] sm:flex-1" defaultValue={query} maxLength={120} name="q" placeholder="Ej.: comprobante, se eliminó la app, canal sin señal" type="search" />
-            <button className="rounded-lg border px-4 py-3">Buscar</button>
-          </form>
-          <p className="mt-2 text-xs text-brand-muted">Escribe el motivo, no el nombre, teléfono ni usuario del cliente. La búsqueda queda en la dirección del navegador.</p>
-          {query ? <div className="mt-3" role="status">
-            <p className="text-sm">{matches.length ? `${matches.length} ficha(s) para «${query}».` : `Sin fichas para «${query}». Clasifica el caso con los cajones de abajo.`}</p>
-            <div className="mt-2 flex flex-wrap gap-2">{matches.map(f => <FichaLink ficha={f} key={f.id} />)}</div>
+        <section aria-labelledby="identificar" className={`${card} mt-6`}>
+          <h2 className="text-lg font-semibold" id="identificar">1. Identifica al cliente</h2>
+          <p className="mt-1 text-xs text-brand-muted">Búsqueda de solo lectura sobre BASE GENERAL y la cartera del mes. El texto buscado no queda en la dirección del navegador.</p>
+          <ClientSearch selectedFicha={selected?.id ?? null} />
+          {client.error ? <p className="mt-3 rounded-xl border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-sm text-status-error">BLOQUEADO: {client.error}</p> : null}
+          {clienteId && !client.entry && !client.error ? <p className="mt-3 text-sm text-status-warning">El cliente seleccionado ya no aparece en la fuente. Vuelve a buscarlo.</p> : null}
+          {client.entry ? <div className="mt-4 rounded-xl border border-brand-primary/40 bg-brand-surface p-4" id="cliente">
+            <p className="text-xs font-bold uppercase tracking-[0.1em] text-brand-muted">Cliente en atención · fuente {client.entry.source}</p>
+            <p className="mt-1 text-lg font-semibold">{client.entry.name}</p>
+            <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
+              <div><dt className="text-xs text-brand-muted">Teléfono</dt><dd>{client.entry.phone || "—"}</dd></div>
+              <div><dt className="text-xs text-brand-muted">Usuario</dt><dd className="font-mono">{client.entry.user || "—"}</dd></div>
+              <div><dt className="text-xs text-brand-muted">Estado (hoja)</dt><dd>{client.entry.status || "—"}</dd></div>
+              <div><dt className="text-xs text-brand-muted">Plan</dt><dd>{client.entry.plan || "POR VALIDAR"}</dd></div>
+              <div><dt className="text-xs text-brand-muted">Panel</dt><dd>{client.entry.panel || "—"}</dd></div>
+              <div><dt className="text-xs text-brand-muted">Próximo pago</dt><dd>{displayDate(client.entry.nextPayment) ?? "POR VALIDAR"}</dd></div>
+              <div><dt className="text-xs text-brand-muted">Tarifa registrada</dt><dd>{money(client.entry.tariff)} <span className="text-xs text-brand-muted">(esperado, no recaudo)</span></dd></div>
+              <div><dt className="text-xs text-brand-muted">Método</dt><dd>{client.entry.method || "—"}</dd></div>
+              <div><dt className="text-xs text-brand-muted">Jornada de hoy</dt><dd>{client.queue ? `${client.queue.bucket} · ${client.queue.lane}` : "No está en la cola de hoy"}</dd></div>
+            </dl>
+            {client.queue ? <p className="mt-2 text-sm"><strong>Siguiente acción:</strong> {client.queue.nextAction}{client.queue.reason ? ` · ${client.queue.reason}` : ""}</p> : null}
           </div> : null}
         </section>
 
-        <details className={`${card} mt-5`} open={!selected}>
-          <summary className="cursor-pointer text-lg font-semibold">2. Identifica al cliente</summary>
-          <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm leading-6 text-brand-graphite">
-            <li>Busca al cliente en <Link className="font-semibold underline" href="/operaciones/tiviplay/runtime">Runtime</Link> o en <Link className="font-semibold underline" href="/operaciones/tiviplay/hoy">HOY</Link>.</li>
-            <li>Confirma vencimiento, plan y estado desde esa fuente, no desde el chat.</li>
-            <li>Si no aparece, no lo agregues al flujo: usa la ficha A6 o B1 según el caso.</li>
-          </ol>
-        </details>
+        <section aria-labelledby="entrada" className="mt-6">
+          <h2 className="text-lg font-semibold" id="entrada">2. ¿Qué dice el cliente?</h2>
+          <p className="mt-1 text-xs text-brand-muted">La clasificación se calcula en este equipo: el mensaje no se envía ni se guarda.</p>
+          <MessageClassifier clienteId={clienteId} fichas={fichas} />
+          <form action={ROUTE} className="mt-3 flex flex-wrap gap-3">
+            {clienteId ? <input name="cliente" type="hidden" value={clienteId} /> : null}
+            <input aria-label="Buscar procedimiento" className="w-full rounded-lg border p-3 sm:w-auto sm:min-w-[320px] sm:flex-1" defaultValue={query} maxLength={120} name="q" placeholder="O busca por motivo: comprobante, canal sin señal" type="search" />
+            <button className="rounded-lg border px-4 py-3">Buscar ficha</button>
+          </form>
+          {query ? <div className="mt-3" role="status">
+            <p className="text-sm">{matches.length ? `${matches.length} ficha(s) para «${query}».` : `Sin fichas para «${query}». Clasifica el caso con los cajones de abajo.`}</p>
+            <div className="mt-2 flex flex-wrap gap-2">{matches.map(f => <FichaLink clienteId={clienteId} ficha={f} key={f.id} />)}</div>
+          </div> : null}
+        </section>
 
         <details className="mt-5" open={!selected}>
-          <summary className="cursor-pointer text-lg font-semibold">3. Clasifica la solicitud</summary>
+          <summary className="cursor-pointer text-lg font-semibold">3. Clasifica: A Financiera · B Servicio · C Soporte técnico</summary>
           <div className="mt-3 grid gap-4 md:grid-cols-3">
             {ATENCION_CATEGORIES.map(category => <section className={card} id={`categoria-${category.key}`} key={category.key}>
               <h3 className="font-semibold">{category.key}. {category.label}</h3>
               <p className="mt-1 text-xs leading-5 text-brand-muted">{category.hint}</p>
-              <div className="mt-3 flex flex-wrap gap-2">{fichas.filter(f => f.category === category.key).map(f => <FichaLink ficha={f} key={f.id} />)}</div>
+              <div className="mt-3 flex flex-wrap gap-2">{fichas.filter(f => f.category === category.key).map(f => <FichaLink clienteId={clienteId} ficha={f} key={f.id} />)}</div>
             </section>)}
           </div>
         </details>
@@ -118,11 +157,16 @@ export default async function TiviplayAtencionPage({ searchParams }: { searchPar
           <h2 className="mt-2 text-2xl font-semibold" id="ficha-titulo">{selected.id} · {selected.title}</h2>
           <div className="mt-3 flex flex-wrap items-center gap-2"><Validation value={selected.validation} /><span className="text-xs text-brand-muted">Fichas versión {source.version}</span></div>
           {selected.validation === "REQUIERE DECISIÓN" ? <p className="mt-3 rounded-xl border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-sm text-status-error">Falta una decisión de Dirección. El mensaje es neutro: no agregues oferta, condición ni fecha.</p> : null}
+          {personalized ? <section aria-labelledby="respuesta" className="mt-5 rounded-2xl border border-brand-primary/40 p-4">
+            <h3 className="font-semibold" id="respuesta">Respuesta {client.entry ? `para ${greetingName(client.entry.name)}` : "lista para copiar"}</h3>
+            <p className="mt-1 text-xs text-brand-muted">{personalized.pending ? `${personalized.pending} dato(s) sin confirmar quedan entre corchetes: complétalos con lo que muestre la fuente o elimínalos.` : "Datos tomados de la fuente; verifica antes de enviar."}</p>
+            <CopyableMessage text={personalized.text} />
+          </section> : null}
           <MarkdownDocument markdown={selected.body} />
 
           <section aria-labelledby="reclasificar" className="mt-8 border-t pt-5">
             <h3 className="font-semibold" id="reclasificar">¿La causa es otra? Reclasifica</h3>
-            <div className="mt-2 flex flex-wrap gap-2">{selected.reclassify.flatMap(id => fichas.filter(f => f.id === id)).map(f => <FichaLink ficha={f} key={f.id} />)}</div>
+            <div className="mt-2 flex flex-wrap gap-2">{selected.reclassify.flatMap(id => fichas.filter(f => f.id === id)).map(f => <FichaLink clienteId={clienteId} ficha={f} key={f.id} />)}</div>
           </section>
 
           <section aria-labelledby="resultado" className="mt-8 border-t pt-5">

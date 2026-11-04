@@ -115,6 +115,11 @@ export type CarteraItem = {
   signals: string[];
   nextAction: string;
   note: string;
+  /** Contrato de cartera noviembre+: CLASIFICACION_BORRADOR y ESTADO_COBRO, literales de la hoja. */
+  classification?: string;
+  collectionStatus?: string;
+  /** Fila de BASE GENERAL declarada en ORIGEN BASE (p. ej. «BASE GENERAL!8»). */
+  baseRow?: number | null;
 };
 
 export type ClientCard = {
@@ -571,7 +576,15 @@ function normalizeCartera(title: string, rows: unknown[][], today: string) {
     payCurrency: col("MONEDA_PAGO"),
     payValue: col("VALOR_PAGO"),
     gateReason: col("MOTIVO_GATE_FINANCIERO"),
+    // Contrato desde PAGOS NOVIEMBRE 2026: ESTADO_FINANCIERO ya no existe; la hoja trae la clasificación del borrador
+    // y el estado de cobro. CONFIRMACION_FINANCIERA de esa hoja corresponde al ciclo ANTERIOR (pago de octubre).
+    classification: col("CLASIFICACION_BORRADOR"),
+    category: col("CATEGORIA"),
+    cause: col("CAUSA / ACCIÓN"),
+    collection: col("ESTADO_COBRO"),
+    origin: col("ORIGEN BASE"),
   };
+  const draftContract = c.fin == null && c.classification != null && c.collection != null;
 
   for (let i = h + 1; i < rows.length; i++) {
     const row = rows[i] ?? [];
@@ -585,8 +598,18 @@ function normalizeCartera(title: string, rows: unknown[][], today: string) {
 
     const dueDate = parseDate(at(row, c.due));
     const fin = canon(at(row, c.fin));
+    const classification = canon(at(row, c.classification));
+    const collection = canon(at(row, c.collection));
     let state: CarteraState;
-    if (fin === "VALIDADO") state = "PAGADO_VALIDADO";
+    if (draftContract) {
+      // Solo un estado de cobro explícito acredita pago del ciclo; nunca se deduce de CONFIRMACION_FINANCIERA (ciclo anterior).
+      if (/PAGADO|COBRADO|CONFIRMADO/.test(collection)) state = "PAGO_POR_CONFIRMAR";
+      else if (classification) state = "SIN_PAGO";
+      else {
+        state = "EXCEPCION_ESTRUCTURA";
+        exceptions.push({ sheet: title, row: i + 1, type: "FILA_DESALINEADA", detail: `${client}: CLASIFICACION_BORRADOR vacía` });
+      }
+    } else if (fin === "VALIDADO") state = "PAGADO_VALIDADO";
     else if (fin === "REQUIERE DECISION") state = "PAGADO_REQUIERE_DECISION";
     else if (fin === "PENDIENTE CONFIRMACION") state = "PAGO_POR_CONFIRMAR";
     else if (fin === "SIN PAGO") state = "SIN_PAGO";
@@ -602,6 +625,9 @@ function normalizeCartera(title: string, rows: unknown[][], today: string) {
     if (cop) addMoney(nominal, "COP", cop);
 
     const itemSignals = signals([at(row, c.status), at(row, c.note), at(row, c.referral)].join(" | "));
+    const category = at(row, c.category);
+    if (draftContract && classification === "BLOQUEADO") itemSignals.push(`BLOQUEADO${category ? `: ${category}` : ""}`);
+    if (draftContract && classification === "REQUIERE_REVISION") itemSignals.push(`REQUIERE REVISIÓN${category ? `: ${category}` : ""}`);
     const overdue = state === "SIN_PAGO" && !!dueDate && dueDate < today;
     const dueToday = !!dueDate && dueDate === today;
     const payCurrency = canon(at(row, c.payCurrency));
@@ -618,7 +644,11 @@ function normalizeCartera(title: string, rows: unknown[][], today: string) {
         nextAction = `Confirmar pago en ${at(row, c.finSource) || "fuente"}${at(row, c.finRow) ? ` fila ${at(row, c.finRow)}` : ""}`;
         break;
       case "SIN_PAGO":
-        nextAction = itemSignals.includes("POSIBLE NO RENOVACIÓN")
+        nextAction = draftContract && classification === "BLOQUEADO"
+          ? `No cobrar: bloqueado (${category || "sin categoría"}) → Dirección`
+          : draftContract && classification === "REQUIERE_REVISION"
+            ? `Verificar antes de cobrar: ${category || at(row, c.cause) || "revisión"}`
+            : itemSignals.includes("POSIBLE NO RENOVACIÓN")
           ? "Decidir: cliente reporta no renovación"
           : overdue
             ? "Gestionar cobro vencido"
@@ -652,6 +682,11 @@ function normalizeCartera(title: string, rows: unknown[][], today: string) {
       signals: itemSignals,
       nextAction,
       note: latestNote(at(row, c.note)),
+      ...(draftContract ? {
+        classification: at(row, c.classification),
+        collectionStatus: at(row, c.collection),
+        baseRow: Number(at(row, c.origin).match(/!(\d+)$/)?.[1]) || null,
+      } : {}),
     });
   }
   return { items, exceptions, sheetDeclaredTotal };

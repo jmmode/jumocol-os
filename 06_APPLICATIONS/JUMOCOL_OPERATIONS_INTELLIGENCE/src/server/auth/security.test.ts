@@ -169,6 +169,11 @@ describe("server policy and transport", () => {
     expect(allowed("OPERADOR", "/api/operations/tiviplay/conciliacion/task", "DELETE")).toBe(false);
     expect(allowed("OPERADOR", "/api/admin/tiviplay/conciliacion/decision", "POST")).toBe(false);
   });
+  it("the operator searches clients only through the read-only POST endpoint (query out of the URL)", () => {
+    expect(allowed("OPERADOR", "/api/operations/tiviplay/clientes/buscar", "POST")).toBe(true);
+    expect(allowed("OPERADOR", "/api/operations/tiviplay/clientes/buscar", "PUT")).toBe(false);
+    expect(allowed("OPERADOR", "/api/operations/tiviplay/clientes/otra", "POST")).toBe(false);
+  });
   it("requires exact configured Origin and rejects HTTP on LAN", () => {
     process.env.JUMOCOL_APP_ORIGIN = "https://intranet.example.test";
     expect(trustedOrigin(new Request("http://127.0.0.1/api/auth/login", { headers: { Origin: "https://intranet.example.test" } }))).toBe(true);

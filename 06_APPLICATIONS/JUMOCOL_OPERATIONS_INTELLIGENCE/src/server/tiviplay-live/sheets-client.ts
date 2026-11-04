@@ -3,6 +3,10 @@ import "server-only";
 import { GoogleAuth } from "google-auth-library";
 
 import { getGoogleSheetsLeadConfig } from "@/server/leads/google-sheets/config";
+import { columnLetter, isSensitiveHeader, scrubSensitiveColumns } from "@/server/tiviplay-live/sheet-columns";
+import { readSnapshotResponse, snapshotFile, SNAPSHOT_TOKEN } from "@/server/tiviplay-live/sheets-snapshot";
+
+export { columnLetter };
 
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const API = "https://sheets.googleapis.com/v4/spreadsheets";
@@ -11,6 +15,8 @@ const API = "https://sheets.googleapis.com/v4/spreadsheets";
  * Cliente read-only compartido por los módulos TiviPlay live.
  * Reutiliza las credenciales de servicio ya validadas por la integración de leads
  * (GOOGLE_SHEETS_CLIENT_EMAIL / GOOGLE_SHEETS_PRIVATE_KEY). Solo cambia el libro.
+ * Sin credenciales, `TIVIPLAY_SHEETS_SNAPSHOT_FILE` sirve las mismas respuestas desde una captura local de solo lectura
+ * (fuera de Git, `data/private/`), para validar el puesto de trabajo con datos reales sin cuenta de servicio.
  */
 export function getTiviplaySpreadsheetId() {
   const id = process.env.TIVIPLAY_SPREADSHEET_ID?.trim();
@@ -26,6 +32,7 @@ export function getTiviplaySalesSpreadsheetId() {
 }
 
 export async function getSheetsAccessToken() {
+  if (snapshotFile()) return SNAPSHOT_TOKEN;
   const shared = getGoogleSheetsLeadConfig();
   const auth = new GoogleAuth({
     credentials: { client_email: shared.clientEmail, private_key: shared.privateKey },
@@ -38,6 +45,7 @@ export async function getSheetsAccessToken() {
 }
 
 async function sheetsFetch<T>(url: string, token: string): Promise<T> {
+  if (token === SNAPSHOT_TOKEN) return readSnapshotResponse(url) as T;
   const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
   if (!response.ok) throw new Error(`Google Sheets read failed (${response.status})`);
   return (await response.json()) as T;
@@ -58,24 +66,21 @@ export async function readSheetMetadata(spreadsheetId: string, token: string) {
 export const quoteSheet = (title: string) => `'${title.replace(/'/g, "''")}'`;
 
 /**
- * Columnas que nunca se solicitan a la API, por hoja (contrato vigente).
- * BASE GENERAL!N = CONTRASEÑA. Se devuelven vacías para conservar las posiciones de columna.
+ * Columnas que nunca se solicitan a la API. Se detectan por ENCABEZADO (CONTRASEÑA / PASSWORD / CLAVE) en las primeras
+ * filas de cada hoja: el 01/11/2026 se insertó ID en BASE GENERAL!M y CONTRASEÑA pasó de N a O; un índice fijo habría
+ * ocultado USUARIO y entregado la contraseña. Las columnas excluidas se devuelven vacías para conservar posiciones.
  */
-export const SENSITIVE_COLUMNS: Record<string, string[]> = { "BASE GENERAL": ["N"] };
+export const HEADER_PROBE_ROWS = 3;
 
 export function columnIndex(letters: string) {
   return [...letters.toUpperCase()].reduce((acc, ch) => acc * 26 + (ch.charCodeAt(0) - 64), 0) - 1;
 }
 
-export function columnLetter(index: number) {
-  let n = index + 1;
-  let out = "";
-  while (n > 0) {
-    const rem = (n - 1) % 26;
-    out = String.fromCharCode(65 + rem) + out;
-    n = Math.floor((n - 1) / 26);
-  }
-  return out;
+/** Letras de las columnas cuyo encabezado es sensible dentro de las filas de sondeo. */
+export function sensitiveColumnsFromHeader(probe: unknown[][]) {
+  const out = new Set<string>();
+  for (const row of probe) (row ?? []).forEach((cell, i) => { if (isSensitiveHeader(cell)) out.add(columnLetter(i)); });
+  return [...out];
 }
 
 /** Tramos [desde, hasta] (índices 0-based, inclusivos) de A..lastColumn sin las columnas excluidas. */
@@ -111,12 +116,17 @@ export function stitchSegments(segments: Array<[number, number]>, segmentValues:
   return rows;
 }
 
-/** Lee varias hojas en una sola llamada (values:batchGet). Los rangos inician en A1 para conservar filas absolutas. */
+/**
+ * Lee varias hojas (values:batchGet). Los rangos inician en A1 para conservar filas absolutas.
+ * 1) Sondea solo las filas de encabezado para ubicar columnas sensibles. 2) Pide únicamente los tramos permitidos.
+ * 3) Defensa en profundidad: scrubSensitiveColumns vacía cualquier columna sensible que el sondeo no hubiera visto.
+ */
 export async function batchReadSheets(spreadsheetId: string, token: string, titles: string[], lastColumn = "AN", lastRow = 4000) {
   if (!titles.length) return {} as Record<string, unknown[][]>;
+  const probes = await batchReadRanges(spreadsheetId, token, titles.map((t) => `${quoteSheet(t)}!A1:${lastColumn}${HEADER_PROBE_ROWS}`));
   const params = new URLSearchParams({ valueRenderOption: "FORMATTED_VALUE", majorDimension: "ROWS" });
-  const plan = titles.map((t) => {
-    const segments = allowedSegments(lastColumn, SENSITIVE_COLUMNS[t]);
+  const plan = titles.map((t, i) => {
+    const segments = allowedSegments(lastColumn, sensitiveColumnsFromHeader(probes[i] ?? []));
     for (const [from, to] of segments) {
       params.append("ranges", `${quoteSheet(t)}!${columnLetter(from)}1:${columnLetter(to)}${lastRow}`);
     }
@@ -131,7 +141,8 @@ export async function batchReadSheets(spreadsheetId: string, token: string, titl
   for (const { title, segments } of plan) {
     const segmentValues = segments.map((_, i) => payload.valueRanges?.[cursor + i]?.values ?? []);
     cursor += segments.length;
-    out[title] = segments.length === 1 && segments[0][0] === 0 ? segmentValues[0] : stitchSegments(segments, segmentValues);
+    const rows = segments.length === 1 && segments[0][0] === 0 ? segmentValues[0] : stitchSegments(segments, segmentValues);
+    out[title] = scrubSensitiveColumns(rows);
   }
   return out;
 }
