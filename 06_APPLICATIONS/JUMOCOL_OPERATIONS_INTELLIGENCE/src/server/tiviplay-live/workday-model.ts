@@ -113,7 +113,7 @@ export type Workday = {
   credits: {
     status: "OK" | "PARCIAL" | "BLOQUEADO";
     totals: Record<CreditState, number> & { total: number };
-    panels: Array<{ panel: string; sheet: string | null; status: string; reason: string | null; programados: number | null; otorgados: number | null; faltantes: number | null; hoy: number | null; habilitados: number | null; pendientes: number | null; bloqueados: number | null }>;
+    panels: Array<{ panel: string; sheet: string | null; status: string; reason: string | null; programados: number | null; otorgados: number | null; faltantes: number | null; hoy: number | null; habilitados: number | null; pendientes: number | null; bloqueados: number | null; observed?: { records: number; recordedCredits: number; noCredit: number; matchedUnique: number; noBase: number; ambiguousBase: number; otherPanel: number } | null }>;
     reason: string | null;
   };
   blockers: string[];
@@ -363,6 +363,7 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
       const count = (f: (c: (typeof p.cycles)[number]) => boolean) => (ok ? p.cycles.filter(f).length : null);
       panels.push({
         panel: p.panel, sheet: p.sheet, status: p.status, reason: p.reason,
+        observed: p.observed ?? null,
         programados: p.kpi?.programados ?? null, otorgados: p.kpi?.otorgados ?? null, faltantes: p.kpi?.faltantes ?? null, hoy: p.kpi?.hoy ?? null,
         habilitados: count((c) => c.basis != null), pendientes: count((c) => c.step === "PAGO"), bloqueados: count((c) => c.step === "DIRECCION"),
       });
