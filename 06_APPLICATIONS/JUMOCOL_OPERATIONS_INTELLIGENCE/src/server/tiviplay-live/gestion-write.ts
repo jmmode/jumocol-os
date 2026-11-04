@@ -3,6 +3,7 @@ import "server-only";
 import { GoogleAuth } from "google-auth-library";
 import { getGoogleSheetsLeadConfig } from "@/server/leads/google-sheets/config";
 import { commitGestion, type GestionCommitStatus } from "@/server/tiviplay-live/gestion-core";
+import { GESTION_WRITE_SCOPE, gestionCell, gestionHeadersValid } from "@/server/tiviplay-live/gestion-sheets";
 import { invalidateTiviplayRuntimeCache } from "@/server/tiviplay-live/runtime-source";
 import { getTiviplayWorkday } from "@/server/tiviplay-live/workday";
 import { getSheetsAccessToken, getTiviplaySpreadsheetId, batchReadRanges, quoteSheet } from "@/server/tiviplay-live/sheets-client";
@@ -14,7 +15,6 @@ import type { Identity } from "@/server/auth/store";
 type Status = "SAVED" | "DUPLICATE" | "DISABLED" | "BAD_INPUT" | "NO_LIVE_SOURCE" | "CLIENT_MISMATCH" | "CONFLICT" | "WRITE_DENIED" | "UNVERIFIED" | "ERROR";
 export type GestionWriteResult = { status: Status; message: string; entry?: string };
 
-const WRITE_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 const same = (a: unknown, b: unknown) => headerKey(a) === headerKey(b);
 
 // Serializa las escrituras de esta instancia por celda; los cambios externos los detecta commitGestion.
@@ -36,7 +36,7 @@ async function getSheetsWriteToken() {
   const cfg = getGoogleSheetsLeadConfig();
   const auth = new GoogleAuth({
     credentials: { client_email: cfg.clientEmail, private_key: cfg.privateKey },
-    scopes: [WRITE_SCOPE],
+    scopes: [GESTION_WRITE_SCOPE],
   });
   const token = await (await auth.getClient()).getAccessToken();
   if (!token?.token) throw new Error("Sin permiso de escritura.");
@@ -103,28 +103,14 @@ export async function saveGestionInObservaciones(
         `${sh}!A3:M3`, `${sh}!A${row}`, `${sh}!B${row}`, `${sh}!M${row}`,
       ]);
       const headers = (headerRows?.[0] ?? []).map(headerKey);
-      if (headers[0] !== "TC" || headers[1] !== "CLIENTE" || !headers[5]?.startsWith("OBSERVACIONES") || headers[12] !== "USUARIO" ||
+      if (!gestionHeadersValid(headers) ||
           String(tcRows?.[0]?.[0] ?? "") !== "1" ||
           !same(names?.[0]?.[0], client.name) || !same(users?.[0]?.[0], client.user)) {
         return { status: "CLIENT_MISMATCH", message: "La fila o los encabezados cambiaron. No se escribió ninguna celda." };
       }
 
       // Token distinto del de lectura. El alcance de escritura no se concede al resto del motor.
-      const writeToken = await getSheetsWriteToken();
-      const range = `${sh}!F${row}`;
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(id)}/values/${encodeURIComponent(range)}`;
-      const auth = { Authorization: `Bearer ${writeToken}` };
-      const read = async () => {
-        const response = await fetch(`${url}?valueRenderOption=FORMULA`, { cache: "no-store", headers: auth });
-        if (!response.ok) throw new Error("lectura");
-        const body = (await response.json()) as { values?: unknown[][] };
-        return String(body.values?.[0]?.[0] ?? "");
-      };
-      const write = async (next: string) => (await fetch(`${url}?valueInputOption=RAW`, {
-        method: "PUT", cache: "no-store",
-        headers: { ...auth, "Content-Type": "application/json" },
-        body: JSON.stringify({ range, majorDimension: "ROWS", values: [[next]] }),
-      })).status;
+      const { read, write } = gestionCell(id, sheet, row, await getSheetsWriteToken());
 
       const record = gestionEntry(input.estado as GestionEstado, actor.name, input.detalle, input.requestId);
       const status = await commitGestion({ record, requestId: input.requestId, expectedHash: input.expectedHash, read, write });

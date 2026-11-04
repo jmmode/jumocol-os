@@ -110,7 +110,7 @@ describe("Drive originals", () => {
       "### 3.1 Recepción inicial", "### 3.2 Mensaje de espera mientras verificas", "### 3.3 Recepción de comprobante", "### 3.4 Pago pendiente de validación (el cliente pregunta)", "### 3.5 Cierre de gestión",
       "## 4. Reproductores y configuración por dispositivo", "## 5. URL de configuración por panel", "## 6. Fire Stick → Downloader → código TiviPlay", "## 7. AT&T ActiveArmor bloquea el inicio de sesión", "## 8. Información que todavía requiere evidencia"]) expect(md).toContain(h);
     // S0: ningún mensaje al cliente afirma que el pago está confirmado.
-    const messages = [...md.matchAll(/```mensaje\n([\s\S]*?)```/g)].map(m => m[1]);
+    const messages = [...md.matchAll(/```mensaje\r?\n([\s\S]*?)```/g)].map(m => m[1]);
     expect(messages.length).toBeGreaterThanOrEqual(12);
     for (const m of messages) expect(m).not.toMatch(/pago (ha sido |fue |est[aá] )?(exitoso|aprobado)|confirmamos (que )?(su|tu) pago|pago confirmado|tu pago est[aá] confirmado/i);
     expect(md).toContain("`PENDIENTE CONFIRMACION ≠ CONFIRMADO JM`");
