@@ -17,7 +17,7 @@ function isCurrentPath(pathname: string, href: string): boolean {
 export function AreaNavigation({ variant, role }: AreaNavigationProps) {
   const pathname = usePathname();
   const isDesktop = variant === "desktop";
-  if (role === "OPERADOR") return <nav aria-label="Navegación principal" className="p-3"><Link href="/operaciones/tiviplay">Operaciones → TiviPlay</Link></nav>;
+  if (role === "OPERADOR") return <nav aria-label="Navegación principal" className="p-3"><Link href="/operaciones/tiviplay/turno">TiviPlay · Operación</Link></nav>;
 
   return (
     <nav
