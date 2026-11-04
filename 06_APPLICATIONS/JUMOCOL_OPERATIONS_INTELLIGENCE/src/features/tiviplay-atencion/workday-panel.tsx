@@ -46,6 +46,7 @@ export function WorkdayPanel({ result, admin }: { result: WorkdayResult; admin: 
   };
   const show = (v: number | null) => (v == null ? "BLOQUEADO" : v);
   const creditScope = w.credits.status === "OK" ? scope : `${w.credits.status} (${w.credits.panels.filter((p) => p.status === "OK").map((p) => p.panel).join(", ") || "ningún panel"})`;
+  const p3Observed = w.credits.panels.find((p) => p.panel === "P3")?.observed;
 
   return <div className="mt-6 space-y-5">
     <div className={`rounded-xl border px-3 py-2 text-xs ${source.mode === "SNAPSHOT" ? "border-brand-yellow/50 bg-brand-yellow/10 text-status-warning" : "border-brand-border bg-brand-surface text-brand-muted"}`}>
@@ -103,6 +104,22 @@ export function WorkdayPanel({ result, admin }: { result: WorkdayResult; admin: 
           </tr>)}</tbody>
         </table>
       </div>
+      {p3Observed ? <div className="mt-4 rounded-xl border border-brand-yellow/45 bg-brand-yellow/10 p-4" role="note">
+        <h3 className="text-sm font-bold">Panel 3 · Auditoría de CONTROL en solo lectura</h3>
+        <p className="mt-1 text-xs">La hoja es legible; el otorgamiento permanece BLOQUEADO. Estos conteos NO son créditos habilitados.</p>
+        <dl className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+          {([
+            ["Fichas CONTROL", p3Observed.records],
+            ["Créditos registrados", p3Observed.recordedCredits],
+            ["Sin crédito registrado", p3Observed.noCredit],
+            ["Identidad única en BASE", p3Observed.matchedUnique],
+            ["Sin BASE", p3Observed.noBase],
+            ["USUARIO duplicado", p3Observed.ambiguousBase],
+            ["Contradicción de panel", p3Observed.otherPanel],
+          ] as const).map(([label, value]) => <div className="rounded-lg border border-brand-border bg-brand-background p-2" key={label}><dt className="text-brand-muted">{label}</dt><dd className="text-lg font-bold tabular-nums">{value}</dd></div>)}
+        </dl>
+        <p className="mt-2 text-xs text-brand-muted">Solo la evidencia individual de CONTROL, BASE y confirmación financiera habilita una decisión futura; no se infiere autorización de estos agregados.</p>
+      </div> : null}
       <p className="mt-2 text-xs text-brand-muted">Un comprobante no habilita un crédito: lo habilita el motor con CONFIRMADO JM y cobertura. Las decisiones se toman en <Link className="font-semibold underline" href="/operaciones/tiviplay/hoy">HOY</Link>; esta vista no otorga créditos.</p>
     </section>
 
