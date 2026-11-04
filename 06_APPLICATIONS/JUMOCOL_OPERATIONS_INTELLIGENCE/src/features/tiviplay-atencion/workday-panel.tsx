@@ -37,7 +37,7 @@ export function WorkdayPanel({ result }: { result: WorkdayResult }) {
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Fichas del mes" value={w.universe} hint={`${w.later} programadas después de esta semana`} />
         <Stat label="Clientes a gestionar hoy" value={w.queue.length} hint={`Vencidos ${w.counts.VENCIDO} · hoy ${w.counts.HOY} · semana ${w.counts.SEMANA}`} />
-        <Stat label="Por cobrar hoy (vencidos + hoy)" value={money(w.toCollectToday)} hint="Nominal esperado de cartera, no recaudo ni CONFIRMADO JM" />
+        <Stat label="Cobrables hoy (vencidos + hoy)" value={money(w.toCollectToday)} hint={`Solo carril Cobrar. Excluye ${w.queue.filter((q) => q.lane !== "COBRAR" && q.bucket !== "SEMANA").length} ficha(s) a verificar/bloqueadas. Nominal esperado, no recaudo ni CONFIRMADO JM`} />
         <Stat label="Créditos" value={w.credits.status} hint={`Ejecutados ${w.credits.totals.EJECUTADO} · habilitados ${w.credits.totals.HABILITADO} · por decidir ${w.credits.totals.REQUIERE_REVISION}`} />
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
