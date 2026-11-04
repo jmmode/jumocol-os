@@ -6,7 +6,7 @@
 **Ubicación canónica propuesta:** `03_AREAS/01_OPERACION/TIVIPLAY/07_GUIAS/`.  
 **Documento actual de mensajes en la intranet:** `TIVIPLAY_MENSAJES_COBRO_V1.md` (no modificar ni publicar sin el gate).  
 **Ámbito:** Operaciones → TiviPlay → Turno → ATENDER → Gestión de cobro.  
-**Responsable de decisiones sobre suspensión, campañas y cuentas:** Dirección.
+**Política de seguimiento aprobada por Dirección (04/11/2026):** modelo equilibrado, con alerta de liberación de línea dirigida al **asesor que atiende** desde la **Cola Operacional**. No existe perfil Back Office: no crearlo ni asignarle alertas. La fecha de suspensión efectivamente validada se denomina **S0**; Retención 1 en S0, Retención 2 en S+2 y candidatura a campaña promocional en S+5 (sin oferta no aprobada). La liberación real requiere evidencia del panel y registro de responsable.
 
 > El archivo DOCX sí fue leído y auditado. La presente versión define contrato de datos y diseño operativo; **no declara implementación en 3002 ni habilita escrituras**. Se conserva el texto original y se diferencian hechos del manual, solicitudes nuevas de Dirección y propuestas técnicas.
 
@@ -27,10 +27,10 @@ Estados de un evento de gestión **no son** estados financieros. `MENSAJE_ENVIAD
 | **D−3** | faltan 3 días | **Imagen del beneficio** correspondiente | WhatsApp | Instrucción, **sin recurso adjunto en este DOCX** | Selección de imagen solo si existe recurso publicado |
 | **D−2** | faltan 2 días | **Datos o enlace de pago**: `ZELLE`, `PAYPAL` o `TRANSFERENCIA` | WhatsApp / llamada | Tres mensajes y datos de cobro | Mostrar solo método y datos pertinentes, con monto verificado |
 | **D−1** | falta 1 día | **Alerta de suspensión por pago pendiente** | WhatsApp / llamada | Texto literal de advertencia | Avisar, **no desactivar** |
-| **D0** | día de pago | **Verificación del ciclo**; si no hay pago confirmado del ciclo, **alertar a Back Office para evaluar suspensión** | Validación + alerta | El DOCX titula «Día 0: Mensaje de retención 1» y supone servicio suspendido | **No cambiar estado técnico sin comprobar panel y autorización** |
+| **D0** | día de pago | **Verificación del ciclo**; si no hay pago confirmado del ciclo, **generar alerta en Cola Operacional para el mismo asesor**: verificar pago, revisar elegibilidad y confirmar liberación real de línea con evidencia | Validación + alerta | El DOCX titula «Día 0: Mensaje de retención 1» y supone servicio suspendido | **No cambiar estado técnico sin comprobar panel y autorización** |
 | **POST-SUSPENSIÓN** | existe desactivación verificada | **Retención 1** (texto de DOCX etiquetado D0) | WhatsApp / llamada / correo | Mensaje de reactivación | Solo después de verificación real de suspensión |
-| **RETENCIÓN 2** | posterior a primera retención | Mensaje de usuario recuperable | WhatsApp | DOCX vuelve a titular «Día 0: Mensaje de retención 2» | **Día exacto REQUIERE DECISIÓN**; no asignar D+1 por suposición |
-| **PROMO_REACTIVACIÓN** | post-retención; condiciones por definir | Oferta promocional de reactivación | WhatsApp / llamada | **Solicitud de Dirección en este chat, NO definida en el DOCX** | Solo si oferta, elegibilidad, fechas y responsable están autorizados |
+| **RETENCIÓN 2** | **S+2**, dos días después de liberación confirmada | Mensaje de usuario recuperable | WhatsApp | DOCX vuelve a titular «Día 0: Mensaje de retención 2» | Dirección aprueba S+2 como regla operacional, prevalece sobre ambigüedad histórica |
+| **PROMO_REACTIVACIÓN** | **S+5**, cinco días después de liberación confirmada | Entrada como **candidato** a oferta de reactivación | WhatsApp / llamada | **Decisión de Dirección 04/11/2026; NO definida en el DOCX** | La campaña necesita beneficio, elegibilidad, vigencia y aprobación antes de contactar |
 
 **Alertas visuales propuestas:** la etapa del día debe resaltar; las ya ejecutadas deben mostrar fecha, asesor y resultado; las vencidas sin ejecución deben aparecer como pendientes; las bloqueadas, con motivo y escalamiento. La operación real debe prevalecer sobre un simple cálculo de fecha.
 
@@ -123,6 +123,29 @@ Invariantes:
 6. Si identidad, servicio o datos financieros son ambiguos, estado `REQUIERE VALIDACIÓN` y no suspensión ni cobro automático.
 7. El bloqueo de créditos del Panel 3 permanece intacto.
 
+
+## 4.1. Decisión aprobada — Cola Operacional y liberación de línea (2026-11-04)
+
+**Decisión:** El modelo **equilibrado** queda aprobado con **asesor responsable**. No existe perfil Back Office en esta etapa de JUMOCOL OS. La tarea de revisión y confirmación es atendida por el **mismo asesor que toma ATENDER**. No asignar automáticamente a un supuesto perfil o servicio inexistente.
+
+| Momento | Evento / estado | Responsable | Condición de salida / evidencia |
+|---|---|---|---|
+| **D0** y vencidos, sin pago confirmado del ciclo | **ALERTA_LIBERACION_LINEA** en **Cola Operacional** | Asesor que atiende | Revisa método, confirmación JM, identidad, ciclo y estado real del panel |
+| Pago recibido sin JM, identidad ambigua o caso en revisión | **VALIDAR_PAGO_ANTES_DE_LIBERAR** | Asesor que atiende; Dirección confirma finanzas cuando corresponda | No liberar ni afirmar impago; dejar resultado documentado |
+| Sin pago confirmado y elegible | **PENDIENTE_VERIFICAR_LIBERACION** | Asesor que atiende | Efectúa acción técnica **solo si dispone de permisos** y confirma evidencia del panel; de lo contrario **BLOQUEADO / REQUIERE DECISIÓN** |
+| Liberación efectivamente comprobada | **LIBERACION_CONFIRMADA (S0)** | Asesor que atendió | Fecha/hora Bogotá, panel, usuario, asesor, resultado, referencia de evidencia; registrar evento único |
+| **S0** | **RETENCION_1** | Asesor | Mensaje posterior a liberación verificada, confirmación de envío |
+| **S+2** | **RETENCION_2** | Asesor | Solo si sigue liberada y no existe pago confirmado ni reactivación |
+| **S+5** | **CANDIDATO_PROMOCION** | Asesor | Elegibilidad y promoción vigentes aprobadas antes de enviar |
+
+**Semántica:** «liberar línea» es una **acción técnica comprobada en el panel**; «generar alerta» no libera la línea. D0 **no es** una prueba de suspensión. Una alerta calculada sin persistencia no equivale a gestión finalizada.
+
+**Contrato de la alerta en Cola Operacional:** `tipo=ALERTA_LIBERACION_LINEA`, `clienteId`, `vencimiento`, `diasVencido`, `estado=PENDIENTE`, `responsable=ASESOR_QUE_ATIENDE`, `motivo`, `fuente`. En la ficha ATENDER deberá existir una **confirmación explícita** con `resultado`, `fechaHora`, `asesor`, `evidenciaPanel` y `EVENT_ID`. Registrar el mismo evento en las F de la hoja del mes y BASE GENERAL únicamente después de verificar la escritura y la identidad 1:1. No atribuir a una alerta temporal el estado `VALIDADO`.
+
+**Condiciones de bloqueo:** existe CONFIRMADO JM del ciclo (no generar liberación); comprobante o confirmación financiera pendiente (revisar, no ejecutar); Panel 3/identidad ambigua (no ejecutar créditos ni liberar por inferencia); acceso al panel ausente (no declarar ejecución).
+
+**Estado técnico de la decisión:** POLÍTICA APROBADA. Implementación de alerta visual, guardado de confirmación y persistencia de S0 deben verificarse por separado.
+
 ### Estados visibles por tarjeta del cliente
 
 - **Etapa sugerida** por la fecha de pago: D−5, D−4, D−3, D−2, D−1, D0 o días vencidos.
@@ -185,7 +208,7 @@ MENSAJE: [Editar] [Copiar]
 RESULTADO: [MENSAJE ENVIADO ▼] [CONFIRMAR Y GUARDAR]
 
 Si D0 no tiene pago confirmado del ciclo:
-[ALERTA PARA BACK OFFICE · REVISAR DESACTIVACIÓN]  (NO desactiva sola)
+[ALERTA EN COLA OPERACIONAL → ASESOR · VERIFICAR Y CONFIRMAR LIBERACIÓN]  (NO desactiva sola)
 
 Si el panel evidencia suspensión:
 [SUSPENDIDO VALIDADO] → [RETENCIÓN 1] → [RETENCIÓN 2] → [CAMPAÑA PROMO]
@@ -195,17 +218,17 @@ La representación anterior es una **especificación de interfaz**; no declara q
 
 ## 8. Gate de aceptación
 
-**A. Documentación:** revisar scripts y pagos del DOCX; registrar decisión sobre Retención 2, alerta de desactivación, promociones y vigencia de cuentas.  
+**A. Documentación:** decisión aprobada sobre S0, Retención 2 (S+2), entrada promocional (S+5) y asesor responsable de alerta; faltan textos promocionales y vigencia de cuentas.  
 **B. Interfaz:** selector de etapa/día con copia y edición, estados separados (gestión / finanzas / servicio), registro explícito y visible.  
 **C. Datos:** hoja de ensayo para verificar F y W en cartera y BASE con un `EVENT_ID`; X sin alteración por gestión comercial.  
-**D. Runtime:** tres casos sintéticos: pago confirmado → no cobro; vencido sin confirmación → alerta, no suspensión; suspendido validado → retención y campaña solo cuando corresponda.  
+**D. Runtime:** tres casos sintéticos: pago confirmado → sin alerta de liberación; vencido sin confirmación → alerta visible al asesor, no suspensión; liberación validada → retención S0, S+2 y campaña candidata S+5.  
 **E. Despliegue:** typecheck, pruebas, build, navegador OPERADOR/ADMIN, posterior publicación autorizada. Sin datos reales en pruebas.
 
 ### Decisiones P0 que no debe inventar el motor
 
-1. **D0 y Retención 1:** ¿la suspensión se solicita en D0 y se espera confirmación técnica antes del mensaje? (Diseño recomendado: SÍ).
-2. **Retención 2:** ¿en qué día relativo inicia? El DOCX dice D0 también; requiere corrección explícita.
-3. **Campaña promocional:** ¿cuándo empieza y qué planes/beneficios son elegibles? Aún no está definido en el DOCX.
+1. **D0 y Retención 1:** RESUELTO: generar alerta en Cola Operacional; el asesor comprueba liberación en panel, registra S0 y solo entonces permite retención 1.
+2. **Retención 2:** RESUELTO: S+2, calculado desde la liberación real S0.
+3. **Campaña promocional:** PARCIAL: S+5 para candidatura; beneficios y elegibilidad siguen pendientes de aprobación.
 4. **Datos de pago:** validar la vigencia del correo Zelle y la cuenta de transferencia; suministrar URL PayPal de factura válida o regla de generación.
 5. **Beneficio D−5 e imagen D−3:** validar promociones vigentes y recursos publicados.
 
