@@ -64,6 +64,16 @@ export type QueueItem = {
   amount: Money;
   classification: string;
   collectionStatus: string;
+  /** F: gestión estructurada, no confirma pagos. */
+  gestionObservation: string;
+  /** W: observación libre del asesor. */
+  advisorObservation: string;
+  /** X: estado de confirmación de cartera; no acredita el ciclo actual por sí solo. */
+  paymentConfirmation: string;
+  /** AG: confirmación financiera procedente del ciclo anterior. */
+  priorCycleConfirmation: string;
+  /** Evidencia separada: pago confirmado del mes en hoja de método y pendiente de sincronización. */
+  confirmedMethodReference: string | null;
   /** Última gestión registrada en la fuente, o "" si no hay historial (no se deduce etapa de gestión). */
   lastManaged: string;
   reason: string;
@@ -269,6 +279,11 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
       amount: item.nominal,
       classification: item.classification ?? item.state,
       collectionStatus: item.collectionStatus ?? "",
+      gestionObservation: item.gestionObservation ?? "",
+      advisorObservation: item.advisorObservation ?? "",
+      paymentConfirmation: item.paymentConfirmation ?? "",
+      priorCycleConfirmation: item.priorCycleConfirmation ?? "",
+      confirmedMethodReference: matchedPayment ? matchedPayment.sheet + "!" + matchedPayment.row : null,
       lastManaged: item.lastManaged ?? "",
       reason: [item.signals.join(" · "), matchedPayment ? "Pago confirmado JM en " + matchedPayment.sheet + "!" + matchedPayment.row + "; estado de cartera sin sincronizar. Vinculación del ciclo por validar." : ""].filter(Boolean).join(" · "),
       nextAction: matchedPayment && initialLane !== "BLOQUEADO"
