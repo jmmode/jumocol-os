@@ -38,7 +38,7 @@ describe("historial del cliente", () => {
 describe("vencimiento técnico", () => {
   const base = { panel: "PANEL 1", due: "2026-12-01", userRepeated: false, controlDue: null };
   it("se muestra con identidad verificada", () => expect(technicalDue(base)).toMatchObject({ status: "VERIFICADO", date: "2026-12-01" }));
-  it("Panel 3 no muestra fecha", () => expect(technicalDue({ ...base, panel: "PANEL 3M" })).toMatchObject({ status: "REQUIERE VALIDACIÓN", date: null }));
+  it("Panel 3 informa la fecha sin validarla", () => expect(technicalDue({ ...base, panel: "PANEL 3M" })).toMatchObject({ status: "REQUIERE VALIDACIÓN", date: "2026-12-01" }));
   it("usuario repetido no muestra fecha", () => expect(technicalDue({ ...base, userRepeated: true }).date).toBeNull());
   it("explica la diferencia con CONTROL", () => expect(technicalDue({ ...base, controlDue: "2027-01-01" }).status).toBe("REQUIERE VALIDACIÓN"));
 });

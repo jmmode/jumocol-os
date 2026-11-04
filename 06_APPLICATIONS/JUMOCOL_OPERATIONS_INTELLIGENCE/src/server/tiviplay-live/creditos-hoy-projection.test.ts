@@ -209,7 +209,7 @@ describe("identidad verificable por panel (CONTROL con columnas desplazadas)", (
   it("un panel detenido por Dirección no proyecta valores aunque su hoja sea válida", () => {
     const p3 = projectCreditosHoy(input({ blockedPanels: ["P3"] })).panels.find((p) => p.panel === "P3")!;
     expect(p3.status).toBe("REQUIERE_DECISION");
-    expect(p3.reason).toMatch(/Bloqueado por Dirección/);
+    expect(p3.reason).toMatch(/bloqueados por Dirección/);
     expect(p3.tasks).toEqual([]);
     expect(p3.kpi).toBeNull();
   });
