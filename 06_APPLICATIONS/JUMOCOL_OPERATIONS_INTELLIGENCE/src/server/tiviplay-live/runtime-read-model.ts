@@ -300,7 +300,12 @@ function signals(text: string) {
 
 /** La primera entrada de OBSERVACIONES es la gestión más reciente. */
 function latestNote(raw: string) {
-  const first = clean(raw).split(/\/{2,}|\|/)[0]?.trim() ?? "";
+  // En la intranet la nueva gestión se anexa al final, en una nueva línea.
+  const lines = String(raw ?? "").split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  const selected = lines.at(-1) ?? "";
+  const first = selected.includes("[JOS:")
+    ? clean(selected).replace(/\s*\[JOS:[a-f0-9-]+\]$/, "")
+    : clean(selected).split(/\/{2,}|\|/)[0]?.trim() ?? "";
   return first.length > 160 ? `${first.slice(0, 157)}…` : first;
 }
 
@@ -562,7 +567,7 @@ function normalizeCartera(title: string, rows: unknown[][], today: string) {
     tc: col("TC"),
     client: col("CLIENTE"),
     status: col("ESTADO"),
-    note: col("OBSERVACIONES"),
+    note: col("OBSERVACIONES", "OBSERVACIONES GESTION"),
     plan: col("PLAN ACTIVO"),
     usd: col("USD"),
     cop: col("COP"),
