@@ -206,6 +206,14 @@ describe("Créditos disponibles (USUARIOS LIBERADOS · ESTADO = DISPONIBLE) — 
 });
 
 describe("identidad verificable por panel (CONTROL con columnas desplazadas)", () => {
+  it("un panel detenido por Dirección no proyecta valores aunque su hoja sea válida", () => {
+    const p3 = projectCreditosHoy(input({ blockedPanels: ["P3"] })).panels.find((p) => p.panel === "P3")!;
+    expect(p3.status).toBe("REQUIERE_DECISION");
+    expect(p3.reason).toMatch(/Bloqueado por Dirección/);
+    expect(p3.tasks).toEqual([]);
+    expect(p3.kpi).toBeNull();
+  });
+
   it("bloquea el panel cuando los usuarios de BASE están en RECARGA y USUARIO trae otros valores, sin proyectar esos valores", () => {
     const shifted = (user: string, i: number) => ["1", "MANUELA", user, `PW-SHIFT-${i}`, "x", "panel", "2026-10-22", "2026-11-22", "Facturación", "1", "9", ""];
     const base = input().base!;

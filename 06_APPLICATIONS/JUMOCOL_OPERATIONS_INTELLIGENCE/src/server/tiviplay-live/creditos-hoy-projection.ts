@@ -97,6 +97,8 @@ export type CreditosHoyInput = {
   today: string;
   targetMonth: string;
   controls: Record<PanelId, { sheet: string | null; rows: unknown[][] | null }>;
+  /** Paneles detenidos por Dirección: no proyectan valores aunque su hoja parezca válida. */
+  blockedPanels?: readonly PanelId[];
   base: unknown[][] | null;
   payments: Array<{ sheet: string; rows: unknown[][] }> | null;
   /** Fallo global de lectura (credenciales o metadatos): todos los paneles quedan en REQUIERE_REVISION. */
@@ -458,6 +460,7 @@ function identityCheck(rows: unknown[][], userCol: number, rechargeCol: number |
 
 function projectPanel(panel: PanelId, sheet: string | null, rows: unknown[][] | null, input: CreditosHoyInput, ctx: Ctx): PanelCredits {
   const empty = (status: PanelCredits["status"], reason: string): PanelCredits => ({ panel, sheet, status, reason, columns: null, warning: null, kpi: null, sheetKpi: null, dataRange: null, tasks: [], pending: [], cycles: [] });
+  if (input.blockedPanels?.includes(panel)) return empty("REQUIERE_DECISION", "Bloqueado por Dirección hasta corregir la estructura de la hoja CONTROL.");
   if (input.readError) return empty("REQUIERE_REVISION", input.readError);
   if (!sheet) return empty("REQUIERE_REVISION", `No existe la hoja CONTROL ${panel} del mes ${input.targetMonth}.`);
   if (!rows) return empty("REQUIERE_REVISION", "Lectura fallida de la hoja CONTROL.");

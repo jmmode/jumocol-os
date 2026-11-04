@@ -46,7 +46,9 @@ export async function getCreditosHoy(targetMonth: string, today: string, decisio
     readError = "No fue posible leer el libro de Google Sheets.";
   }
   const released = await readReleasedUsers();
-  return projectCreditosHoy({ today, targetMonth, controls, base, payments, readError, decisions, released });
+  // P3 sigue detenido por Dirección (04/11/2026). Para levantarlo: TIVIPLAY_BLOCKED_PANELS vacío.
+  const blockedPanels = (process.env.TIVIPLAY_BLOCKED_PANELS ?? "P3").split(",").map((x) => x.trim()).filter((x): x is PanelId => x === "P1" || x === "P2" || x === "P3");
+  return projectCreditosHoy({ today, targetMonth, controls, blockedPanels, base, payments, readError, decisions, released });
 }
 
 /**
