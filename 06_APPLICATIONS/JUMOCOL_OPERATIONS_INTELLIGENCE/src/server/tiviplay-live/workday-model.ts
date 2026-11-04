@@ -242,12 +242,13 @@ export function calculateReleaseAlert(
   confirmedPayment: PaymentRecord | null,
   identityVerified: boolean,
 ): ReleaseAlert | null {
-  if (!item.dueDate || item.dueDate > today || item.state === "PAGADO_VALIDADO") return null;
+  // Un pago CONFIRMADO JM del ciclo, cruzado unívocamente, descarta esta alerta de liberación.
+  if (confirmedPayment || !item.dueDate || item.dueDate > today || item.state === "PAGADO_VALIDADO") return null;
   const sameNamePayments = currentMonthPayments.filter((p) =>
     canon(p.client) === canon(item.client) && p.date?.slice(0, 7) === today.slice(0, 7));
   // X podría conservar una confirmación del mes anterior: exige revisión del ciclo, nunca acredita por sí sola.
   const x = canon(item.paymentConfirmation ?? "");
-  const financeUncertain = !!confirmedPayment || sameNamePayments.length > 0 ||
+  const financeUncertain = sameNamePayments.length > 0 ||
     /CONFIRMADO|PENDIENTE|REVISION/.test(x) ||
     item.state !== "SIN_PAGO" || !!item.signals.length || !identityVerified ||
     /PAGADO|COBRADO|CONFIRMADO/.test(canon(item.collectionStatus ?? ""));
