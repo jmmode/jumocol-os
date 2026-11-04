@@ -89,9 +89,9 @@ describe("contrato de columnas TiviPlay noviembre 2026", () => {
     const { model, workday } = scenario(true);
     expect(model.payments.month[0].confirmation).toBe("CONFIRMADO");
     expect(model.operations.items[0].state).toBe("SIN_PAGO"); // Persistencia sin escritura.
-    expect(workday.queue[0].lane).toBe("VERIFICAR");
-    expect(workday.queue[0].nextAction).toContain("NO COBRAR");
-    expect(workday.queue[0].confirmedMethodReference).toBe("ZELLE (NOV)!4");
+    expect(workday.queue).toEqual([]);
+    expect(workday.reconciliation[0].nextAction).toContain("NO COBRAR");
+    expect(workday.reconciliation[0].confirmedMethodReference).toBe("ZELLE (NOV)!4");
     expect(workday.toCollectToday.USD).toBe(0);
   });
   it("D0 y vencidos generan alerta para el asesor sin simular liberación", () => {
@@ -113,8 +113,8 @@ describe("contrato de columnas TiviPlay noviembre 2026", () => {
     const { model, workday } = scenario(true);
     expect(model.payments.month).toHaveLength(1);
     expect(workday.releaseAlerts).toBe(0);
-    expect(workday.queue[0].releaseAlert).toBeNull();
-    expect(workday.queue[0].lane).toBe("VERIFICAR"); // Todavía falta conciliar cartera, nunca liberar.
+    expect(workday.reconciliation[0].releaseAlert).toBeNull();
+    expect(workday.queue).toEqual([]); // Todavía falta conciliar cartera, nunca liberar.
   });
 
 });

@@ -77,7 +77,8 @@ export async function ClientFicha({ client, queue, actor, admin, cobranza, today
   const gestionState = last ? GESTION_ETIQUETAS[last.estado].toUpperCase() : queue?.lastManaged ? "GESTIONADO EN LA HOJA" : "SIN GESTIÓN";
   const amounts = money(client.tariff);
 
-  const stage = cobranzaStage(client.nextPayment, today, client.method);
+  // Con pago confirmado del ciclo por conciliar no se envía mensaje de cobro.
+  const stage = queue?.confirmedMethodReference ? null : cobranzaStage(client.nextPayment, today, client.method);
   const template = stage && cobranza ? cobranza[stage.key] : null;
   const references = await readPaymentReferences();
   const method = stage?.key.split(" ")[1];

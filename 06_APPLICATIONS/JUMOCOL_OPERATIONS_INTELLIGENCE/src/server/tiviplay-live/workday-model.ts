@@ -87,6 +87,8 @@ export type QueueItem = {
   priorCycleConfirmation?: string;
   /** Evidencia separada: pago confirmado del mes en hoja de método y pendiente de sincronización. */
   confirmedMethodReference?: string | null;
+  paymentLink?: PaymentLink["link"] | null;
+  syncProposal?: PaymentLink["proposal"];
   releaseAlert?: ReleaseAlert | null;
   /** Última gestión registrada en la fuente, o "" si no hay historial (no se deduce etapa de gestión). */
   lastManaged: string;
@@ -102,6 +104,8 @@ export type Workday = {
   carteraSheet: string | null;
   universe: number;
   queue: QueueItem[]; // VENCIDO + HOY + SEMANA (la jornada)
+  /** Pagos confirmados del ciclo pendientes de sincronizar: no se cobran ni cuentan como cartera por gestionar. */
+  reconciliation: QueueItem[];
   releaseAlerts: number; // conteo de alertas calculadas, no casos cerrados
   later: number; // resto del mes, fuera de la jornada
   scope: Scope;
@@ -199,18 +203,41 @@ export function searchDirectory(directory: readonly DirectoryEntry[], rawQuery: 
 }
 
 
+export type PaymentLink = {
+  payment: PaymentRecord;
+  /** VALIDADO exige enlace formal a la fila de BASE. CANDIDATO coincide en todo, pero sin ese enlace. */
+  link: "VALIDADO" | "CANDIDATO";
+  /** Solo con vínculo VALIDADO. Es una propuesta: nada se escribe en Sheets desde aquí. */
+  proposal: { collectionStatus: "PAGADO"; lastPayment: string; nextPayment: string | null } | null;
+};
+
+/** Margen del ciclo alrededor del vencimiento. Regla operativa pendiente de validación de Dirección. */
+export const PAYMENT_CYCLE_WINDOW = { daysBefore: 10, daysAfter: 15 } as const;
+
+const dayShift = (iso: string, n: number) => new Date(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10) + n)).toISOString().slice(0, 10);
+
+function nextPaymentAfter(due: string, plan: string) {
+  const months = plan.match(/(\d+)\s*MES/i);
+  if (!months) return null;
+  const bonus = Number(plan.match(/\+\s*(\d+)/)?.[1] ?? 0);
+  const total = Number(months[1]) + bonus;
+  const date = new Date(Date.UTC(+due.slice(0, 4), +due.slice(5, 7) - 1 + total, 1));
+  const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+  date.setUTCDate(Math.min(+due.slice(8, 10), lastDay));
+  return date.toISOString().slice(0, 10);
+}
+
 /**
- * Una confirmación JM en la hoja de método NO actualiza por sí sola la cartera.
- * Cuando nombre, método, valor y fila de BASE son únicos, se detiene el cobro normal
- * para reconciliar el ciclo. Nunca se transforma el estado financiero ni se otorga crédito.
+ * Cruza un pago CONFIRMADO JM de la hoja del mes con la cartera. Exige identidad única, importe, método y ciclo.
+ * Nunca transforma el estado financiero ni otorga crédito: solo decide si detener el cobro ordinario.
  */
-export function confirmedPaymentNeedsSync(
+export function confirmedPaymentLink(
   item: CarteraItem,
   cartera: readonly CarteraItem[],
   directory: readonly DirectoryEntry[],
   payments: readonly PaymentRecord[],
   month: string,
-): PaymentRecord | null {
+): PaymentLink | null {
   const name = canon(item.client);
   if (/PAGADO|COBRADO|CONFIRMADO/.test(canon(item.collectionStatus ?? ""))) return null;
   if (!name || !item.baseRow || cartera.filter((r) => canon(r.client) === name).length !== 1) return null;
@@ -220,7 +247,8 @@ export function confirmedPaymentNeedsSync(
   const confirmed = payments.filter((p) => canon(p.client) === name && p.confirmation === "CONFIRMADO");
   if (confirmed.length !== 1) return null;
   const payment = confirmed[0];
-  if (!payment.date || payment.date.slice(0, 7) !== month) return null;
+  if (!payment.date || payment.date.slice(0, 7) !== month || !item.dueDate) return null;
+  if (payment.date < dayShift(item.dueDate, -PAYMENT_CYCLE_WINDOW.daysBefore) || payment.date > dayShift(item.dueDate, PAYMENT_CYCLE_WINDOW.daysAfter)) return null;
 
   const collectionMethod = canon(item.method);
   const methodAgrees = payment.method === "ZELLE" || payment.method === "PAYPAL"
@@ -230,7 +258,16 @@ export function confirmedPaymentNeedsSync(
 
   const expected = item.nominal[payment.currency];
   if (!expected || Math.abs(expected - payment.amount) > 0.01) return null;
-  return payment;
+
+  const { state, row, matches } = payment.baseLink;
+  // Un enlace que señala otra ficha contradice el cruce por nombre: no se detiene el cobro con esa evidencia.
+  if (row != null && row !== item.baseRow) return null;
+  const validated = state === "ENLAZADO" && matches === 1 && row === item.baseRow;
+  return {
+    payment,
+    link: validated ? "VALIDADO" : "CANDIDATO",
+    proposal: validated ? { collectionStatus: "PAGADO", lastPayment: payment.date, nextPayment: nextPaymentAfter(item.dueDate, item.plan) } : null,
+  };
 }
 
 
@@ -286,10 +323,10 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
   const byBaseRow = new Map(directory.filter((d) => d.baseRow).map((d) => [d.baseRow!, d]));
   const byName = new Map(directory.map((d) => [canon(d.name), d]));
   const carteraSheet = model.sources.included.find((r) => r.role === "CARTERA" && r.month === model.currentMonth)?.title ?? null;
-  const paymentsToReconcile = new Map<number, PaymentRecord>();
+  const paymentsToReconcile = new Map<number, PaymentLink>();
   for (const item of model.operations.items) {
-    const payment = confirmedPaymentNeedsSync(item, model.operations.items, directory, model.payments.month, model.currentMonth);
-    if (payment) paymentsToReconcile.set(item.row, payment);
+    const link = confirmedPaymentLink(item, model.operations.items, directory, model.payments.month, model.currentMonth);
+    if (link) paymentsToReconcile.set(item.row, link);
   }
   const blockers: string[] = [];
   if (!carteraSheet) blockers.push(`Sin hoja de cartera para ${model.currentMonth}: no hay cola de cobro verificable.`);
@@ -299,6 +336,7 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
   const lanes = Object.fromEntries((["COBRAR", "VERIFICAR", "BLOQUEADO", "CONFIRMAR_PAGO"] as QueueLane[]).map((l) => [l, { count: 0, amount: emptyMoney() }])) as Workday["lanes"];
   const toCollectToday = emptyMoney();
   const queue: QueueItem[] = [];
+  const reconciliation: QueueItem[] = [];
   let later = 0;
   let universe = 0;
 
@@ -307,19 +345,24 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
     if (item.state === "PAGADO_VALIDADO") continue;
     const due = item.dueDate;
     const bucket: QueueBucket = !due ? "VENCIDO" : due < today ? "VENCIDO" : due === today ? "HOY" : due <= advanceUntil ? "ANTICIPADO" : "MES";
-    const matchedPayment = paymentsToReconcile.get(item.row);
+    const linked = paymentsToReconcile.get(item.row);
+    const matchedPayment = linked?.payment;
     const initialLane = laneOf(item);
-    const lane = matchedPayment && initialLane !== "BLOQUEADO" ? "VERIFICAR" : initialLane;
-    counts[bucket] += 1;
-    lanes[lane].count += 1;
-    add(lanes[lane].amount, item.nominal);
-    if (bucket === "MES") { later += 1; continue; }
-    if (lane === "COBRAR") add(toCollectToday, item.nominal); // vencidos + hoy + anticipada (ya filtrado MES)
+    // Con pago confirmado del ciclo no hay cobranza: va a conciliación, fuera de la cola y de sus cifras.
+    const reconcile = !!linked && initialLane !== "BLOQUEADO";
+    const lane = reconcile ? "VERIFICAR" : initialLane;
+    if (!reconcile) {
+      counts[bucket] += 1;
+      lanes[lane].count += 1;
+      add(lanes[lane].amount, item.nominal);
+      if (bucket === "MES") { later += 1; continue; }
+    }
+    if (!reconcile && lane === "COBRAR") add(toCollectToday, item.nominal); // vencidos + hoy + anticipada (ya filtrado MES)
     const dir = (item.baseRow ? byBaseRow.get(item.baseRow) : undefined) ?? byName.get(canon(item.client));
     const uniqueIdentity = !!(dir?.user && item.baseRow && dir.baseRow === item.baseRow &&
       directory.filter((d) => canon(d.user) === canon(dir.user)).length === 1);
     const releaseAlert = calculateReleaseAlert(item, today, model.payments.month, matchedPayment ?? null, uniqueIdentity);
-    queue.push({
+    (reconcile ? reconciliation : queue).push({
       id: dir?.id ?? opaqueId(`${carteraSheet}!${item.row}`, "", item.client),
       client: item.client,
       phone: dir?.phone ?? "",
@@ -338,6 +381,8 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
       paymentConfirmation: item.paymentConfirmation ?? "",
       priorCycleConfirmation: item.priorCycleConfirmation ?? "",
       confirmedMethodReference: matchedPayment ? matchedPayment.sheet + "!" + matchedPayment.row : null,
+      paymentLink: linked?.link ?? null,
+      syncProposal: linked?.proposal ?? null,
       releaseAlert,
       lastManaged: item.lastManaged ?? "",
       reason: [item.signals.join(" · "), matchedPayment ? "Pago confirmado JM en " + matchedPayment.sheet + "!" + matchedPayment.row + "; estado de cartera sin sincronizar. Vinculación del ciclo por validar." : ""].filter(Boolean).join(" · "),
@@ -383,7 +428,7 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
 
   const exceptions = [
     ...model.operations.exceptions.map((e) => ({ source: `${e.sheet}!${e.row}`, type: e.type, detail: e.detail })),
-    ...[...paymentsToReconcile.entries()].map(([row, p]) => ({
+    ...[...paymentsToReconcile.entries()].map(([row, { payment: p }]) => ({
       source: (carteraSheet ?? "CARTERA") + "!" + row,
       type: "PAGO_CONFIRMADO_NO_SINCRONIZADO",
       detail: "Pago confirmado JM en " + p.sheet + "!" + p.row + ". Requiere vinculación verificada del ciclo y sincronización de cartera; sin modificación financiera.",
@@ -399,6 +444,7 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
     carteraSheet,
     universe,
     queue,
+    reconciliation,
     releaseAlerts: queue.filter((q) => q.releaseAlert != null).length,
     later,
     scope,

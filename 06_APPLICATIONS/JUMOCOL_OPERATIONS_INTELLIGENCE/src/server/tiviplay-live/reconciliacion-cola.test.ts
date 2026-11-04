@@ -43,10 +43,10 @@ describe("conciliación de pagos CONFIRMADO JM frente a cartera", () => {
     expect(model.payments.month).toHaveLength(1);
     expect(model.payments.month[0].confirmation).toBe("CONFIRMADO");
     expect(model.operations.items[0].state).toBe("SIN_PAGO"); // Nunca mutar la fuente financiera.
-    expect(workday.queue[0].lane).toBe("VERIFICAR");
-    expect(workday.queue[0].nextAction).toContain("NO COBRAR");
-    expect(workday.queue[0].nextAction).toContain("ZELLE (NOV)!4");
-    expect(workday.queue[0].suggestedFicha).toBe("A3");
+    expect(workday.queue).toEqual([]);
+    expect(workday.reconciliation[0].nextAction).toContain("NO COBRAR");
+    expect(workday.reconciliation[0].nextAction).toContain("ZELLE (NOV)!4");
+    expect(workday.reconciliation[0].suggestedFicha).toBe("A3");
     expect(workday.toCollectToday.USD).toBe(0);
     expect(workday.exceptions.some((x) => x.type === "PAGO_CONFIRMADO_NO_SINCRONIZADO")).toBe(true);
     expect(model.operations.items[0].note).toContain("SIN_RESPUESTA");

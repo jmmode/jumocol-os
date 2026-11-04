@@ -108,6 +108,17 @@ export function WorkdayPanel({ result, admin }: { result: WorkdayResult; admin: 
 
     </> : null}
 
+    {w.reconciliation.length ? <section aria-labelledby="conciliacion" className={card}>
+      <h2 className="text-lg font-semibold" id="conciliacion">Conciliación pendiente ({w.reconciliation.length})</h2>
+      <p className="mt-1 text-xs text-brand-muted">Pago CONFIRMADO JM del ciclo sin sincronizar en cartera. No cobrar. Nada se actualiza automáticamente.</p>
+      <ul className="mt-2 space-y-2 text-sm">{w.reconciliation.map((q) => <li className="flex flex-wrap items-center gap-2" key={q.source}>
+        <strong>{q.client}</strong><span className="text-xs">{money(q.amount)} · {q.confirmedMethodReference}</span>
+        <span className="rounded-full border border-brand-border px-2 py-0.5 text-[10px] font-black">{q.paymentLink === "VALIDADO" ? "VÍNCULO VALIDADO" : "SIN ENLACE FORMAL"}</span>
+        {admin && q.syncProposal ? <span className="text-xs text-brand-muted">Propuesta: {q.syncProposal.collectionStatus} · último pago {q.syncProposal.lastPayment} · próximo {q.syncProposal.nextPayment ?? "REQUIERE VALIDACIÓN"}</span> : null}
+        <Link className="rounded-lg border border-brand-primary-dark px-2 py-1 text-xs font-bold text-brand-primary-dark" href={`/operaciones/tiviplay/atencion?cliente=${q.id}&ficha=${q.suggestedFicha}#cliente`} prefetch={false}>VER FICHA</Link>
+      </li>)}</ul>
+    </section> : null}
+
     <section aria-labelledby="cola">
       <h2 className="text-lg font-semibold" id="cola">Cola Operacional · Contactos y alertas ({w.queue.length})</h2>
       <p className="mt-2 rounded-xl border border-brand-yellow/45 bg-brand-yellow/10 px-3 py-2 text-xs text-status-warning" role={w.releaseAlerts ? "alert" : "status"}>

@@ -61,7 +61,7 @@ async function loadClient(id: string | undefined): Promise<{ entry: DirectoryEnt
   if (!id || !/^[a-f0-9]{16}$/.test(id)) return { entry: null, queue: null, error: null, directory: null };
   const result = await getTiviplayWorkday();
   if (!result.ok) return { entry: null, queue: null, error: result.reason, directory: null };
-  return { entry: result.directory.find((d) => d.id === id) ?? null, queue: result.workday.queue.find((q) => q.id === id) ?? null, error: null, directory: result.directory };
+  return { entry: result.directory.find((d) => d.id === id) ?? null, queue: [...result.workday.queue, ...result.workday.reconciliation].find((q) => q.id === id) ?? null, error: null, directory: result.directory };
 }
 
 /** Mensajes de cobro: documento propio para no invalidar la publicación de las fichas. */
