@@ -6,6 +6,7 @@ import { MarkdownDocument } from "@/components/documents/markdown-document";
 import { PageHeader } from "@/components/ui/page-header";
 import { ClientSearch, MessageClassifier } from "@/features/tiviplay-atencion/atencion-assistant";
 import { ServiceCredentials } from "@/features/tiviplay-atencion/service-credentials";
+import { GestionRegistro } from "@/features/tiviplay-atencion/gestion-registro";
 import { scriptOf } from "@/features/tiviplay-atencion/classify";
 import { ATENCION_CATEGORIES, FICHAS_DOCUMENT_ID, parseFichas, searchFichas, type Ficha } from "@/features/tiviplay-atencion/fichas";
 import { TiviplayNavigation } from "@/features/tiviplay-command-center/tiviplay-navigation";
@@ -165,6 +166,7 @@ export default async function TiviplayAtencionPage({ searchParams }: { searchPar
             <h3 className="font-semibold" id="respuesta">Respuesta {client.entry ? `para ${greetingName(client.entry.name)}` : "lista para copiar"}</h3>
             <p className="mt-1 text-xs text-brand-muted">{personalized.pending ? `${personalized.pending} dato(s) sin confirmar quedan entre corchetes: complétalos con lo que muestre la fuente o elimínalos.` : "Datos tomados de la fuente; verifica antes de enviar."}</p>
             <CopyableMessage text={personalized.text} />
+            {client.entry ? <GestionRegistro key={client.entry.id} clientId={client.entry.id} /> : null}
           </section> : null}
           <MarkdownDocument markdown={selected.body} />
 
