@@ -9,7 +9,7 @@ const row = (o: Record<string, string>) => H.map((h) => o[h] ?? "");
 const cartera = [["", "PAGOS NOVIEMBRE 2026"], [""], H, ["", "SEMANA 1"],
   row({ TC: "1", CLIENTE: "Ana Prueba", TELEFONO: "1 (305) 555-0101", USD: "15", "MÉTODO DE PAGO": "ZELLE", USUARIO: "ANA01", PANEL: "PANEL 3", "F. PRÓXIMO PAGO": "02-11-26", "ORIGEN BASE": "BASE GENERAL!4", "CONFIRMACION_FINANCIERA": "CONFIRMADO JM", CLASIFICACION_BORRADOR: "FACTURABLE", ESTADO_COBRO: "PENDIENTE" }),
   row({ TC: "1", CLIENTE: "Beto Prueba", TELEFONO: "1 (305) 555-0202", COP: "$32,900", USUARIO: "BETO02", "F. PRÓXIMO PAGO": "04-11-26", "ORIGEN BASE": "BASE GENERAL!5", CLASIFICACION_BORRADOR: "REQUIERE_REVISION", CATEGORIA: "TARIFA", ESTADO_COBRO: "EN REVISIÓN" }),
-  row({ TC: "1", CLIENTE: "Caro Prueba", USD: "130", USUARIO: "CARO03", "F. PRÓXIMO PAGO": "07-11-26", "ORIGEN BASE": "BASE GENERAL!6", CLASIFICACION_BORRADOR: "BLOQUEADO", CATEGORIA: "TARIFA (P0-2)", ESTADO_COBRO: "BLOQUEADO" }),
+  row({ TC: "1", CLIENTE: "Caro Prueba", USD: "130", USUARIO: "CARO03", "F. PRÓXIMO PAGO": "05-11-26", "ORIGEN BASE": "BASE GENERAL!6", CLASIFICACION_BORRADOR: "BLOQUEADO", CATEGORIA: "TARIFA (P0-2)", ESTADO_COBRO: "BLOQUEADO" }),
   row({ TC: "1", CLIENTE: "Dani Prueba", USD: "25", USUARIO: "DANI04", "F. PRÓXIMO PAGO": "20-11-26", "ORIGEN BASE": "BASE GENERAL!7", CLASIFICACION_BORRADOR: "FACTURABLE", ESTADO_COBRO: "PENDIENTE" }),
   ["8", "TOTAL SEMANA 1"],
 ];
@@ -38,11 +38,16 @@ describe("puesto de trabajo · contrato de cartera noviembre", () => {
     expect(w.queue.map((q) => [q.client, q.bucket, q.lane, q.suggestedFicha])).toEqual([
       ["Ana Prueba", "VENCIDO", "COBRAR", "A1"],
       ["Beto Prueba", "HOY", "VERIFICAR", "A6"],
+      ["Caro Prueba", "ANTICIPADO", "BLOQUEADO", "A6"],
     ]);
-    // Semana operativa del motor: 01–04 termina hoy; el 07/11 cae en la semana 05–11 (resto del mes).
-    expect(w.later).toBe(2);
-    expect(w.lanes.BLOQUEADO.count).toBe(1);
+    // Ventana anticipada autorizada: 1 día (05/11). El 20/11 queda fuera de la jornada.
+    expect(w.later).toBe(1);
+    expect(w.counts).toEqual({ VENCIDO: 1, HOY: 1, ANTICIPADO: 1, MES: 1 });
+    expect(w.paymentsToConfirm.status).toBe("BLOQUEADO");
+    expect(w.scope.status).toBe("COMPLETO");
     expect(w.toCollectToday).toEqual({ USD: 15, COP: 0, CAD: 0 });
+    const partial = buildWorkday({ model, credits: null, directory, scope: { status: "PARCIAL", detail: "captura" } });
+    expect(partial.blockers[0]).toMatch(/^ALCANCE PARCIAL/);
     expect(w.lanes.VERIFICAR.amount.COP).toBe(32900);
     expect(w.credits.status).toBe("BLOQUEADO");
     expect(w.blockers.some((b) => b.startsWith("Créditos BLOQUEADO"))).toBe(true);

@@ -30,7 +30,20 @@ export type DirectoryEntry = {
   baseRow: number | null;
 };
 
-export type QueueBucket = "VENCIDO" | "HOY" | "SEMANA" | "MES";
+export type QueueBucket = "VENCIDO" | "HOY" | "ANTICIPADO" | "MES";
+
+/**
+ * Ventana de gestión anticipada autorizada: un día antes del vencimiento.
+ * Fuente: Regla operativa de créditos v1.0 (2026-10-26, «el crédito se ejecuta un día antes del vencimiento técnico»)
+ * y ficha A5 («las facturas se envían un día antes del vencimiento», PENDIENTE DE VALIDACIÓN).
+ */
+export const ADVANCE_WINDOW = {
+  days: 1,
+  source: "Regla operativa de créditos v1.0 y ficha A5 (un día antes del vencimiento)",
+  validation: "PENDIENTE DE VALIDACIÓN",
+} as const;
+
+export type Scope = { status: "COMPLETO" | "PARCIAL"; detail: string };
 export type QueueLane = "COBRAR" | "VERIFICAR" | "BLOQUEADO" | "CONFIRMAR_PAGO";
 
 export type QueueItem = {
@@ -60,13 +73,16 @@ export type Workday = {
   universe: number;
   queue: QueueItem[]; // VENCIDO + HOY + SEMANA (la jornada)
   later: number; // resto del mes, fuera de la jornada
+  scope: Scope;
+  paymentsToConfirm: { status: "OK" | "BLOQUEADO"; count: number; amount: Money; source: string; reason: string | null };
+  exceptions: Array<{ source: string; type: string; detail: string }>;
   counts: Record<QueueBucket, number>;
   lanes: Record<QueueLane, { count: number; amount: Money }>;
-  toCollectToday: Money; // COBRAR en VENCIDO + HOY
+  toCollectToday: Money; // COBRAR en VENCIDO + HOY + ANTICIPADO
   credits: {
     status: "OK" | "PARCIAL" | "BLOQUEADO";
     totals: Record<CreditState, number> & { total: number };
-    panels: Array<{ panel: string; sheet: string | null; status: string; reason: string | null; programados: number | null; otorgados: number | null; faltantes: number | null; hoy: number | null }>;
+    panels: Array<{ panel: string; sheet: string | null; status: string; reason: string | null; programados: number | null; otorgados: number | null; faltantes: number | null; hoy: number | null; habilitados: number | null; pendientes: number | null; bloqueados: number | null }>;
     reason: string | null;
   };
   blockers: string[];
@@ -159,10 +175,10 @@ function laneOf(item: CarteraItem): QueueLane {
 
 const FICHA_BY_LANE: Record<QueueLane, string> = { COBRAR: "A1", CONFIRMAR_PAGO: "A3", VERIFICAR: "A6", BLOQUEADO: "A6" };
 
-/** Semana operativa del motor (01–04, 05–11, 12–18, 19–25, 26–fin). */
-const weekOf = (iso: string) => { const d = Number(iso.slice(-2)); return d <= 4 ? 1 : d <= 11 ? 2 : d <= 18 ? 3 : d <= 25 ? 4 : 5; };
 
-export function buildWorkday(input: { model: RuntimeReadModel; credits: CreditosHoy | null; creditsError?: string | null; directory: readonly DirectoryEntry[] }): Workday {
+const addDays = (iso: string, n: number) => new Date(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10) + n)).toISOString().slice(0, 10);
+
+export function buildWorkday(input: { model: RuntimeReadModel; credits: CreditosHoy | null; creditsError?: string | null; directory: readonly DirectoryEntry[]; scope?: Scope }): Workday {
   const { model, credits, directory } = input;
   const today = model.today;
   const byBaseRow = new Map(directory.filter((d) => d.baseRow).map((d) => [d.baseRow!, d]));
@@ -171,7 +187,8 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
   const blockers: string[] = [];
   if (!carteraSheet) blockers.push(`Sin hoja de cartera para ${model.currentMonth}: no hay cola de cobro verificable.`);
 
-  const counts: Record<QueueBucket, number> = { VENCIDO: 0, HOY: 0, SEMANA: 0, MES: 0 };
+  const counts: Record<QueueBucket, number> = { VENCIDO: 0, HOY: 0, ANTICIPADO: 0, MES: 0 };
+  const advanceUntil = addDays(today, ADVANCE_WINDOW.days);
   const lanes = Object.fromEntries((["COBRAR", "VERIFICAR", "BLOQUEADO", "CONFIRMAR_PAGO"] as QueueLane[]).map((l) => [l, { count: 0, amount: emptyMoney() }])) as Workday["lanes"];
   const toCollectToday = emptyMoney();
   const queue: QueueItem[] = [];
@@ -182,13 +199,13 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
     universe += 1;
     if (item.state === "PAGADO_VALIDADO") continue;
     const due = item.dueDate;
-    const bucket: QueueBucket = !due ? "VENCIDO" : due < today ? "VENCIDO" : due === today ? "HOY" : weekOf(due) === weekOf(today) && due.slice(0, 7) === today.slice(0, 7) ? "SEMANA" : "MES";
+    const bucket: QueueBucket = !due ? "VENCIDO" : due < today ? "VENCIDO" : due === today ? "HOY" : due <= advanceUntil ? "ANTICIPADO" : "MES";
     const lane = laneOf(item);
     counts[bucket] += 1;
     lanes[lane].count += 1;
     add(lanes[lane].amount, item.nominal);
     if (bucket === "MES") { later += 1; continue; }
-    if (lane === "COBRAR" && (bucket === "VENCIDO" || bucket === "HOY")) add(toCollectToday, item.nominal);
+    if (lane === "COBRAR") add(toCollectToday, item.nominal); // vencidos + hoy + anticipada (ya filtrado MES)
     const dir = (item.baseRow ? byBaseRow.get(item.baseRow) : undefined) ?? byName.get(canon(item.client));
     queue.push({
       id: dir?.id ?? opaqueId(`${carteraSheet}!${item.row}`, "", item.client),
@@ -210,7 +227,7 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
       source: `${carteraSheet ?? "cartera"}!${item.row}`,
     });
   }
-  const order: Record<QueueBucket, number> = { VENCIDO: 0, HOY: 1, SEMANA: 2, MES: 3 };
+  const order: Record<QueueBucket, number> = { VENCIDO: 0, HOY: 1, ANTICIPADO: 2, MES: 3 };
   const laneOrder: Record<QueueLane, number> = { COBRAR: 0, CONFIRMAR_PAGO: 1, VERIFICAR: 2, BLOQUEADO: 3 };
   queue.sort((a, b) => order[a.bucket] - order[b.bucket] || laneOrder[a.lane] - laneOrder[b.lane] || (a.dueDate ?? "").localeCompare(b.dueDate ?? "") || a.client.localeCompare(b.client, "es"));
 
@@ -219,12 +236,36 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
   let creditReason: string | null = input.creditsError ?? null;
   const panels: Workday["credits"]["panels"] = [];
   if (credits) {
-    for (const p of credits.panels) panels.push({ panel: p.panel, sheet: p.sheet, status: p.status, reason: p.reason, programados: p.kpi?.programados ?? null, otorgados: p.kpi?.otorgados ?? null, faltantes: p.kpi?.faltantes ?? null, hoy: p.kpi?.hoy ?? null });
+    for (const p of credits.panels) {
+      const ok = p.status === "OK";
+      // Semáforo del motor: habilitado = habilitación financiera (A/B/E); pendiente = esperando pago; bloqueado = decisión de Dirección.
+      const count = (f: (c: (typeof p.cycles)[number]) => boolean) => (ok ? p.cycles.filter(f).length : null);
+      panels.push({
+        panel: p.panel, sheet: p.sheet, status: p.status, reason: p.reason,
+        programados: p.kpi?.programados ?? null, otorgados: p.kpi?.otorgados ?? null, faltantes: p.kpi?.faltantes ?? null, hoy: p.kpi?.hoy ?? null,
+        habilitados: count((c) => c.basis != null), pendientes: count((c) => c.step === "PAGO"), bloqueados: count((c) => c.step === "DIRECCION"),
+      });
+    }
     const bad = credits.panels.filter((p) => p.status !== "OK");
     creditStatus = bad.length === 0 ? "OK" : bad.length < credits.panels.length ? "PARCIAL" : "BLOQUEADO";
     if (bad.length) creditReason = bad.map((p) => `${p.panel}: ${p.reason ?? p.status}`).join(" · ");
   } else if (!creditReason) creditReason = "No fue posible leer CONTROL del mes.";
   if (creditStatus !== "OK") blockers.push(`Créditos ${creditStatus}: ${creditReason}`);
+
+  // Pagos por confirmar: hojas ZELLE/PAYPAL/TRANSF del mes (CONFIRMACION ≠ CONFIRMADO JM). Sin esas hojas no hay cifra.
+  const payTitles = model.sources.included.filter((r) => r.role === "PAGO" && r.month === model.currentMonth).map((r) => r.title);
+  const ptc = model.management.paymentsToConfirm;
+  const paymentsToConfirm: Workday["paymentsToConfirm"] = payTitles.length
+    ? { status: "OK", count: ptc.value.count, amount: ptc.value.amount, source: payTitles.join(", "), reason: null }
+    : { status: "BLOQUEADO", count: 0, amount: emptyMoney(), source: "—", reason: `No se leyeron hojas de pago de ${model.currentMonth} (ZELLE/PAYPAL/TRANSF).` };
+  if (paymentsToConfirm.status === "BLOQUEADO") blockers.push(`Pagos por confirmar BLOQUEADO: ${paymentsToConfirm.reason}`);
+
+  const exceptions = [
+    ...model.operations.exceptions.map((e) => ({ source: `${e.sheet}!${e.row}`, type: e.type, detail: e.detail })),
+    ...(credits?.cycle.exceptions ?? []).map((e) => ({ source: e.references.join(", "), type: `CRÉDITO · ${e.kind}`, detail: e.title })),
+  ];
+  const scope = input.scope ?? { status: "COMPLETO", detail: "Lectura completa de las hojas del mes." };
+  if (scope.status === "PARCIAL") blockers.unshift(`ALCANCE PARCIAL: ${scope.detail} Las cifras no representan el universo operacional completo.`);
 
   return {
     today,
@@ -233,6 +274,9 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
     universe,
     queue,
     later,
+    scope,
+    paymentsToConfirm,
+    exceptions,
     counts,
     lanes,
     toCollectToday,

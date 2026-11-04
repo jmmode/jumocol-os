@@ -24,18 +24,19 @@ let cache: { file: string; mtime: number; data: SheetsSnapshot } | null = null;
 export function loadSnapshot(): SheetsSnapshot {
   const file = snapshotFile();
   if (!file) throw new Error("Sin captura local configurada");
-  const mtime = fs.statSync(file).mtimeMs;
-  if (!cache || cache.file !== file || cache.mtime !== mtime) cache = { file, mtime, data: JSON.parse(fs.readFileSync(file, "utf8")) as SheetsSnapshot };
+  const mtime = fs.statSync(/* turbopackIgnore: true */ file).mtimeMs;
+  if (!cache || cache.file !== file || cache.mtime !== mtime) cache = { file, mtime, data: JSON.parse(fs.readFileSync(/* turbopackIgnore: true */ file, "utf8")) as SheetsSnapshot };
   return cache.data;
 }
 
 /** Fuente vigente para mostrar en pantalla: nunca se presenta una captura como lectura en vivo. */
-export function sheetsSourceMode(): { mode: "LIVE" } | { mode: "SNAPSHOT"; capturedAt: string } {
+export function sheetsSourceMode(): { mode: "LIVE" } | { mode: "SNAPSHOT"; capturedAt: string; note: string } {
   if (!snapshotFile()) return { mode: "LIVE" };
   try {
-    return { mode: "SNAPSHOT", capturedAt: loadSnapshot().capturedAt };
+    const snap = loadSnapshot();
+    return { mode: "SNAPSHOT", capturedAt: snap.capturedAt, note: snap.note ?? "Captura local sin descripción de alcance." };
   } catch {
-    return { mode: "SNAPSHOT", capturedAt: "desconocida" };
+    return { mode: "SNAPSHOT", capturedAt: "desconocida", note: "Captura local ilegible." };
   }
 }
 

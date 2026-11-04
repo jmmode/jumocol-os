@@ -2,10 +2,11 @@ import Link from "next/link";
 
 import type { Money } from "@/server/tiviplay-live/runtime-read-model";
 import type { QueueBucket, QueueLane, WorkdayResult } from "@/server/tiviplay-live/workday";
+import { ADVANCE_WINDOW } from "@/server/tiviplay-live/workday-model";
 
 const card = "rounded-2xl border border-brand-border bg-brand-background p-5";
 const blocked = "rounded-2xl border border-brand-red/30 bg-brand-red/5 px-4 py-3 text-sm text-status-error";
-const BUCKET_LABEL: Record<QueueBucket, string> = { VENCIDO: "Vencidos", HOY: "Vencen hoy", SEMANA: "Resto de la semana", MES: "Resto del mes" };
+const BUCKET_LABEL: Record<QueueBucket, string> = { VENCIDO: "Vencido", HOY: "Vence hoy", ANTICIPADO: "Gestión anticipada", MES: "Resto del mes" };
 const LANE_LABEL: Record<QueueLane, string> = { COBRAR: "Cobrar", CONFIRMAR_PAGO: "Confirmar pago", VERIFICAR: "Verificar antes de cobrar", BLOQUEADO: "Bloqueado · Dirección" };
 const LANE_CLASS: Record<QueueLane, string> = {
   COBRAR: "border-brand-green/35 bg-brand-green/10 text-status-success",
@@ -16,71 +17,101 @@ const LANE_CLASS: Record<QueueLane, string> = {
 
 export const money = (m: Money) => (["USD", "COP", "CAD"] as const).filter((c) => m[c]).map((c) => `${c} ${m[c].toLocaleString("es-CO")}`).join(" + ") || "—";
 
-function Stat({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
-  return <div className={card}><p className="text-[10px] font-black uppercase tracking-[0.12em] text-brand-muted">{label}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>{hint ? <p className="mt-1 text-xs text-brand-muted">{hint}</p> : null}</div>;
+/** Indicador con su procedencia: fuente · fecha · alcance. */
+function Stat({ label, value, source, scope, tone }: { label: string; value: string | number; source: string; scope: string; tone?: "warn" | "error" }) {
+  const toneClass = tone === "error" ? "text-status-error" : tone === "warn" ? "text-status-warning" : "";
+  return <div className={card}>
+    <p className="text-[10px] font-black uppercase tracking-[0.12em] text-brand-muted">{label}</p>
+    <p className={`mt-1 text-2xl font-semibold tabular-nums ${toneClass}`}>{value}</p>
+    <p className="mt-1 text-[11px] leading-4 text-brand-muted">Fuente: {source} · Alcance: {scope}</p>
+  </div>;
 }
 
 export function WorkdayPanel({ result }: { result: WorkdayResult }) {
   if (!result.ok) return <p className={`${blocked} mt-6`} role="alert">BLOQUEADO: {result.reason} No se muestran clientes ni importes sin fuente verificable.</p>;
   const { workday: w, source } = result;
-  const sourceText = source.mode === "SNAPSHOT"
-    ? `CAPTURA LOCAL de solo lectura del ${new Date(source.capturedAt).toLocaleString("es-CO", { timeZone: "America/Bogota" })} — no es lectura en vivo`
-    : "Google Sheets en vivo (solo lectura)";
+  const partial = w.scope.status === "PARCIAL";
+  const scope = partial ? "PARCIAL" : "mes completo";
+  const when = source.mode === "SNAPSHOT" ? `captura ${new Date(source.capturedAt).toLocaleString("es-CO", { timeZone: "America/Bogota" })}` : `en vivo ${w.today}`;
+  const cartera = `${w.carteraSheet ?? "sin hoja"} (${when})`;
+  const control = `CONTROL ${w.month} P1/P2/P3 (${when})`;
+  const sum = (k: "programados" | "otorgados" | "habilitados" | "pendientes" | "bloqueados") => {
+    const ok = w.credits.panels.filter((p) => p[k] != null);
+    return ok.length ? ok.reduce((a, p) => a + (p[k] ?? 0), 0) : null;
+  };
+  const show = (v: number | null) => (v == null ? "BLOQUEADO" : v);
+  const creditScope = w.credits.status === "OK" ? scope : `${w.credits.status} (${w.credits.panels.filter((p) => p.status === "OK").map((p) => p.panel).join(", ") || "ningún panel"})`;
+
   return <div className="mt-6 space-y-5">
     <p className={`rounded-2xl border px-4 py-3 text-xs ${source.mode === "SNAPSHOT" ? "border-brand-yellow/50 bg-brand-yellow/10 text-status-warning" : "border-brand-border bg-brand-surface text-brand-muted"}`}>
-      Fecha operativa <strong>{w.today}</strong> (America/Bogota) · Fuente: <strong>{sourceText}</strong> · {source.workbook} · hojas {source.sheetsRead.join(", ")} · firma <code>{source.signature.slice(0, 12)}…</code>
+      Fecha operativa <strong>{w.today}</strong> (America/Bogota, automática) · Fuente: <strong>{source.mode === "SNAPSHOT" ? "CAPTURA LOCAL de solo lectura — no es lectura en vivo" : "Google Sheets en vivo (solo lectura)"}</strong> · {source.workbook} · hojas {source.sheetsRead.join(", ")} · firma <code>{source.signature.slice(0, 12)}…</code>
     </p>
     {w.blockers.map((b) => <p className={blocked} key={b} role="note">{b}</p>)}
 
     <section aria-labelledby="indicadores">
-      <h2 className="text-lg font-semibold" id="indicadores">Cartera del día · {w.carteraSheet ?? "sin hoja"}</h2>
+      <h2 className="text-lg font-semibold" id="indicadores">Cartera y cobranza</h2>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Fichas del mes" value={w.universe} hint={`${w.later} programadas después de esta semana`} />
-        <Stat label="Clientes a gestionar hoy" value={w.queue.length} hint={`Vencidos ${w.counts.VENCIDO} · hoy ${w.counts.HOY} · semana ${w.counts.SEMANA}`} />
-        <Stat label="Cobrables hoy (vencidos + hoy)" value={money(w.toCollectToday)} hint={`Solo carril Cobrar. Excluye ${w.queue.filter((q) => q.lane !== "COBRAR" && q.bucket !== "SEMANA").length} ficha(s) a verificar/bloqueadas. Nominal esperado, no recaudo ni CONFIRMADO JM`} />
-        <Stat label="Créditos" value={w.credits.status} hint={`Ejecutados ${w.credits.totals.EJECUTADO} · habilitados ${w.credits.totals.HABILITADO} · por decidir ${w.credits.totals.REQUIERE_REVISION}`} />
+        <Stat label="Clientes por gestionar hoy" value={w.queue.length} source={cartera} scope={scope} />
+        <Stat label="Vencidos" value={w.counts.VENCIDO} source={cartera} scope={scope} tone={w.counts.VENCIDO ? "warn" : undefined} />
+        <Stat label="Vencen hoy" value={w.counts.HOY} source={cartera} scope={scope} />
+        <Stat label={`Gestión anticipada (${ADVANCE_WINDOW.days} día)`} value={w.counts.ANTICIPADO} source={`${cartera}; regla: ${ADVANCE_WINDOW.source}, ${ADVANCE_WINDOW.validation}`} scope={scope} />
+        <Stat label="Cobrable nominal hoy (vencidos + hoy + anticipada)" value={money(w.toCollectToday)} source={`${cartera}, columnas USD/COP; carril Cobrar. Es lo esperado, no dinero recibido`} scope={scope} />
+        <Stat label="Pagos pendientes de confirmación" value={w.paymentsToConfirm.status === "OK" ? `${w.paymentsToConfirm.count} · ${money(w.paymentsToConfirm.amount)}` : "BLOQUEADO"} source={w.paymentsToConfirm.status === "OK" ? `${w.paymentsToConfirm.source}; solo CONFIRMADO JM acredita` : w.paymentsToConfirm.reason ?? "—"} scope={w.paymentsToConfirm.status === "OK" ? scope : "sin fuente"} tone={w.paymentsToConfirm.status === "OK" ? undefined : "error"} />
+        <Stat label="En revisión (mes)" value={`${w.lanes.VERIFICAR.count} · ${money(w.lanes.VERIFICAR.amount)}`} source={`${cartera}, CLASIFICACION_BORRADOR = REQUIERE_REVISION`} scope={scope} tone="warn" />
+        <Stat label="Bloqueados (mes)" value={`${w.lanes.BLOQUEADO.count} · ${money(w.lanes.BLOQUEADO.amount)}`} source={`${cartera}, CLASIFICACION_BORRADOR = BLOQUEADO`} scope={scope} tone={w.lanes.BLOQUEADO.count ? "error" : undefined} />
       </div>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {(Object.keys(LANE_LABEL) as QueueLane[]).map((l) => <div className={`rounded-xl border px-4 py-3 ${LANE_CLASS[l]}`} key={l}>
-          <p className="text-[10px] font-black uppercase tracking-[0.12em]">{LANE_LABEL[l]} · mes</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums">{w.lanes[l].count} · {money(w.lanes[l].amount)}</p>
-        </div>)}
-      </div>
+      <p className="mt-2 text-xs text-brand-muted">Fichas del mes: {w.universe} · cobrar {w.lanes.COBRAR.count} ({money(w.lanes.COBRAR.amount)}) · programadas después de la ventana: {w.later}. USD, COP y CAD no se suman entre sí.</p>
     </section>
 
     <section aria-labelledby="creditos" className={card}>
-      <h2 className="text-lg font-semibold" id="creditos">Créditos por panel</h2>
+      <h2 className="text-lg font-semibold" id="creditos">Créditos técnicos</h2>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <Stat label="Programados" value={show(sum("programados"))} source={control} scope={creditScope} />
+        <Stat label="Otorgados" value={show(sum("otorgados"))} source={`${control}, CRÉDITO > 0`} scope={creditScope} />
+        <Stat label="Habilitados" value={show(sum("habilitados"))} source="Motor getCreditosHoy: habilitación financiera Caso A/B/E" scope={creditScope} />
+        <Stat label="Pendientes de pago" value={show(sum("pendientes"))} source="Motor getCreditosHoy: sin habilitación financiera" scope={creditScope} tone="warn" />
+        <Stat label="Bloqueados (Dirección)" value={show(sum("bloqueados"))} source="Motor getCreditosHoy: excepción por decidir" scope={creditScope} tone="error" />
+      </div>
       <div className="mt-3 overflow-x-auto">
         <table className="min-w-full text-xs">
-          <thead><tr className="text-left text-[10px] uppercase tracking-[0.12em] text-brand-muted"><th className="py-1 pr-4">Panel</th><th className="pr-4">Hoja</th><th className="pr-4">Estado</th><th className="pr-4">Programados</th><th className="pr-4">Otorgados</th><th className="pr-4">Faltantes</th><th className="pr-4">Hoy</th><th>Motivo</th></tr></thead>
+          <thead><tr className="text-left text-[10px] uppercase tracking-[0.12em] text-brand-muted"><th className="py-1 pr-4">Panel</th><th className="pr-4">Hoja</th><th className="pr-4">Estado</th><th className="pr-4">Programados</th><th className="pr-4">Otorgados</th><th className="pr-4">Habilitados</th><th className="pr-4">Pendientes</th><th className="pr-4">Bloqueados</th><th>Motivo</th></tr></thead>
           <tbody>{w.credits.panels.map((p) => <tr className="border-t border-brand-border" key={p.panel}>
             <td className="py-1 pr-4 font-semibold">{p.panel}</td><td className="pr-4">{p.sheet ?? "—"}</td>
-            <td className={`pr-4 font-bold ${p.status === "OK" ? "text-status-success" : "text-status-error"}`}>{p.status === "OK" ? "OK" : "BLOQUEADO"}</td>
-            <td className="pr-4 tabular-nums">{p.programados ?? "—"}</td><td className="pr-4 tabular-nums">{p.otorgados ?? "—"}</td><td className="pr-4 tabular-nums">{p.faltantes ?? "—"}</td><td className="pr-4 tabular-nums">{p.hoy ?? "—"}</td>
+            <td className={`pr-4 font-bold ${p.status === "OK" ? "text-status-success" : "text-status-error"}`}>{p.status === "OK" ? (partial ? "OK · PARCIAL" : "OK") : "BLOQUEADO"}</td>
+            {(["programados", "otorgados", "habilitados", "pendientes", "bloqueados"] as const).map((k) => <td className="pr-4 tabular-nums" key={k}>{p[k] ?? "—"}</td>)}
             <td className="text-brand-muted">{p.reason ?? ""}</td>
           </tr>)}</tbody>
         </table>
       </div>
-      <p className="mt-2 text-xs text-brand-muted">Estados: ejecutado {w.credits.totals.EJECUTADO} · habilitado {w.credits.totals.HABILITADO} · pendiente de pago {w.credits.totals.NO_HABILITADO + w.credits.totals.SIN_PAGAR} · requiere decisión {w.credits.totals.REQUIERE_REVISION}. El detalle y las decisiones están en <Link className="font-semibold underline" href="/operaciones/tiviplay/hoy">HOY</Link>. Esta vista no otorga créditos.</p>
+      <p className="mt-2 text-xs text-brand-muted">Un comprobante no habilita un crédito: lo habilita el motor con CONFIRMADO JM y cobertura. Las decisiones se toman en <Link className="font-semibold underline" href="/operaciones/tiviplay/hoy">HOY</Link>; esta vista no otorga créditos.</p>
     </section>
 
     <section aria-labelledby="cola">
-      <h2 className="text-lg font-semibold" id="cola">Cola de atención de hoy ({w.queue.length})</h2>
-      <p className="mt-1 text-xs text-brand-muted">Orden: vencidos → hoy → resto de la semana; dentro de cada grupo, cobrar → confirmar → verificar → bloqueado. ATENDER abre la ficha sugerida con el mensaje ya personalizado.</p>
+      <h2 className="text-lg font-semibold" id="cola">Contactos priorizados de hoy ({w.queue.length})</h2>
+      <p className="mt-1 text-xs text-brand-muted">Orden: vencidos → hoy → anticipada; en cada grupo: cobrar → confirmar → verificar → bloqueado. ATENDER abre Atención con el cliente y la ficha sugerida. Fuente: {cartera} · Alcance: {scope}.</p>
       {w.queue.length === 0 ? <p className="mt-3 text-sm text-brand-muted">La cartera no tiene clientes por gestionar en la jornada.</p> : <ul className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {w.queue.map((q) => <li className={`${card} flex flex-col`} key={`${q.source}`}>
+        {w.queue.map((q, i) => <li className={`${card} flex flex-col`} key={`${q.source}`}>
           <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-black text-brand-muted">#{i + 1}</span>
             <span className="rounded-full border border-brand-border px-2 py-0.5 text-[10px] font-black uppercase">{BUCKET_LABEL[q.bucket]}</span>
             <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black uppercase ${LANE_CLASS[q.lane]}`}>{LANE_LABEL[q.lane]}</span>
           </div>
           <p className="mt-2 font-semibold">{q.client}</p>
           <p className="text-xs text-brand-graphite">{q.phone || "Sin teléfono"} · usuario <span className="font-mono">{q.user || "—"}</span></p>
           <p className="text-xs text-brand-muted">{q.plan || "Plan POR VALIDAR"} · {q.panel || "—"} · {q.method || "—"}</p>
-          <p className="mt-1 text-sm tabular-nums">Vence {q.dueDate ?? "POR VALIDAR"} · <strong>{money(q.amount)}</strong></p>
-          <p className="mt-1 text-xs">{q.nextAction}{q.reason ? <span className="text-brand-muted"> · {q.reason}</span> : null}</p>
+          <p className="mt-1 text-sm tabular-nums">Vence {q.dueDate ?? "POR VALIDAR"} · <strong>{money(q.amount)}</strong> <span className="text-[10px] text-brand-muted">nominal</span></p>
+          <p className="mt-1 text-xs"><strong>Motivo:</strong> {q.reason || BUCKET_LABEL[q.bucket]}</p>
+          <p className="text-xs"><strong>Acción:</strong> {q.nextAction}</p>
           <p className="text-[10px] text-brand-muted">Estado de cobro en hoja: {q.collectionStatus || "—"} · {q.source}</p>
           <Link className="mt-3 self-start rounded-lg bg-brand-primary-dark px-4 py-2 text-sm font-semibold text-white" href={`/operaciones/tiviplay/atencion?cliente=${q.id}&ficha=${q.suggestedFicha}#ficha`} prefetch={false}>ATENDER · {q.suggestedFicha}</Link>
         </li>)}
+      </ul>}
+    </section>
+
+    <section aria-labelledby="excepciones" className={card}>
+      <h2 className="text-lg font-semibold" id="excepciones">Excepciones ({w.exceptions.length})</h2>
+      {w.exceptions.length === 0 ? <p className="mt-2 text-sm text-brand-muted">Sin excepciones en las fuentes leídas ({scope}).</p> : <ul className="mt-2 space-y-1 text-xs">
+        {w.exceptions.slice(0, 40).map((e) => <li key={`${e.type}-${e.source}`}><strong>{e.type}</strong> · {e.detail} <span className="text-brand-muted">({e.source})</span></li>)}
       </ul>}
     </section>
   </div>;

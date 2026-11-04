@@ -30,6 +30,8 @@ export async function getTiviplayWorkday(): Promise<WorkdayResult> {
     credits: credits.status === "fulfilled" ? credits.value : null,
     creditsError: credits.status === "rejected" ? "Lectura de CONTROL fallida." : null,
     directory,
+    // Una captura local nunca es el universo completo: todas las cifras quedan rotuladas PARCIAL.
+    scope: mode.mode === "SNAPSHOT" ? { status: "PARCIAL", detail: mode.note } : { status: "COMPLETO", detail: `Lectura en vivo de ${runtime.source.sheetsRead.join(", ")}.` },
   });
   return { ok: true, workday, directory, source: { ...mode, workbook: runtime.source.workbook, sheetsRead: runtime.source.sheetsRead, signature: runtime.source.signature } };
 }
