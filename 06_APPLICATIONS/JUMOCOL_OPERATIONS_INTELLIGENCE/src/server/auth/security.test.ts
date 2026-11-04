@@ -170,7 +170,7 @@ describe("server policy and transport", () => {
     expect(allowed("OPERADOR", "/api/admin/tiviplay/conciliacion/decision", "POST")).toBe(false);
   });
   it("the operator searches clients only through the read-only POST endpoint (query out of the URL)", () => {
-    expect(allowed("OPERADOR", "/api/operations/tiviplay/clientes/buscar", "POST")).toBe(true);
+    expect(allowed("OPERADOR", "/api/operations/tiviplay/clientes/buscar", "POST")).toBe(true);\n    expect(allowed("OPERADOR", "/api/operations/tiviplay/clientes/credencial", "POST")).toBe(true);\n    expect(allowed("OPERADOR", "/api/operations/tiviplay/clientes/credencial", "GET")).toBe(false);\n    expect(allowed("OPERADOR", "/api/operations/tiviplay/clientes/credencial", "DELETE")).toBe(false);
     expect(allowed("OPERADOR", "/api/operations/tiviplay/clientes/buscar", "PUT")).toBe(false);
     expect(allowed("OPERADOR", "/api/operations/tiviplay/clientes/otra", "POST")).toBe(false);
   });
