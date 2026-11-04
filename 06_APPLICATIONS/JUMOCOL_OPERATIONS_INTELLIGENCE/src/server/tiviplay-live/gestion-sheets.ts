@@ -6,7 +6,17 @@ const RETRY_MS = [1000, 3000, 8000, 20000];
 const quote = (title: string) => `'${title.replace(/'/g, "''")}'`;
 
 export function gestionHeadersValid(headers: readonly string[]) {
-  return headers[0] === "TC" && headers[1] === "CLIENTE" && !!headers[5]?.startsWith("OBSERVACIONES") && headers[12] === "USUARIO";
+  // En F solo se permite la gestión comercial, nunca las notas libres de W.
+  return headers[0] === "TC" && headers[1] === "CLIENTE" && headers[5] === "OBSERVACIONES GESTION" && headers[12] === "USUARIO";
+}
+
+/** Verifica el contrato completo de noviembre antes de permitir cualquier escritura en F. */
+export function gestionNovemberHeadersValid(headers: readonly string[]) {
+  return gestionHeadersValid(headers)
+    && headers[22] === "OBSERVACIONES ASESOR"     // W: nota libre
+    && headers[23] === "CONFIRMACION"             // X: estado financiero
+    && headers[32] === "CONFIRMACION_FINANCIERA"  // AG: evidencia de ciclo anterior
+    && headers[39] === "ESTADO_COBRO";            // AN: gestión del cobro actual
 }
 
 /** Lectura sin caché y escritura RAW limitadas a la columna F de una fila. */
