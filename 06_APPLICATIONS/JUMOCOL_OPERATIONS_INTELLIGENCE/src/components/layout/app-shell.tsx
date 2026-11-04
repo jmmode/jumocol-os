@@ -45,7 +45,7 @@ export function AppShell({ children, user }: AppShellProps) {
       </aside>
 
       <div className="min-h-screen lg:pl-[292px]">
-        <Topbar />
+        <Topbar operator={user.role === "OPERADOR"} />
         <div className="flex flex-wrap items-center gap-4 border-b px-5 py-3 text-sm">
           <span>{user.name} · {user.role}</span>
           {user.role === "ADMIN" ? <><Link href="/administracion/usuarios#accesos">Accesos</Link><Link href="/administracion/usuarios">Usuarios</Link><Link href="/administracion/auditoria">Auditoría</Link><Link href="/administracion/biblioteca">Biblioteca</Link></> : null}
@@ -56,7 +56,7 @@ export function AppShell({ children, user }: AppShellProps) {
             <AreaNavigation role={user.role} variant="mobile" />
           </div>
         </div>
-        <main className="mx-auto w-full max-w-[1480px] px-4 py-7 sm:px-6 sm:py-9 lg:px-10 lg:py-10">{children}</main>
+        <main className={`mx-auto w-full max-w-[1480px] px-4 sm:px-6 lg:px-10 ${user.role === "OPERADOR" ? "py-4 sm:py-5 lg:py-6" : "py-7 sm:py-9 lg:py-10"}`}>{children}</main>
         {user.role === "ADMIN" ? <footer className="mx-auto flex w-full max-w-[1480px] flex-col gap-2 border-t border-brand-border px-4 py-6 text-xs text-brand-muted sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10">
           <span>JUMOCOL Operations Intelligence · MVP local</span>
           <span>Fuentes gobernadas · procesamiento del lado servidor</span>
