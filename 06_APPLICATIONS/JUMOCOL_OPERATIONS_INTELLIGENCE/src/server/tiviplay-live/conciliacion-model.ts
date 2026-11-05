@@ -167,7 +167,7 @@ export function projectReconciliation(dataset: ReconDataset, decisions: ReconDec
     if (chosen) {
       if (c.kind === "MULTIPANEL" && chosen.keep) {
         // Una línea expirada por fecha NO requiere tarea LIBERAR; se conserva en el caso como histórico.
-        for (const line of c.lines.filter((l) => l.panel !== chosen.keep && /^\d{4}-\d{2}-\d{2}$/.test(l.expiration) && l.expiration >= referenceDate)) {
+        for (const line of c.lines.filter((l) => l.panel !== chosen.keep && (!/^\d{4}-\d{2}-\d{2}$/.test(l.expiration) || l.expiration >= referenceDate))) {
           const id = residualTaskId(c.id, line);
           residualTasks.push(id);
           generated.push({
@@ -190,14 +190,14 @@ export function projectReconciliation(dataset: ReconDataset, decisions: ReconDec
         for (const u of chosen.baseUpdates) baseSync.push({ ...u, caseId: c.id, username: c.username, decidedAt: decision!.at });
       }
     }
-    const consolidated = chosen != null && residualTasks.every((id) => taskStatus(id) === "EJECUTADO");
+    const consolidated = chosen != null && residualTasks.length > 0 && residualTasks.every((id) => taskStatus(id) === "EJECUTADO");
     const status: CaseView["status"] = !chosen ? "PENDIENTE" : consolidated ? "CONSOLIDADO" : automatic ? "AUTOMATICO" : "DECIDIDO";
     return { ...c, status, mode: rule?.mode ?? null, decision, history, chosen, residualTasks };
   });
 
   // Ocultar del trabajo pendiente las LIBERAR históricas del dataset; preservar las ejecutadas y los eventos append-only.
   const tasks: TaskView[] = [...dataset.tasks, ...generated]
-    .filter((t) => t.kind !== "LIBERAR" || !t.line || t.line.expiration >= referenceDate || taskStatus(t.id) === "EJECUTADO")
+    .filter((t) => t.kind !== "LIBERAR" || !t.line || !/^\d{4}-\d{2}-\d{2}$/.test(t.line.expiration) || t.line.expiration >= referenceDate || taskStatus(t.id) === "EJECUTADO")
     .map((t) => ({ ...t, status: taskStatus(t.id), events: eventsByTask.get(t.id) ?? [] }));
   const available = tasks
     .filter((t) => t.kind === "LIBERAR" && t.status === "EJECUTADO" && t.line)
