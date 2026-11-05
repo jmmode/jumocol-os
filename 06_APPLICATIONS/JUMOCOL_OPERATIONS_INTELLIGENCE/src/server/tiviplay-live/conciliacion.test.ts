@@ -112,5 +112,10 @@ describe("Conciliación de servicio: decisión → BASE → LIBERAR → DISPONIB
     expect(locateRow(shifted, "sintetico1", 5)).toBe(6);
     expect(isApplied({ row: 5, field: "F.VENCIMIENTO", to: "2026-11-20", username: "SINTETICO1" }, shifted)).toBe(true);
     expect(isApplied({ row: 5, field: "F.VENCIMIENTO", to: "2026-11-20" }, shifted)).toBe(false);
+    // La fila sugerida por un snapshot no convierte en inequívoco un USUARIO repetido.
+    const duplicated = new Map(shifted);
+    duplicated.set(8, { client: "Segundo servicio", username: "SINTETICO1", panel: "PANEL 3", due: "2026-12-05" });
+    expect(locateRow(duplicated, "SINTETICO1", 5)).toBeNull();
+    expect(isApplied({ row: 5, field: "PANEL", to: "PANEL 3", username: "SINTETICO1" }, duplicated)).toBe(false);
   });
 });
