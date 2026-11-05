@@ -1,14 +1,12 @@
 import { Suspense } from "react";
 
-import { CopyableMessage } from "@/components/documents/copyable-message";
-import { cobranzaStage } from "@/features/tiviplay-atencion/cobranza";
 import { ControlMonths } from "@/features/tiviplay-atencion/control-months";
 import { GestionRegistro } from "@/features/tiviplay-atencion/gestion-registro";
 import { ServiceCredentials } from "@/features/tiviplay-atencion/service-credentials";
 import { technicalDue, type ClientHistory } from "@/server/tiviplay-live/client-history-model";
 import { getClientHistory } from "@/server/tiviplay-live/client-history";
 import { observationsHash } from "@/server/tiviplay-live/gestion-core";
-import { GESTION_ETIQUETAS, parseGestiones } from "@/server/tiviplay-live/gestion-model";
+import { etapaSugerida, GESTION_ETAPAS, GESTION_ETIQUETAS, GESTION_F_ETIQUETAS, parseGestiones, type GestionEtapa } from "@/server/tiviplay-live/gestion-model";
 import { gestionWriteEnabled } from "@/server/tiviplay-live/gestion-write";
 import { getRuntimeValuesCached } from "@/server/tiviplay-live/runtime-source";
 import { headerKey } from "@/server/tiviplay-live/sheet-columns";
@@ -110,17 +108,25 @@ export async function ClientFicha({ client, queue, actor, admin, cobranza, today
   const gestionState = last ? GESTION_ETIQUETAS[last.estado].toUpperCase() : queue?.lastManaged ? "GESTIONADO EN LA HOJA" : "SIN GESTIÓN";
   const amounts = money(client.tariff);
 
-  // Con pago confirmado del ciclo por conciliar no se envía mensaje de cobro.
-  const stage = queue?.confirmedMethodReference ? null : cobranzaStage(client.nextPayment, today, client.method);
-  const template = stage && cobranza ? cobranza[stage.key] : null;
+  // Solo un evento S0 previamente registrado con referencia de panel habilita sugerencias S+2/S+5.
+  const s0 = [...gestiones].reverse().find((g) => /\bSOP:S0;/.test(g.detail) && /\bPANEL:.{8,}/.test(g.detail));
+  const s0Date = s0?.at.slice(0, 10) ?? null;
+  const paymentConfirmed = !!queue?.confirmedMethodReference;
+  const suggested = paymentConfirmed ? null : etapaSugerida(client.nextPayment, today, s0Date);
+  const method = /ZELLE/i.test(client.method) ? "ZELLE" : /PAYPAL/i.test(client.method) ? "PAYPAL" : /TRANSF|BANCO|NEQUI|DAVI/i.test(client.method) ? "TRANSFERENCIA" : null;
   const references = await readPaymentReferences();
-  const method = stage?.key.split(" ")[1];
-  const message = template ? personalizeScript(template, {
-    NOMBRE: greetingName(client.name), ASESOR: actor, FECHA: displayDate(client.nextPayment), PLAN: client.plan,
-    VALOR: amounts.length === 1 ? amounts[0] : null, DATOS_PAGO: method ? references?.[method] ?? null : null,
-  }) : null;
-
-  const shown = message ?? fallback;
+  const messages: Partial<Record<GestionEtapa, string>> = {};
+  for (const item of GESTION_ETAPAS) {
+    const key = item.id === "D-2" ? (method ? `D-2 ${method}` : null) : item.template;
+    const template = key && cobranza ? cobranza[key] : null;
+    if (!template) continue;
+    const message = personalizeScript(template, {
+      NOMBRE: greetingName(client.name), ASESOR: actor, FECHA: displayDate(client.nextPayment), PLAN: client.plan,
+      VALOR: amounts.length === 1 ? amounts[0] : null, DATOS_PAGO: method ? references?.[method] ?? null : null,
+    });
+    // Sin datos autorizados no se habilita el texto de pago ni un texto con marcadores sin resolver.
+    if (!message.pending && !(item.id === "D-2" && !references?.[method ?? ""])) messages[item.id] = message.text;
+  }
   const blocked = !gestionWriteEnabled() ? (admin ? "registro deshabilitado hasta validar la escritura en hoja de ensayo." : "el guardado aún no está disponible. Anota el resultado en la planilla de pendientes.")
     : cell === null ? "el cliente no tiene fila verificable en la cartera del mes."
     : unverified ? "identidad requiere validación." : null;
@@ -152,6 +158,7 @@ export async function ClientFicha({ client, queue, actor, admin, cobranza, today
           {queue?.confirmedMethodReference ? <Item name="Pago confirmado del mes" value={`CONFIRMADO JM · ${queue.confirmedMethodReference} · pendiente de sincronización con cartera`} wide /> : null}
           <Item name="Último pago" value={displayDate(client.lastPayment)} />
           <Item name="Observaciones asesor (W)" value={advisorNote || "SIN OBSERVACIÓN"} wide />
+          <Item name="Etapa SOP confirmada (BASE F)" value={Object.values(GESTION_F_ETIQUETAS).includes((client.baseGestionObservation ?? "").trim()) ? client.baseGestionObservation : "SIN ETAPA SOP REGISTRADA"} wide />
           <Item name="Última gestión" value={last ? `${last.at} · ${last.actor}` : queue?.lastManaged || "SIN GESTIÓN"} wide />
         </dl>
       </section>
@@ -178,10 +185,11 @@ export async function ClientFicha({ client, queue, actor, admin, cobranza, today
     </section> : null}
 
     <section aria-label="Acción" className={card}>
-      <h3 className="font-semibold">Acción{stage ? ` · ${stage.label}` : ""}</h3>
-      {stage ? <p className="text-xs text-brand-muted">Canal: {stage.channel}. {stage.note}</p> : null}
-      {shown ? <><p className="mt-2 text-xs font-semibold">Mensaje recomendado{message ? "" : ` · ${fallback?.title}`}</p><CopyableMessage text={shown.text} />{shown.pending ? <p className="mt-1 text-xs text-status-warning">{shown.pending} dato(s) sin confirmar quedan entre corchetes. No envíes datos de pago que no sean los autorizados.</p> : null}</> : <p className="mt-2 text-sm text-status-warning">Sin mensaje publicado para este caso.</p>}
-      <GestionRegistro blocked={blocked} clientId={client.id} expectedHash={cell === null ? null : observationsHash(cell)} key={client.id} />
+      <h3 className="font-semibold">Acción SOP</h3>
+      {fallback && !suggested ? <p className="mt-2 text-xs text-brand-muted">{fallback.title}: {fallback.text}</p> : null}
+      <GestionRegistro blocked={blocked} clientId={client.id} expectedHash={cell === null ? null : observationsHash(cell)}
+        suggested={suggested} messages={messages} releaseAlert={!!queue?.releaseAlert} s0Date={s0Date}
+        paymentConfirmed={paymentConfirmed} panel={client.panel} key={client.id} />
     </section>
 
     <details className={card}>

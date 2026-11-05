@@ -9,13 +9,36 @@ import { getTiviplayWorkday } from "@/server/tiviplay-live/workday";
 import { getSheetsAccessToken, getTiviplaySpreadsheetId, batchReadRanges, quoteSheet } from "@/server/tiviplay-live/sheets-client";
 import { snapshotFile } from "@/server/tiviplay-live/sheets-snapshot";
 import { headerKey } from "@/server/tiviplay-live/sheet-columns";
-import { gestionEntry, isGestionEstado, mentionsSecret, type GestionEstado } from "@/server/tiviplay-live/gestion-model";
+import { GESTION_F_ETIQUETAS, etapaRegistradaEnDetalle, gestionEntry, isGestionEstado, mentionsSecret, type GestionEstado } from "@/server/tiviplay-live/gestion-model";
 import type { Identity } from "@/server/auth/store";
 
 type Status = "SAVED" | "DUPLICATE" | "DISABLED" | "BAD_INPUT" | "NO_LIVE_SOURCE" | "CLIENT_MISMATCH" | "CONFLICT" | "WRITE_DENIED" | "UNVERIFIED" | "ERROR";
 export type GestionWriteResult = { status: Status; message: string; entry?: string };
 
 const same = (a: unknown, b: unknown) => headerKey(a) === headerKey(b);
+
+/** Localiza una sola ficha vigente de BASE GENERAL por USUARIO, nunca por fila histórica. */
+async function findBaseGestionRow(spreadsheetId: string, token: string, username: string): Promise<number | null> {
+  const sheet = quoteSheet("BASE GENERAL");
+  const [headers, tc, users] = await batchReadRanges(spreadsheetId, token, [
+    `${sheet}!A2:N2`, `${sheet}!A4:A`, `${sheet}!N4:N`,
+  ]);
+  const header = (headers?.[0] ?? []).map(headerKey);
+  if (header[0] !== "TC" || header[5] !== "OBSERVACIONES GESTION" || header[13] !== "USUARIO") return null;
+  const matches: number[] = [];
+  for (let i = 0; i < users.length; i++) {
+    if (String(users[i]?.[0] ?? "").trim() && same(users[i]?.[0], username)) matches.push(i + 4);
+  }
+  // TC=0 y duplicados también bloquean la actualización hasta que Dirección identifique la ficha.
+  if (matches.length !== 1 || String(tc[matches[0] - 4]?.[0] ?? "") !== "1") return null;
+  return matches[0];
+}
+
+function safeBaseF(current: string) {
+  const value = current.trim();
+  return !value || Object.values(GESTION_F_ETIQUETAS).includes(value);
+}
+
 
 // Serializa las escrituras de esta instancia por celda; los cambios externos los detecta commitGestion.
 const locks = new Map<string, Promise<void>>();
@@ -58,9 +81,9 @@ const MESSAGES: Record<Exclude<GestionCommitStatus, "SAVED" | "DUPLICATE">, { st
 };
 
 /**
- * ÚNICA operación de mutación permitida en este módulo:
- * escribir PAGOS [MES ACTUAL]!F{fila} con valueInputOption RAW.
- * NUNCA modifica otras columnas, comprobantes, conciliación ni créditos.
+ * Integración del resultado confirmado: el evento idempotente se conserva en F de PAGOS [MES]
+ * y su última ETAPA SOP se proyecta en BASE GENERAL!F. Nunca escribe W, pagos, CONTROL ni créditos.
+ * No hay transacción entre dos celdas: el requestId permite reintentar la proyección sin repetir el evento.
  */
 export async function saveGestionInObservaciones(
   actor: Identity,
@@ -73,6 +96,8 @@ export async function saveGestionInObservaciones(
       (input.estado === "COMPROMISO_PAGO" && input.detalle.trim().length < 5)) {
     return { status: "BAD_INPUT", message: "Verifica el resultado y el detalle. No incluyas contraseñas." };
   }
+  const etapa = etapaRegistradaEnDetalle(input.detalle);
+  if (!etapa) return { status: "BAD_INPUT", message: "La acción debe incluir una etapa SOP válida." };
   if (snapshotFile()) return { status: "NO_LIVE_SOURCE", message: "La captura local es de solo lectura." };
 
   try {
@@ -109,15 +134,49 @@ export async function saveGestionInObservaciones(
         return { status: "CLIENT_MISMATCH", message: "La fila o los encabezados cambiaron. No se escribió ninguna celda." };
       }
 
-      // Token distinto del de lectura. El alcance de escritura no se concede al resto del motor.
-      const { read, write } = gestionCell(id, sheet, row, await getSheetsWriteToken());
+      // Preflight: no tocar la cartera si BASE no tiene un único USUARIO o F contiene texto ajeno al SOP.
+      const baseRow = await findBaseGestionRow(id, readToken, client.user);
+      if (!baseRow) return { status: "CLIENT_MISMATCH", message: "BASE GENERAL no tiene una única ficha TC=1 para este usuario. No se escribió nada." };
+      const writeToken = await getSheetsWriteToken();
+      const base = gestionCell(id, "BASE GENERAL", baseRow, writeToken);
+      const previousBase = await base.read();
+      if (previousBase.startsWith("=") || !safeBaseF(previousBase))
+        return { status: "CONFLICT", message: "BASE GENERAL!F contiene un valor histórico o de otra categoría. No se reemplazó; revisar antes de registrar." };
 
+      const { read, write } = gestionCell(id, sheet, row, writeToken);
       const record = gestionEntry(input.estado as GestionEstado, actor.name, input.detalle, input.requestId);
       const status = await commitGestion({ record, requestId: input.requestId, expectedHash: input.expectedHash, read, write });
-      if (status !== "DUPLICATE") invalidateTiviplayRuntimeCache();
-      if (status === "SAVED") return { status, message: "Gestión guardada y comprobada en OBSERVACIONES.", entry: record };
-      if (status === "DUPLICATE") return { status, message: "La gestión ya estaba registrada." };
-      return MESSAGES[status];
+      if (status !== "SAVED" && status !== "DUPLICATE") return MESSAGES[status];
+
+      // En un reintento de un evento antiguo, no retroceder F si ya hay gestiones posteriores.
+      const monthlyAfter = await read();
+      const lastMarkerAt = monthlyAfter.lastIndexOf("[JOS:");
+      const marker = `[JOS:${input.requestId}]`;
+      if (lastMarkerAt < 0 || !monthlyAfter.slice(lastMarkerAt).includes(marker)) {
+        invalidateTiviplayRuntimeCache();
+        return { status: "DUPLICATE", message: "Evento ya guardado; existen gestiones posteriores. BASE F no se retrocede." };
+      }
+
+      const label = GESTION_F_ETIQUETAS[etapa];
+      const baseNow = await base.read();
+      if (baseNow.startsWith("=") || !safeBaseF(baseNow)) {
+        invalidateTiviplayRuntimeCache();
+        return { status: "UNVERIFIED", message: "El evento quedó registrado en PAGOS, pero BASE F cambió. Requiere revisión; no se sobrescribió." };
+      }
+      if (baseNow !== label) {
+        const http = await base.write(label);
+        if (http < 200 || http >= 300) {
+          invalidateTiviplayRuntimeCache();
+          return { status: "UNVERIFIED", message: "Evento guardado en PAGOS; falla al actualizar BASE F. Reintenta con el mismo identificador." };
+        }
+      }
+      const verified = await base.read();
+      invalidateTiviplayRuntimeCache();
+      if (verified !== label) return { status: "UNVERIFIED", message: "Evento registrado, pero BASE F no coincide tras la relectura." };
+      return { status: status === "SAVED" ? "SAVED" : "DUPLICATE",
+        message: status === "SAVED" ? "Gestión y etapa F de BASE GENERAL guardadas y releídas." : "Evento ya registrado; etapa F verificada.",
+        entry: record };
+
     });
   } catch {
     return { status: "ERROR", message: "No fue posible comprobar la escritura. Verifica la celda antes de repetir." };
