@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { audit, db, type Identity } from "@/server/auth/store";
 import { bogotaToday } from "@/server/tiviplay-live/runtime-source";
+import { resolveColumns } from "@/server/tiviplay-live/sheet-columns";
 import {
   parseReleasedRanges, projectReconciliation, RELEASED_SHEET, validateDecision,
   type ReconDataset, type ReleasedRow, type ReconDecision, type TaskAction, type TaskEvent,
@@ -113,17 +114,32 @@ export function normalizeSheetDate(value: string): string | null {
  */
 export async function readBaseLive(): Promise<Map<number, BaseLiveRow> | null> {
   try {
-    const { batchReadSheets, getSheetsAccessToken, getTiviplaySpreadsheetId } = await import("@/server/tiviplay-live/sheets-client");
+    const { batchReadRanges, getSheetsAccessToken, getTiviplaySpreadsheetId, quoteSheet } = await import("@/server/tiviplay-live/sheets-client");
     const token = await getSheetsAccessToken();
-    const sheets = await batchReadSheets(getTiviplaySpreadsheetId(), token, ["BASE GENERAL"], "AP", 4000);
+    const id = getTiviplaySpreadsheetId();
+    const base = quoteSheet("BASE GENERAL");
+    // Contrato de encabezados, nunca índices fijos. NO leer las columnas CONTRASEÑA ni otras credenciales.
+    const [headerRows] = await batchReadRanges(id, token, [`${base}!A2:AR2`]);
+    const names = ["CLIENTE", "USUARIO", "PANEL", "F.VENCIMIENTO", "CONCILIACION_SERVICIO_27OCT"] as const;
+    const cols = resolveColumns(headerRows?.[0] ?? [], names);
+    if (names.slice(0, 4).some((name) => !cols[name])) return null;
+    const [clients, usernames, panels, technicalDue, reconciliationNotes] = await batchReadRanges(
+      id, token, names.map((name) => cols[name] ? `${base}!${cols[name]}3:${cols[name]}3000` : `${base}!A3:A3`),
+    );
     const out = new Map<number, BaseLiveRow>();
-    (sheets["BASE GENERAL"] ?? []).forEach((r, i) => {
-      const client = String(r?.[1] ?? "").trim();
-      out.set(i + 1, {
-        client, username: normUser(String(r?.[12] ?? "")), panel: String(r?.[14] ?? "").trim(), due: normalizeSheetDate(String(r?.[15] ?? "")),
-        duplicate: String(r?.[41] ?? "").startsWith("DUPLICADO DEPURADO"),
+    const count = Math.max(clients?.length ?? 0, usernames?.length ?? 0, panels?.length ?? 0, technicalDue?.length ?? 0);
+    for (let i = 0; i < count; i++) {
+      const client = String(clients?.[i]?.[0] ?? "").trim();
+      if (!client) continue;
+      const marker = cols.CONCILIACION_SERVICIO_27OCT ? String(reconciliationNotes?.[i]?.[0] ?? "") : "";
+      out.set(i + 3, {
+        client,
+        username: normUser(String(usernames?.[i]?.[0] ?? "")),
+        panel: String(panels?.[i]?.[0] ?? "").trim(),
+        due: normalizeSheetDate(String(technicalDue?.[i]?.[0] ?? "")),
+        duplicate: marker.toUpperCase().startsWith("DUPLICADO DEPURADO"),
       });
-    });
+    }
     return out;
   } catch {
     return null;
@@ -139,9 +155,10 @@ const normUser = (v: string) => v.normalize("NFKC").replace(/\s+/g, "").toUpperC
 export function locateRow(live: Map<number, BaseLiveRow> | null, username: string, hint?: number) {
   if (!live) return null;
   const u = normUser(username);
-  if (hint && live.get(hint)?.username === u && !live.get(hint)?.duplicate) return hint;
+  // La pista del snapshot no resuelve una identidad duplicada: primero exigir unicidad en BASE viva.
   const rows = [...live.entries()].filter(([, r]) => r.username === u && !r.duplicate).map(([n]) => n);
-  return rows.length === 1 ? rows[0] : null;
+  if (rows.length !== 1) return null;
+  return rows[0];
 }
 
 /** ¿El cambio exigido ya está en la fuente? (verificado por relectura, localizando la fila por USUARIO, no por intención). */
