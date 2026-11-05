@@ -1,0 +1,157 @@
+import type { TiviplayMarketingSnapshot } from "@/features/tiviplay-marketing/types";
+
+// DEMO ONLY: snapshot local no persistente basado en la actividad reportada para el 26/08/2026.
+// Los campos sin evidencia permanecen en null; no representan resultados comerciales medidos.
+export const TIVIPLAY_MARKETING_DEMO_FIXTURE: TiviplayMarketingSnapshot = {
+  source: {
+    kind: "fixture",
+    label: "Actividad reportada · fixture",
+    disclosure: "Fixture local de demostración · 26/08/2026 · Sin persistencia ni métricas inventadas",
+  },
+  workflow: [
+    {
+      id: "source",
+      sequence: 1,
+      label: "Fuente",
+      status: "completed",
+      statusLabel: "Completa",
+      items: ["Programación deportiva", "Series", "Películas", "Promociones", "Eventos especiales"],
+    },
+    {
+      id: "selection",
+      sequence: 2,
+      label: "Selección",
+      status: "completed",
+      statusLabel: "Completa",
+      items: [
+        "Identificar contenido comercial relevante del día",
+        "Seleccionar evento o pieza prioritaria",
+        "Definir objetivo comercial",
+      ],
+    },
+    {
+      id: "production",
+      sequence: 3,
+      label: "Producción",
+      status: "completed",
+      statusLabel: "Completa",
+      items: [
+        "Captura o asset base",
+        "Prompt maestro",
+        "Identidad gráfica TiviPlay",
+        "Formato principal 1080x1920",
+        "CTA comercial",
+        "Número de contacto",
+      ],
+    },
+    {
+      id: "validation",
+      sequence: 4,
+      label: "Validación",
+      status: "completed",
+      statusLabel: "Completa",
+      items: [
+        "Logo correcto",
+        "Número correcto",
+        "Información correcta",
+        "Identidad visual",
+        "CTA visible",
+        "Formato correcto",
+      ],
+    },
+    {
+      id: "publication",
+      sequence: 5,
+      label: "Publicación",
+      status: "completed",
+      statusLabel: "Completa",
+      items: ["WhatsApp Status", "Grupos autorizados", "Otros canales futuros"],
+    },
+    {
+      id: "measurement",
+      sequence: 6,
+      label: "Medición",
+      status: "next",
+      statusLabel: "Próxima acción",
+      items: ["Conversaciones", "Leads", "Ventas", "Recaudo atribuible", "Aprendizaje"],
+    },
+  ],
+  activity: {
+    id: "tiviplay-marketing-2026-08-26-programming",
+    date: "2026-08-26",
+    dateLabel: "26/08/2026",
+    brand: "TiviPlay",
+    campaign: null,
+    source: "Programación",
+    objective: "Generar conversaciones y ventas",
+    asset: null,
+    channel: "WhatsApp",
+    responsible: "Dirección / Marketing",
+    status: "published",
+    statusLabel: "Publicado",
+    conversations: null,
+    leads: null,
+    sales: null,
+    collections: null,
+    learning: null,
+    nextAction: "Medir respuesta",
+  },
+  backlog: [
+    {
+      id: "measure-response",
+      label: "Medir respuesta de la publicación del día",
+      horizon: "current",
+    },
+    {
+      id: "register-conversations",
+      label: "Registrar conversaciones generadas",
+      horizon: "current",
+    },
+    {
+      id: "relate-sales",
+      label: "Relacionar ventas generadas",
+      horizon: "current",
+    },
+    {
+      id: "relate-collections",
+      label: "Relacionar recaudo atribuible",
+      horizon: "current",
+    },
+    {
+      id: "prepare-next-asset",
+      label: "Preparar siguiente pieza",
+      horizon: "current",
+    },
+    {
+      id: "progressive-automation",
+      label: "Automatizar progresivamente el workflow",
+      horizon: "future",
+    },
+  ],
+  automationLevels: [
+    {
+      id: "manual-assisted",
+      label: "Manual asistido",
+      description: "La persona selecciona la fuente y dirige el proceso usando IA para producir el activo.",
+      state: "current",
+    },
+    {
+      id: "semiautomatic",
+      label: "Semiautomático",
+      description: "El sistema identifica oportunidades y prepara activos, pero requiere aprobación humana.",
+      state: "planned",
+    },
+    {
+      id: "supervised-agent",
+      label: "Agente supervisado",
+      description: "El agente ejecuta gran parte del workflow y solicita aprobación en puntos críticos.",
+      state: "planned",
+    },
+    {
+      id: "automated",
+      label: "Automatizado",
+      description: "El sistema puede detectar, producir, validar, programar y medir dentro de reglas aprobadas.",
+      state: "planned",
+    },
+  ],
+};

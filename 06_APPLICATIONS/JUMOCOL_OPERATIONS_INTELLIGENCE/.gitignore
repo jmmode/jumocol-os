@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+.env*
+!.env.example
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Fuentes operativas locales: contienen PII y credenciales; nunca versionar.
+data/private/
+*.xlsx
+*.xlsm
