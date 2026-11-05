@@ -123,6 +123,8 @@ export type TaskView = AdvisorTask & { status: "PENDIENTE" | "NO_SE_PUEDE" | "EJ
 
 export type ReconProjection = {
   cut: string;
+  /** Fecha de Bogotá usada para clasificar vencimientos, distinta del corte privado histórico. */
+  asOf: string;
   cases: CaseView[];
   tasks: TaskView[];
   /** Líneas liberadas por el Asesor: quedan DISPONIBLES para reasignación. */
@@ -219,7 +221,7 @@ export function projectReconciliation(dataset: ReconDataset, decisions: ReconDec
     counts[state] += 1;
     counts.total += 1;
   }
-  return { cut: dataset.cut, cases, tasks, available, baseSync, services: counts };
+  return { cut: dataset.cut, asOf: referenceDate, cases, tasks, available, baseSync, services: counts };
 }
 
 /** Valida una decisión contra el caso antes de guardarla. Devuelve el mensaje de error o null. */
