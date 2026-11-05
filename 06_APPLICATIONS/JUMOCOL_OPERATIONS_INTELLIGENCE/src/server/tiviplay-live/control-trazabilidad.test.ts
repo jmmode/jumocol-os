@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildClientHistory, technicalDue, type HistoryTab } from "./client-history-model";
-import { resolveTabColumns } from "./client-history";
+import { columnKey, resolveTabColumns } from "./client-history";
 import { projectCreditosHoy } from "./creditos-hoy-projection";
 
 // Datos sintéticos que reproducen los casos de Patricia Franco y Sofía Aparicio.
@@ -52,6 +52,12 @@ describe("trazabilidad técnica por cliente", () => {
 
   it("un vencimiento P3 nunca queda validado", () => {
     expect(technicalDue({ panel: "PANEL 3M", due: "2026-11-07", userRepeated: false, controlDue: "2026-11-07" }).status).toBe("REQUIERE VALIDACIÓN");
+  });
+
+  it("FECHA de CONTROL llega con su nombre; las hojas de pago la unifican", () => {
+    expect(columnKey("CONTROL", "FECHA")).toBe("FECHA");
+    expect(columnKey("PAGO", "FECHA")).toBe("__date");
+    expect(columnKey("PAGO", "FECHA DE RECIBIDO")).toBe("__date");
   });
 
   it("ubica columnas por encabezado en octubre y noviembre, sin tocar CONTRASEÑA", () => {

@@ -24,6 +24,9 @@ function planTab(title: string): Plan | null {
 
 const DATE_HEADERS = ["FECHA", "FECHA DE RECIBIDO"];
 
+/** Solo las hojas de pago unifican su fecha: en CONTROL, FECHA conserva su nombre. */
+export const columnKey = (kind: HistoryTab["kind"], name: string) => (kind === "PAGO" && DATE_HEADERS.includes(name) ? "__date" : name);
+
 /** Las columnas se ubican por encabezado en cada hoja: cada mes puede tener otro orden. Nunca devuelve una columna sensible. */
 export function resolveTabColumns(plan: Pick<Plan, "title" | "kind" | "wanted" | "required">, probe: unknown[][]) {
   const h = findHeaderRow(probe, plan.required);
@@ -50,7 +53,7 @@ async function readTabs(): Promise<HistoryTab[]> {
     tabs.set(c.plan.title, tab);
     (values[i] ?? []).forEach((cell, r) => {
       const row = (tab.rows[r] ??= { __row: String(c.first + r) });
-      const key = DATE_HEADERS.includes(c.name) ? "__date" : c.name;
+      const key = columnKey(c.plan.kind, c.name);
       row[key] ||= String(cell?.[0] ?? "").trim();
     });
   });
