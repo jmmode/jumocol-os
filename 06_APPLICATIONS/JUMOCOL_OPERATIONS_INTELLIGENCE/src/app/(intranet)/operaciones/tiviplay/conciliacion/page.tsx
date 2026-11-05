@@ -61,8 +61,8 @@ export default async function ConciliacionPage({ searchParams }: { searchParams:
         <span aria-current="page" className="text-brand-primary-dark">Conciliación</span>
       </nav>
       <PageHeader
-        badge={data ? `Corte ${data.cut}` : "Dataset no disponible"}
-        description="Solo excepciones reales. Lo demostrado por los paneles ya se corrigió en BASE GENERAL. Gerencia decide; el Asesor ejecuta; el sistema registra, bloquea y recalcula."
+        badge={data ? `Datos del corte ${data.cut} · vigencia evaluada ${data.asOf}` : "Dataset no disponible"}
+        description="La vigencia se evalúa a la fecha de hoy sobre el último corte privado disponible. Las líneas expiradas permanecen en historial sin tareas de liberación; una lectura de corte no demuestra el estado actual del panel."
         eyebrow="Operaciones · TiviPlay"
         title="Conciliación de servicio"
       />
@@ -72,6 +72,11 @@ export default async function ConciliacionPage({ searchParams }: { searchParams:
         <p className={`mt-6 ${blocked}`}>BLOQUEADO: no se encontró el dataset privado de conciliación (data/private/tiviplay/conciliacion-servicio.json).</p>
       ) : (
         <div className="mt-6 space-y-5">
+          <p className="rounded-xl border border-brand-border bg-brand-surface px-4 py-3 text-xs text-brand-muted">
+            Corte de datos: <strong>{data.cut}</strong> · Vigencia de las fechas evaluada al <strong>{data.asOf}</strong>.
+            Una línea vencida queda como historial y no genera tarea LIBERAR. La actualización de BASE GENERAL
+            requiere coincidencia única y lectura actual de servicio; aquí no se cambia la hoja automáticamente.
+          </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <div className={stat}><p className="text-[10px] font-black uppercase tracking-[0.1em] text-brand-muted">Activos</p><p className="text-2xl font-semibold">{data.services.ACTIVO}</p></div>
             <div className={stat}><p className="text-[10px] font-black uppercase tracking-[0.1em] text-brand-muted">Inactivos</p><p className="text-2xl font-semibold">{data.services.INACTIVO}</p></div>
