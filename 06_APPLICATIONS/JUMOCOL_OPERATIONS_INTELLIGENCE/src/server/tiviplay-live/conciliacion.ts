@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { audit, db, type Identity } from "@/server/auth/store";
+import { bogotaToday } from "@/server/tiviplay-live/runtime-source";
 import {
   parseReleasedRanges, projectReconciliation, RELEASED_SHEET, validateDecision,
   type ReconDataset, type ReleasedRow, type ReconDecision, type TaskAction, type TaskEvent,
@@ -53,7 +54,7 @@ export function listTaskEvents(): TaskEvent[] {
 
 export function getReconciliation(dataset: ReconDataset | null = loadDataset()) {
   if (!dataset) return null;
-  return projectReconciliation(dataset, listReconDecisions(), listTaskEvents());
+  return projectReconciliation(dataset, listReconDecisions(), listTaskEvents(), bogotaToday());
 }
 
 /** Gerencia elige la opción de un caso. Queda bloqueada; cambiarla exige una corrección trazable. */
@@ -66,10 +67,10 @@ export function recordReconDecision(actor: Identity, input: Record<string, strin
   const supersedes = input.supersedes ? Number(input.supersedes) : null;
   const reason = (input.reason ?? "").trim() || null;
   if (reason && reason.length > 300) throw new Error("Motivo demasiado largo.");
-  const projection = projectReconciliation(dataset, listReconDecisions(), listTaskEvents());
+  const projection = projectReconciliation(dataset, listReconDecisions(), listTaskEvents(), bogotaToday());
   const view = projection.cases.find((c) => c.id === caseId);
   const executed = view ? view.residualTasks.some((id) => projection.tasks.find((t) => t.id === id)?.status === "EJECUTADO") : false;
-  const error = validateDecision(dataset.cases.find((c) => c.id === caseId), option, fingerprint, view?.decision ?? null, supersedes, reason, executed, dataset.cut);
+  const error = validateDecision(dataset.cases.find((c) => c.id === caseId), option, fingerprint, view?.decision ?? null, supersedes, reason, executed, bogotaToday());
   if (error) throw new Error(error);
   tables().prepare("INSERT INTO tiviplay_recon_decisions(at,user_id,case_id,fingerprint,option,supersedes,reason) VALUES(?,?,?,?,?,?,?)")
     .run(new Date().toISOString(), actor.id, caseId, fingerprint, option, supersedes, reason);
@@ -85,7 +86,7 @@ export function recordTaskEvent(actor: Identity, input: Record<string, string>, 
   if (action !== "EJECUTADO" && action !== "NO_SE_PUEDE") throw new Error("Acción inválida.");
   if (action === "NO_SE_PUEDE" && (!note || note.length < 5)) throw new Error("NO SE PUEDE exige el motivo.");
   if (note && note.length > 300) throw new Error("Nota demasiado larga.");
-  const projection = projectReconciliation(dataset, listReconDecisions(), listTaskEvents());
+  const projection = projectReconciliation(dataset, listReconDecisions(), listTaskEvents(), bogotaToday());
   const task = projection.tasks.find((t) => t.id === taskId);
   if (!task) throw new Error("Tarea inexistente o aún no generada.");
   if (task.status === "EJECUTADO") throw new Error("La tarea ya está cerrada.");
