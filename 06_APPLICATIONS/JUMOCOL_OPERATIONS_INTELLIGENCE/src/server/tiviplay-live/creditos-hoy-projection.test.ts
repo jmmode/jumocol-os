@@ -206,12 +206,12 @@ describe("Créditos disponibles (USUARIOS LIBERADOS · ESTADO = DISPONIBLE) — 
 });
 
 describe("identidad verificable por panel (CONTROL con columnas desplazadas)", () => {
-  it("un panel detenido por Dirección no proyecta valores aunque su hoja sea válida", () => {
+  it("un panel detenido por Dirección se lee, pero no habilita créditos", () => {
     const p3 = projectCreditosHoy(input({ blockedPanels: ["P3"] })).panels.find((p) => p.panel === "P3")!;
-    expect(p3.status).toBe("REQUIERE_DECISION");
-    expect(p3.reason).toMatch(/bloqueados por Dirección/);
-    expect(p3.tasks).toEqual([]);
-    expect(p3.kpi).toBeNull();
+    expect(p3.grantBlocked).toBe(true);
+    expect(p3.reason).toMatch(/bloqueado por Dirección/);
+    expect(p3.kpi).not.toBeNull();
+    expect(p3.tasks.filter((t) => t.state === "HABILITADO")).toEqual([]);
   });
 
   it("bloquea el panel cuando los usuarios de BASE están en RECARGA y USUARIO trae otros valores, sin proyectar esos valores", () => {

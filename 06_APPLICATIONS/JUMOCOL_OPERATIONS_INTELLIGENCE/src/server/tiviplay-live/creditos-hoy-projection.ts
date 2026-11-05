@@ -70,6 +70,8 @@ export type PanelCredits = {
   /** Filas de datos detectadas (encabezado+1 … fila anterior al bloque resumen). */
   dataRange: { first: number; last: number } | null;
   tasks: CreditTask[];
+  /** Lectura completa, pero Dirección retiene el otorgamiento: ninguna tarea del panel queda habilitada. */
+  grantBlocked?: boolean;
   /** Auditoría informativa sobre panel retenido; NO habilita créditos ni cambia semáforo. */
   observed?: BlockedPanelObservation | null;
   /** Días anteriores con crédito programado y no ejecutado (J < A), excluido COMPRA. */
@@ -504,12 +506,21 @@ export function observeBlockedPanel(panel: PanelId, rows: unknown[][] | null, ba
   return result;
 }
 
+const GRANT_BLOCKED = "Otorgamiento bloqueado por Dirección. La lectura de CONTROL es evidencia y no autoriza ejecutar créditos.";
+
+/** La lectura sigue el contrato de todos los paneles; solo se retira lo que permitiría otorgar o decidir. */
+function holdGrants(read: PanelCredits, observed: BlockedPanelObservation | null): PanelCredits {
+  const hold = (t: CreditTask): CreditTask => ({ ...t, basis: null, exception: null, ...(t.state === "HABILITADO" ? { state: "REQUIERE_REVISION" as const, reason: GRANT_BLOCKED } : {}) });
+  return { ...read, grantBlocked: true, reason: read.reason ?? GRANT_BLOCKED, observed, tasks: read.tasks.map(hold), pending: read.pending.map(hold), cycles: read.cycles.map((c) => ({ ...c, basis: null, exception: null })) };
+}
+
 function projectPanel(panel: PanelId, sheet: string | null, rows: unknown[][] | null, input: CreditosHoyInput, ctx: Ctx): PanelCredits {
+  const read = readPanel(panel, sheet, rows, input, ctx);
+  return input.blockedPanels?.includes(panel) ? holdGrants(read, observeBlockedPanel(panel, rows, input.base)) : read;
+}
+
+function readPanel(panel: PanelId, sheet: string | null, rows: unknown[][] | null, input: CreditosHoyInput, ctx: Ctx): PanelCredits {
   const empty = (status: PanelCredits["status"], reason: string): PanelCredits => ({ panel, sheet, status, reason, columns: null, warning: null, kpi: null, sheetKpi: null, dataRange: null, tasks: [], pending: [], cycles: [] });
-  if (input.blockedPanels?.includes(panel)) {
-    return { ...empty("REQUIERE_DECISION", "Créditos bloqueados por Dirección. Auditoría de CONTROL disponible en solo lectura; no autoriza ejecutar créditos."),
-      observed: observeBlockedPanel(panel, rows, input.base) };
-  }
   if (input.readError) return empty("REQUIERE_REVISION", input.readError);
   if (!sheet) return empty("REQUIERE_REVISION", `No existe la hoja CONTROL ${panel} del mes ${input.targetMonth}.`);
   if (!rows) return empty("REQUIERE_REVISION", "Lectura fallida de la hoja CONTROL.");

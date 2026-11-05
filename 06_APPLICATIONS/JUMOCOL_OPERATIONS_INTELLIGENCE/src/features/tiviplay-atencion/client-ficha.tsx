@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { CopyableMessage } from "@/components/documents/copyable-message";
 import { cobranzaStage } from "@/features/tiviplay-atencion/cobranza";
+import { ControlMonths } from "@/features/tiviplay-atencion/control-months";
 import { GestionRegistro } from "@/features/tiviplay-atencion/gestion-registro";
 import { ServiceCredentials } from "@/features/tiviplay-atencion/service-credentials";
 import { technicalDue, type ClientHistory } from "@/server/tiviplay-live/client-history-model";
@@ -70,21 +71,12 @@ async function HistoryContent({ client }: { client: DirectoryEntry }) {
     : <p className="mt-2 text-sm text-status-warning">Historial no disponible: {result.reason}. Las capas del cliente siguen visibles.</p>;
 }
 
-/** CONTROL P3: evidencias ejecutadas, solo lectura; sin habilitar nuevos créditos. */
-async function Panel3ControlSummary({ client, unverified }: { client: DirectoryEntry; unverified: boolean }) {
-  if (unverified) return <p className="mt-3 text-xs text-status-warning">CONTROL P3: identidad ambigua o ausente; requiere cotejo.</p>;
+/** Evidencia técnica del cliente en CONTROL, solo lectura; no habilita créditos. */
+async function ControlEvidence({ client, unverified }: { client: DirectoryEntry; unverified: boolean }) {
+  if (unverified) return <p className="mt-3 text-xs text-status-warning">CONTROL: identidad ambigua o ausente; requiere cotejo.</p>;
   const result = await getClientHistory(client);
-  if (!result.ok) return <p className="mt-3 text-xs text-status-warning">CONTROL P3 no disponible temporalmente: {result.reason}</p>;
-  const rows = result.history.renewals.filter((r) => /^CONTROL.*P3$/i.test(r.source.split("!")[0]));
-  if (!rows.length) return <p className="mt-3 text-xs text-brand-muted">CONTROL P3: no se localizó crédito registrado para este USUARIO en las hojas leídas. No implica desactivación.</p>;
-  const last = rows[0];
-  const dateIncoherent = !!last.date && !!last.due && last.date > last.due;
-  const aligned = !!last.due && last.due === client.technicalDue && !dateIncoherent;
-  return <div className="mt-3 rounded-xl border border-brand-border bg-brand-background p-3 text-xs" role="note">
-    <p className="font-bold">CONTROL P3 · Evidencia de crédito registrada</p>
-    <p>Fuente: {last.source} · Crédito: {last.credit} · Fecha: {displayDate(last.date) ?? "POR VALIDAR"} · Vencimiento: {displayDate(last.due) ?? "POR VALIDAR"}</p>
-    <p className="mt-1 text-brand-muted">{dateIncoherent ? "REQUIERE REVISIÓN: la fecha de crédito es posterior al vencimiento registrado en CONTROL. " : aligned ? "Coincide con el vencimiento de BASE GENERAL. " : "Requiere cotejo con el vencimiento de BASE GENERAL. "}Esta lectura no autoriza otro crédito.</p>
-  </div>;
+  if (!result.ok) return <p className="mt-3 text-xs text-status-warning">CONTROL no disponible temporalmente: {result.reason}</p>;
+  return <ControlMonths records={result.history.control} />;
 }
 
 /** Verifica unicidad de USUARIO en la cartera seleccionada sin consultar historial remoto. */
@@ -173,7 +165,7 @@ export async function ClientFicha({ client, queue, actor, admin, cobranza, today
           <Item name="Estado técnico" value={due.status} />
           <Item name="Vencimiento técnico" value={<>{displayDate(due.date) ?? "REQUIERE VALIDACIÓN"}<span className="block text-[11px] font-normal text-brand-muted">{due.reason}</span></>} wide />
         </dl>
-        {panelThree ? <Suspense fallback={<p className="mt-3 text-xs text-brand-muted">Consultando evidencia CONTROL P3…</p>}><Panel3ControlSummary client={client} unverified={unverified} /></Suspense> : null}
+        <Suspense fallback={<p className="mt-3 text-xs text-brand-muted">Consultando evidencia de CONTROL…</p>}><ControlEvidence client={client} unverified={unverified} /></Suspense>
         <ServiceCredentials clientId={client.id} key={client.id} panel={client.panel} user={client.user} />
       </section>
     </div>

@@ -49,13 +49,11 @@ describe("CONTROL Panel 3: lectura sin desbloquear ejecuciones", () => {
     };
     const result = projectCreditosHoy(input);
     const p3 = result.panels.find((p) => p.panel === "P3");
-    expect(p3?.status).toBe("REQUIERE_DECISION");
-    expect(p3?.kpi).toBeNull();
-    expect(p3?.tasks).toHaveLength(0);
-    expect(p3?.pending).toHaveLength(0);
+    expect(p3?.grantBlocked).toBe(true);
+    expect(p3?.kpi).not.toBeNull();
+    expect([...(p3?.tasks ?? []), ...(p3?.pending ?? [])].filter((t) => t.state === "HABILITADO" || t.basis)).toEqual([]);
     expect(p3?.observed?.records).toBe(4);
     expect(result.totals.HABILITADO).toBe(0);
-    expect(result.kpi.otorgados).toBe(0); // Observaciones no son crédito habilitado.
   });
 
   it("muestra ejecuciones de P3 por usuario y vencimientos como evidencia, no como autorización", () => {

@@ -7,21 +7,45 @@ export type HistoryTab = { title: string; kind: "PAGOS" | "CONTROL" | "PAGO"; ro
 export type HistoryPayment = { date: string | null; method: string; amount: string; currency: string; confirmation: string; plan: string; source: string; pending: boolean };
 export type HistoryPlan = { month: string; plan: string; screens: string; lastPayment: string | null; tariff: string; confirmation: string; source: string };
 export type HistoryRenewal = { date: string | null; due: string | null; credit: string; source: string };
+
+export const CONTROL_MONTHS = [{ key: "2026-11", tag: "NOV", label: "Noviembre 2026" }, { key: "2026-10", tag: "OCT", label: "Octubre 2026" }] as const;
+export type ControlStatus = "PROGRAMADO" | "REGISTRADO" | "REQUIERE REVISIÓN";
+/** Una fila de CONTROL del cliente. REGISTRADO es lo que consta en la hoja; no prueba por sí solo la ejecución en el panel. */
+export type ControlRecord = { month: string; sheet: string; row: string; date: string | null; due: string | null; credit: string; status: ControlStatus; note: string };
 export type ClientHistory = {
   payments: HistoryPayment[];
   plans: HistoryPlan[];
   renewals: HistoryRenewal[];
+  /** Todas las filas de CONTROL del cliente, con y sin crédito. */
+  control: ControlRecord[];
   monthsRead: string[];
   ambiguousMonths: string[];
-  /** Último F.VENCIMIENTO con crédito registrado en CONTROL P1/P2/P3; solo evidencia. */
+  /** Último F.VENCIMIENTO de una fila REGISTRADO en CONTROL P1/P2/P3; solo evidencia. */
   controlDue: string | null;
 };
 
 const sameUser = (a: string, b: string) => canon(a) === canon(b);
 const byDateDesc = <T extends { date: string | null }>(a: T, b: T) => (b.date ?? "").localeCompare(a.date ?? "");
 
-export function buildClientHistory(tabs: readonly HistoryTab[], client: { user: string; clientKey: string | null; baseRow: number | null }): ClientHistory {
-  const out: ClientHistory = { payments: [], plans: [], renewals: [], monthsRead: [], ambiguousMonths: [], controlDue: null };
+/** FECHA y F.VENCIMIENTO pueden traer la hora en la misma celda. */
+const cellDate = (raw: string | undefined) => parseDate(clean(raw).split(/\s+/)[0]);
+
+function controlRecord(sheet: string, row: Record<string, string>, today: string, repeated: boolean): ControlRecord {
+  const date = cellDate(row.FECHA);
+  const due = cellDate(row["F.VENCIMIENTO"]);
+  const credit = clean(row.CREDITO);
+  const month = CONTROL_MONTHS.find((m) => new RegExp(`\\(${m.tag}\\)`, "i").test(sheet))?.key ?? "";
+  const review = (note: string): ControlRecord => ({ month, sheet, row: row.__row, date, due, credit, status: "REQUIERE REVISIÓN", note });
+  if (repeated) return review("USUARIO repetido en esta hoja.");
+  if (!(parseAmount(credit) ?? 0)) return { month, sheet, row: row.__row, date, due, credit, status: "PROGRAMADO", note: "Sin crédito registrado." };
+  if (!date) return review("Crédito sin FECHA válida.");
+  if (date > today) return review("La FECHA es futura: no prueba ejecución.");
+  if (due && date > due) return review("La FECHA es posterior a F.VENCIMIENTO.");
+  return { month, sheet, row: row.__row, date, due, credit, status: "REGISTRADO", note: "Crédito registrado en CONTROL." };
+}
+
+export function buildClientHistory(tabs: readonly HistoryTab[], client: { user: string; clientKey: string | null; baseRow: number | null }, today = new Date().toISOString().slice(0, 10)): ClientHistory {
+  const out: ClientHistory = { payments: [], plans: [], renewals: [], control: [], monthsRead: [], ambiguousMonths: [], controlDue: null };
   for (const tab of tabs) {
     if (tab.kind === "PAGOS") {
       const rows = tab.rows.filter((r) => r.USUARIO && sameUser(r.USUARIO, client.user));
@@ -35,11 +59,13 @@ export function buildClientHistory(tabs: readonly HistoryTab[], client: { user: 
         confirmation: clean(row.CONFIRMACION), source: `${tab.title}!${row.__row}`,
       });
     } else if (tab.kind === "CONTROL") {
-      for (const row of tab.rows) {
-        if (!row.USUARIO || !sameUser(row.USUARIO, client.user) || !(parseAmount(row.CREDITO) ?? 0)) continue;
-        const due = parseDate(row["F.VENCIMIENTO"]);
-        out.renewals.push({ date: parseDate(row.FECHA), due, credit: clean(row.CREDITO), source: `${tab.title}!${row.__row}` });
-        if (due && (!out.controlDue || due > out.controlDue)) out.controlDue = due;
+      const rows = tab.rows.filter((r) => r.USUARIO && sameUser(r.USUARIO, client.user));
+      for (const row of rows) {
+        const record = controlRecord(tab.title, row, today, rows.length > 1);
+        out.control.push(record);
+        if (record.status !== "REGISTRADO") continue;
+        out.renewals.push({ date: record.date, due: record.due, credit: record.credit, source: `${tab.title}!${row.__row}` });
+        if (record.due && (!out.controlDue || record.due > out.controlDue)) out.controlDue = record.due;
       }
     } else if (client.clientKey && client.baseRow) {
       for (const row of tab.rows) {

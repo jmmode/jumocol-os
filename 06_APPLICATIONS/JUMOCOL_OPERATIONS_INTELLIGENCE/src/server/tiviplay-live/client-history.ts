@@ -1,7 +1,7 @@
 import "server-only";
 
 import { buildClientHistory, type ClientHistory, type HistoryTab } from "@/server/tiviplay-live/client-history-model";
-import { getRuntimeValuesCached } from "@/server/tiviplay-live/runtime-source";
+import { bogotaToday, getRuntimeValuesCached } from "@/server/tiviplay-live/runtime-source";
 import { batchReadRanges, getSheetsAccessToken, getTiviplaySpreadsheetId, quoteSheet, readSheetMetadata } from "@/server/tiviplay-live/sheets-client";
 import { columnLetter, findHeaderRow, headerKey, isSensitiveHeader } from "@/server/tiviplay-live/sheet-columns";
 import { snapshotFile } from "@/server/tiviplay-live/sheets-snapshot";
@@ -24,22 +24,24 @@ function planTab(title: string): Plan | null {
 
 const DATE_HEADERS = ["FECHA", "FECHA DE RECIBIDO"];
 
+/** Las columnas se ubican por encabezado en cada hoja: cada mes puede tener otro orden. Nunca devuelve una columna sensible. */
+export function resolveTabColumns(plan: Pick<Plan, "title" | "kind" | "wanted" | "required">, probe: unknown[][]) {
+  const h = findHeaderRow(probe, plan.required);
+  if (h < 0) return [];
+  const header = probe[h] ?? [];
+  const names = plan.kind === "PAGO" ? [...plan.wanted, ...DATE_HEADERS] : plan.wanted;
+  return names.flatMap((name) => {
+    const at = header.findIndex((v) => headerKey(v) === headerKey(name));
+    return at < 0 || isSensitiveHeader(header[at]) ? [] : [{ name, first: h + 2, range: `${quoteSheet(plan.title)}!${columnLetter(at)}${h + 2}:${columnLetter(at)}` }];
+  });
+}
+
 async function readTabs(): Promise<HistoryTab[]> {
   const id = getTiviplaySpreadsheetId();
   const token = await getSheetsAccessToken();
   const plans = (await readSheetMetadata(id, token)).sheets.filter((s) => !s.hidden).flatMap((s) => planTab(s.title) ?? []);
   const headers = await batchReadRanges(id, token, plans.map((p) => `${quoteSheet(p.title)}!A1:BZ4`));
-  const columns = plans.flatMap((plan, i) => {
-    const probe = headers[i] ?? [];
-    const h = findHeaderRow(probe, plan.required);
-    if (h < 0) return [];
-    const header = probe[h] ?? [];
-    const names = plan.kind === "PAGO" ? [...plan.wanted, ...DATE_HEADERS] : plan.wanted;
-    return names.flatMap((name) => {
-      const at = header.findIndex((v) => headerKey(v) === headerKey(name));
-      return at < 0 || isSensitiveHeader(header[at]) ? [] : [{ plan, name, first: h + 2, range: `${quoteSheet(plan.title)}!${columnLetter(at)}${h + 2}:${columnLetter(at)}` }];
-    });
-  });
+  const columns = plans.flatMap((plan, i) => resolveTabColumns(plan, headers[i] ?? []).map((c) => ({ plan, ...c })));
   const values: unknown[][][] = [];
   for (let i = 0; i < columns.length; i += CHUNK) values.push(...await batchReadRanges(id, token, columns.slice(i, i + CHUNK).map((c) => c.range)));
   const tabs = new Map<string, HistoryTab>();
@@ -78,7 +80,7 @@ export async function getClientHistory(client: { user: string; baseRow: number |
   if (snapshotFile()) return { ok: false, reason: "La captura local no incluye historial." };
   if (!client.user) return { ok: false, reason: "El cliente no tiene USUARIO: no hay identificador verificable." };
   try {
-    return { ok: true, history: buildClientHistory(await cachedTabs(), { ...client, clientKey: baseKey(client.baseRow) }) };
+    return { ok: true, history: buildClientHistory(await cachedTabs(), { ...client, clientKey: baseKey(client.baseRow) }, bogotaToday()) };
   } catch {
     return { ok: false, reason: "No se pudo leer el historial." };
   }

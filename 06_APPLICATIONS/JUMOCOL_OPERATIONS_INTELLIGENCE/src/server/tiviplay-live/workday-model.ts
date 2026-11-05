@@ -117,7 +117,7 @@ export type Workday = {
   credits: {
     status: "OK" | "PARCIAL" | "BLOQUEADO";
     totals: Record<CreditState, number> & { total: number };
-    panels: Array<{ panel: string; sheet: string | null; status: string; reason: string | null; programados: number | null; otorgados: number | null; faltantes: number | null; hoy: number | null; habilitados: number | null; pendientes: number | null; bloqueados: number | null; observed?: { records: number; recordedCredits: number; noCredit: number; matchedUnique: number; noBase: number; ambiguousBase: number; otherPanel: number } | null }>;
+    panels: Array<{ panel: string; sheet: string | null; status: string; reason: string | null; grantBlocked?: boolean; programados: number | null; otorgados: number | null; faltantes: number | null; hoy: number | null; habilitados: number | null; pendientes: number | null; bloqueados: number | null; observed?: { records: number; recordedCredits: number; noCredit: number; matchedUnique: number; noBase: number; ambiguousBase: number; otherPanel: number } | null }>;
     reason: string | null;
   };
   blockers: string[];
@@ -407,7 +407,7 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
       // Semáforo del motor: habilitado = habilitación financiera (A/B/E); pendiente = esperando pago; bloqueado = decisión de Dirección.
       const count = (f: (c: (typeof p.cycles)[number]) => boolean) => (ok ? p.cycles.filter(f).length : null);
       panels.push({
-        panel: p.panel, sheet: p.sheet, status: p.status, reason: p.reason,
+        panel: p.panel, sheet: p.sheet, status: p.status, reason: p.reason, grantBlocked: !!p.grantBlocked,
         observed: p.observed ?? null,
         programados: p.kpi?.programados ?? null, otorgados: p.kpi?.otorgados ?? null, faltantes: p.kpi?.faltantes ?? null, hoy: p.kpi?.hoy ?? null,
         habilitados: count((c) => c.basis != null), pendientes: count((c) => c.step === "PAGO"), bloqueados: count((c) => c.step === "DIRECCION"),
@@ -418,6 +418,7 @@ export function buildWorkday(input: { model: RuntimeReadModel; credits: Creditos
     if (bad.length) creditReason = bad.map((p) => `${p.panel}: ${p.reason ?? p.status}`).join(" · ");
   } else if (!creditReason) creditReason = "No fue posible leer CONTROL del mes.";
   if (creditStatus !== "OK") blockers.push(`Créditos ${creditStatus}: ${creditReason}`);
+  for (const p of credits?.panels ?? []) if (p.grantBlocked && p.status === "OK") blockers.push(`${p.panel}: ${p.reason}`);
 
   // Pagos por confirmar: hojas ZELLE/PAYPAL/TRANSF del mes (CONFIRMACION ≠ CONFIRMADO JM). Sin esas hojas no hay cifra.
   const payTitles = model.sources.included.filter((r) => r.role === "PAGO" && r.month === model.currentMonth).map((r) => r.title);

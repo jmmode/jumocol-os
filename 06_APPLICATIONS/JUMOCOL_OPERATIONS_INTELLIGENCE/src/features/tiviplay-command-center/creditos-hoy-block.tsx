@@ -83,6 +83,7 @@ function PanelSection({ p, isAdmin = false }: { p: PanelCredits; isAdmin?: boole
       </summary>
       <div className="border-t border-brand-border px-4 py-3">
         {p.warning ? <p className="mb-2 text-xs text-status-warning">{p.warning}</p> : null}
+        {p.grantBlocked ? <p className="px-3 py-2 text-xs font-semibold text-status-warning" role="note">{p.reason}</p> : null}
         {p.status !== "OK" ? (
           <p className="text-sm text-status-warning">{p.reason}</p>
         ) : p.tasks.length === 0 ? (

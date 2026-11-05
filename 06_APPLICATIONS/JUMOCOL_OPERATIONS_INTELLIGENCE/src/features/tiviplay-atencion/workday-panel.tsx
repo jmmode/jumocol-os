@@ -56,9 +56,9 @@ export function WorkdayPanel({ result, admin }: { result: WorkdayResult; admin: 
         <p className="mt-1">{source.workbook} · hojas: {source.sheetsRead.join(", ")} · firma <code>{source.signature.slice(0, 12)}…</code></p>
       </details> : null}
     </div>
-    {!admin && w.blockers.some(isP3) ? <p className={blocked} role="note">Panel 3: CONTROL disponible para auditoría de lectura; la autorización de nuevos créditos sigue bloqueada por excepciones de identidad y cobertura. Revisa el detalle en Créditos técnicos. No asignes créditos sin validación.</p> : null}
+    {!admin && w.blockers.some(isP3) ? <p className={blocked} role="note">Panel 3: la evidencia de CONTROL está en la ficha de cada cliente. El otorgamiento de créditos sigue bloqueado: no asignes créditos de este panel.</p> : null}
     {admin ? w.blockers.map((b) => <details className={blocked} key={b}>
-      <summary className="cursor-pointer font-semibold">{isP3(b) ? "Panel 3 bloqueado: identidad no verificable. No se incluyen sus créditos." : "Excepción operacional: revisar antes de actuar"}</summary>
+      <summary className="cursor-pointer font-semibold">{isP3(b) ? "Panel 3: lectura disponible, otorgamiento bloqueado" : "Excepción operacional: revisar antes de actuar"}</summary>
       <p className="mt-1">{b}</p>
     </details>) : null}
 
@@ -98,7 +98,7 @@ export function WorkdayPanel({ result, admin }: { result: WorkdayResult; admin: 
           <thead><tr className="text-left text-[10px] uppercase tracking-[0.12em] text-brand-muted"><th className="py-1 pr-4">Panel</th><th className="pr-4">Hoja</th><th className="pr-4">Estado</th><th className="pr-4">Programados</th><th className="pr-4">Otorgados</th><th className="pr-4">Habilitados</th><th className="pr-4">Pendientes</th><th className="pr-4">Bloqueados</th><th>Motivo</th></tr></thead>
           <tbody>{w.credits.panels.map((p) => <tr className="border-t border-brand-border" key={p.panel}>
             <td className="py-1 pr-4 font-semibold">{p.panel}</td><td className="pr-4">{p.sheet ?? "—"}</td>
-            <td className={`pr-4 font-bold ${p.status === "OK" ? "text-status-success" : "text-status-error"}`}>{p.status === "OK" ? (partial ? "OK · PARCIAL" : "OK") : "BLOQUEADO"}</td>
+            <td className={`pr-4 font-bold ${p.status === "OK" && !p.grantBlocked ? "text-status-success" : "text-status-error"}`}>{p.grantBlocked ? "LECTURA · OTORGAMIENTO BLOQUEADO" : p.status === "OK" ? (partial ? "OK · PARCIAL" : "OK") : "BLOQUEADO"}</td>
             {(["programados", "otorgados", "habilitados", "pendientes", "bloqueados"] as const).map((k) => <td className="pr-4 tabular-nums" key={k}>{p[k] ?? "—"}</td>)}
             <td className="text-brand-muted">{p.reason ?? ""}</td>
           </tr>)}</tbody>

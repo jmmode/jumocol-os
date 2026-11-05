@@ -5,7 +5,8 @@ import { buildClientHistory, technicalDue, type HistoryTab } from "./client-hist
 const tabs: HistoryTab[] = [
   { title: "PAGOS NOVIEMBRE 2026", kind: "PAGOS", rows: [{ __row: "5", USUARIO: "USR1", "PLAN ACTIVO": "12 MESES", PANTALLAS: "2", USD: "180", CONFIRMACION: "CONFIRMADO JM" }, { __row: "6", USUARIO: "OTRO" }] },
   { title: "PAGOS JUNIO", kind: "PAGOS", rows: [{ __row: "7", USUARIO: "USR1" }, { __row: "8", USUARIO: "usr1" }] },
-  { title: "CONTROL (NOV) P1", kind: "CONTROL", rows: [{ __row: "9", USUARIO: "USR1", FECHA: "2026-11-03", "F.VENCIMIENTO": "2026-12-04", CREDITO: "1" }, { __row: "10", USUARIO: "USR1", FECHA: "2026-11-01", CREDITO: "0" }] },
+  { title: "CONTROL (NOV) P1", kind: "CONTROL", rows: [{ __row: "9", USUARIO: "USR1", FECHA: "2026-11-03", "F.VENCIMIENTO": "2026-12-04", CREDITO: "1" }] },
+  { title: "CONTROL (OCT) P1", kind: "CONTROL", rows: [{ __row: "10", USUARIO: "USR1", FECHA: "2026-10-01", CREDITO: "0" }] },
   { title: "ZELLE (NOV)", kind: "PAGO", rows: [
     { __row: "11", __date: "2026-11-02", CLIENTE_KEY: "JUAN PEREZ", ESTADO_ENLACE: "ENLAZADO", COINCIDENCIAS_BASE: "1", FILA_BASE: "40", VALOR_PAGO: "15", MONEDA_PAGO: "USD", CONFIRMACION: "PENDIENTE CONFIRMACION" },
     { __row: "12", __date: "2026-11-01", CLIENTE_KEY: "JUAN PEREZ", ESTADO_ENLACE: "ENLAZADO", COINCIDENCIAS_BASE: "1", FILA_BASE: "99", VALOR_PAGO: "15", MONEDA_PAGO: "USD", CONFIRMACION: "CONFIRMADO JM" },
@@ -14,7 +15,7 @@ const tabs: HistoryTab[] = [
 ];
 
 describe("historial del cliente", () => {
-  const h = buildClientHistory(tabs, { user: "USR1", clientKey: "Juan Perez", baseRow: 40 });
+  const h = buildClientHistory(tabs, { user: "USR1", clientKey: "Juan Perez", baseRow: 40 }, "2026-11-04");
 
   it("no acredita un pago por coincidencia de nombre", () => {
     expect(h.payments.map((p) => p.source)).toEqual(["ZELLE (NOV)!11"]);
