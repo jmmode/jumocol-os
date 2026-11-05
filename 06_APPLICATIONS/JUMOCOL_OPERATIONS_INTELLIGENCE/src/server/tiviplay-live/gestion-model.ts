@@ -21,6 +21,27 @@ export const GESTION_ETAPAS = [
 ] as const;
 export type GestionEtapa = (typeof GESTION_ETAPAS)[number]["id"];
 
+/** Contrato único del menú F de BASE GENERAL: etapa confirmada, nunca etapa sugerida. */
+export const GESTION_F_ETIQUETAS: Record<GestionEtapa, string> = {
+  "D-5": "D−5: recordatorio",
+  "D-4": "D−4: llamada",
+  "D-3": "D−3: imagen",
+  "D-2": "D−2: datos de pago",
+  "D-1": "D−1: alerta de suspensión",
+  D0: "D0: verificar pago",
+  S0: "S0: liberación confirmada / retención 1",
+  "S+2": "S+2: retención 2",
+  "S+5": "S+5: candidato promocional",
+};
+
+/** El servidor nunca confía en una etapa enviada suelta: la extrae del evento SOP. */
+export function etapaRegistradaEnDetalle(detail: string): GestionEtapa | null {
+  const match = /^SOP:(D-[1-5]|D0|S0|S\+2|S\+5);/.exec(detail);
+  const stage = match?.[1] as GestionEtapa | undefined;
+  return stage && Object.prototype.hasOwnProperty.call(GESTION_F_ETIQUETAS, stage) ? stage : null;
+}
+
+
 /** Etiquetas reservadas; los umbrales comerciales vigentes pertenecen al motor actual. */
 export const ETIQUETAS_PENDIENTES = ["A+30", "A−25"] as const;
 
@@ -44,7 +65,7 @@ export function bloqueoEtapa(etapa: GestionEtapa, input: {
   releaseAlert: boolean; paymentConfirmed: boolean; panel: string;
   s0Date: string | null; hasMessage: boolean;
 }): string | null {
-  if (etapa === "D0") return "D0 solo genera una alerta de revisión; no registra retención ni suspensión.";
+  // D0 sí permite registrar la verificación de pago; NO acredita suspensión ni liberación técnica.
   if (etapa === "S+5") return "La oferta y elegibilidad promocional siguen pendientes de aprobación.";
   if (etapa === "S0" && (!input.releaseAlert || input.paymentConfirmed || /PANEL\s*3/i.test(input.panel)))
     return "La liberación requiere revisión del ciclo y del panel; esta ficha no habilita una acción técnica.";
