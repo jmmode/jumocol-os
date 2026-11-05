@@ -9,6 +9,8 @@ export type GestionEstado = (typeof GESTION_ESTADOS)[number];
 
 /** Catálogo SOP v0.3. La etapa es una sugerencia; solo un resultado confirmado es gestión. */
 export const GESTION_ETAPAS = [
+  { id: "A+30", label: "A+30 AL DIA", action: "Registrar situación comercial al día (clasificación manual)", channel: "Registro", template: null },
+  { id: "A<25", label: "A<25 POR VENCER", action: "Registrar situación comercial por vencer (clasificación manual)", channel: "Registro", template: null },
   { id: "D-5", label: "D−5", action: "Recordatorio y beneficio vigente", channel: "WhatsApp", template: "D-5" },
   { id: "D-4", label: "D−4", action: "Llamada de refuerzo; guion pendiente", channel: "Llamada", template: null },
   { id: "D-3", label: "D−3", action: "Imagen del beneficio; recurso autorizado pendiente", channel: "WhatsApp", template: null },
@@ -23,6 +25,8 @@ export type GestionEtapa = (typeof GESTION_ETAPAS)[number]["id"];
 
 /** Contrato único del menú F de BASE GENERAL: etapa confirmada, nunca etapa sugerida. */
 export const GESTION_F_ETIQUETAS: Record<GestionEtapa, string> = {
+  "A+30": "A+30 AL DIA",
+  "A<25": "A<25 POR VENCER",
   "D-5": "D−5: recordatorio",
   "D-4": "D−4: llamada",
   "D-3": "D−3: imagen",
@@ -36,14 +40,13 @@ export const GESTION_F_ETIQUETAS: Record<GestionEtapa, string> = {
 
 /** El servidor nunca confía en una etapa enviada suelta: la extrae del evento SOP. */
 export function etapaRegistradaEnDetalle(detail: string): GestionEtapa | null {
-  const match = /^SOP:(D-[1-5]|D0|S0|S\+2|S\+5);/.exec(detail);
+  const match = /^SOP:(A\+30|A<25|D-[1-5]|D0|S0|S\+2|S\+5);/.exec(detail);
   const stage = match?.[1] as GestionEtapa | undefined;
   return stage && Object.prototype.hasOwnProperty.call(GESTION_F_ETIQUETAS, stage) ? stage : null;
 }
 
 
-/** Etiquetas reservadas; los umbrales comerciales vigentes pertenecen al motor actual. */
-export const ETIQUETAS_PENDIENTES = ["A+30", "A−25"] as const;
+/** A+30 y A<25 son etiquetas manuales: NO alteran el cálculo vigente de ESTADO en BASE GENERAL!E. */
 
 export function etapaSugerida(nextPayment: string | null, today: string, s0Date?: string | null): GestionEtapa | null {
   const day = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) ? Date.parse(`${value}T00:00:00Z`) : NaN;
