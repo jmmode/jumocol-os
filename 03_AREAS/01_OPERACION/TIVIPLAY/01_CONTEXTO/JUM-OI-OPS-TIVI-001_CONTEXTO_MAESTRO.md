@@ -552,3 +552,98 @@ El orden futuro no implica autorización de implementación. Contexto debe aprob
 3. Definir identidades canónicas y relaciones mínimas sin crear una nueva base de datos.
 4. Resolver las contradicciones documentales antes de cambiar estados técnicos.
 5. Aprobar este documento antes de evaluar artefactos independientes de Integraciones/MCP, Skills, Hooks, Subagentes o Plugin.
+
+
+---
+
+## Anexo de continuidad — Mapa de fuentes y gestión operativa (2026-11-05)
+
+**Estado del anexo:** VALIDADO como **inventario estructural** contra metadatos y encabezados de Google Sheets conectados; **PARCIAL** para funcionamiento extremo a extremo y sincronización bidireccional.  
+**Corte documental:** 2026-11-05, Bogotá. No reescribe el contrato S0 v0.3 ni el corte histórico de 2026-10-24 de este documento.  
+**Objetivo:** preservar en el documento maestro el mapa **ya existente**, sin crear otro CRM, tabla, fichero, app, módulo, conector o manual paralelo.  
+**Alcance de esta actualización:** solo documentación; no se modificaron datos, fórmulas, permisos, scripts ni configuración productiva.  
+**Evidencia de implementación de la intranet:** rama remota \`work/tiviplay-ficha-integral-20261104\` observada en el repositorio hasta \`4aa2bc16\`; existen entregas locales posteriores reportadas por Claude Code que **no se confirman como publicadas** en esta actualización.
+
+### A. Inventario de las tres fuentes conectadas
+
+| Libro real | ID Google Sheets | Hojas / ownership funcional | Estado comprobado |
+| --- | --- | --- | --- |
+| **VENTAS 2026 (Tiviplay)** | \`1y1yZSxHCz3HhfikgHNvhgKhU7rFCG9U8HH90QeTN6TQ\` | \`VENTAS_NOVIEMBRE\`, \`PENDIENTES NOVIEMBRE\`, \`VENTAS_OCTUBRE\` y meses anteriores; altas, ventas y reactivaciones | VALIDADO: archivo y pestañas presentes. La aplicación del gate venta → BASE sigue PARCIAL. |
+| **GESTION_DIA_PAGOS_2026_TIVIPLAY** | \`1bOgUMrHoAyAm-aoRhXgylWfbHph7tsvJYz1mIujdi-4\` | \`BASE GENERAL\`; \`PAGOS NOVIEMBRE 2026\`; \`ZELLE (NOV)\`, \`PAYPAL (NOV)\`, \`TRANSF (NOV)\`; \`CONTROL (NOV) P1/P2/P3\`; hojas de octubre y meses anteriores | VALIDADO: estructura observable. Sincronización transversal y permisos de escritura por flujo: PARCIAL. |
+| **TIVIPLAY_FORMATO_GESTION_OPERATIVA** | \`1vB0MfxOW4tyWIDgb6cbkxbeZrDfzCKsC7enNrtmR9ww\` | \`GESTION_CLIENTE\`, \`GESTION_DIARIA\`, \`APERTURA_OPERACION\`, \`CIERRE_OPERACION\`, \`ASIGNACION_BASES_6M\`, \`CONEXIONES_FUENTE\`, dashboards, \`GOBIERNO_DATOS\` y consultas | VALIDADO: estructura y encabezados. No equiparar con una integración transaccional terminada. |
+
+**Relación documental:** \`CONEXIONES_FUENTE\` de Gestión Operativa refiere explícitamente a los libros de pagos y ventas. La existencia de enlaces **no prueba** que las fórmulas \`IMPORTRANGE\`, dashboards o escrituras funcionen íntegramente hoy. El mismo libro registra su transición como \`MAESTRO OPERATIVO ÚNICO\` en \`GOBIERNO_DATOS\`; esto es **aspiración documentada**, no autorización para reemplazar hoy a \`BASE GENERAL\` como fuente vigente de identidad/ciclo.
+
+### B. Mapa de entidades, capas y relaciones
+
+\`\`\`text
+VENTAS 2026 (origen comercial)
+    └─[validación de alta/reconexión y pago]─> BASE GENERAL (cliente + USUARIO + PANEL)
+          ├─ PAGOS [MES] + ZELLE/PAYPAL/TRANSF = capa financiera
+          │    └─ F. PRÓXIMO PAGO = fecha del ciclo comercial
+          ├─ CONTROL (MES) P1/P2/P3 = capa de servicio
+          │    └─ F.VENCIMIENTO = fecha técnica; CREDITO = evidencia de CONTROL
+          └─ motor de CASOS (CASE_ID) / EVENTOS (EVENT_ID) = seguimiento transversal
+               └─ hoja existente GESTION_CLIENTE = candidata a bitácora de eventos
+                    ├─ GESTION_DIARIA (resultados por asesor/turno)
+                    ├─ APERTURA_OPERACION + CIERRE_OPERACION
+                    ├─ ASIGNACION_BASES_6M (responsables, bloques)
+                    └─ dashboards, resumen, calidad y auditoría
+
+JUMOCOL OS / Atención / Cola Operacional / Apertura / Cierre
+    = interfaz de consulta y captura controlada, NO segunda fuente de verdad
+\`\`\`
+
+**Identidad y cardinalidad:** \`BASE GENERAL\` es referencia maestra actual; el \`USUARIO\` debe localizar una ficha inequívoca o producir excepción. Un cliente puede tener **varios casos**; un caso puede tener **varios eventos**. La fila física no es una identidad permanente. Ningún evento de cobro prueba por sí mismo pago, crédito ni estado del panel.
+
+### C. Reutilización exacta de las hojas ya existentes de Gestión Operativa
+
+| Hoja | Encabezados / funciones observadas | Rol de integración deseado | Brecha |
+| --- | --- | --- | --- |
+| \`GESTION_CLIENTE\` | Fila 3: \`ID_GESTION\`, \`FECHA_GESTION\`, \`MES\`, \`CLAVE_CLIENTE\`, \`USUARIO\`, \`PANEL_CANONICO\`, \`CLIENTE\`, \`TIPO_BASE\`, \`BLOQUE_ID\`, \`ASESOR\`, \`TIPO_GESTION\`, \`RESULTADO\`, montos, próxima acción, \`EVIDENCIA_URL\`, \`ESTADO_AUDITORIA\`, conciliadores y \`OBSERVACIONES\` | **Candidata prioritaria** a registro único de eventos; evaluar \`ID_GESTION ↔ EVENT_ID\`, \`CASE_ID\` asociado y preservación de datos históricos | PARCIAL: el encabezado no incluye \`CASE_ID\`; ninguna escritura desde el motor de casos está demostrada. No crear \`GESTIONES_EVENTOS\` duplicada sin decisión. |
+| \`GESTION_DIARIA\` | Fila 1: fecha, asesor, inicio/fin, clientes gestionados/contactados, pagos confirmados, USD, reactivaciones, referidos, casos resueltos, seguimientos, tasas y observaciones | Consolidación diaria **derivada** de eventos, turnos y finanzas verificadas; datos manuales separados de los calculados | PARCIAL: no hay reconciliación E2E de métricas y eventos. |
+| \`APERTURA_OPERACION\` | Fila 1: fecha, marca, clientes a facturar, recaudo proyectado, pendientes, meta de mes, **créditos iniciales P1/P3 TiviPlay y P2/P3 Mira+**, observaciones | Apertura desde intranet: visualizar proyección, registrar/confirmar inventario inicial con fecha, asesor y evidencia | PARCIAL: todavía no hay guardado comprobado desde intranet. |
+| \`CIERRE_OPERACION\` | Fila 1: fecha, marca, recaudo/facturación, renovados, pendientes, pagos, acumulados y créditos iniciales/finales/comprados por panel | Cierre desde dashboard con recálculo de totales y registro de inventarios/evidencia del asesor | PARCIAL: cierre desde intranet no comprobado; no confundir foto/manual con saldo real del panel. |
+| \`ASIGNACION_BASES_6M\` | Bloques, periodo, tipo de base, fuente, asesor, metas, cobertura, resultados, estado | Vincular turno, campaña, asesor y eventos al bloque asignado | PARCIAL: cruces aún por validar. |
+| \`CONEXIONES_FUENTE\`, \`CONFIGURACION\`, \`DASHBOARD_OPERATIVO\` | Enlaces a libros externos y parámetro de mes observado como **octubre de 2026** | Insumos y visualizaciones existentes, **no** fuentes independientes de pagos/identidad | REQUIERE VALIDACIÓN: periodo mostrado y enlaces/fórmulas frente al mes operativo real. |
+| \`GOBIERNO_DATOS\` | Declara Gestión Operativa como maestro *futuro* y Pagos como fuente transitoria activa | Referencia de migración propuesta y responsables | REQUIERE DECISIÓN: no migrar ownership silenciosamente. |
+
+**Evidencia del equipo (capturas de WhatsApp aportadas por Dirección):** hoy comparte resumen diario y capturas de inventario de créditos P1/P2/P3. Son **reportes manuales fechados**, no lecturas de inventario vivo; la intranet debe permitir captura/confirmación de apertura y cierre con trazabilidad y distinguir \`VALOR_REPORTADO\` de \`VALOR_VERIFICADO\`.
+
+### D. Contrato de campos vigentes en pagos y separación de responsabilidades
+
+| Hoja | Campo | Regla |
+| --- | --- | --- |
+| \`BASE GENERAL\` | E = \`ESTADO\`; F = \`OBSERVACIONES GESTION\`; W = \`OBSERVACIONES ASESOR\` | E comercial es calculado; F gestión, W comentario libre. No actualizar E por registrar una llamada. |
+| \`BASE GENERAL\` | N = \`USUARIO\`; P = \`PANEL\`; Q = \`F.VENCIMIENTO\`; R = \`F.ULTIMO PAGO\`; S = \`F. PRÓXIMO PAGO\`; AH = \`CLIENTE_KEY\` | Resolver **por encabezado**, no por índice fijo. Datos técnicos y comerciales separados. |
+| \`PAGOS NOVIEMBRE 2026\` | E = \`ESTADO\`; F = \`OBSERVACIONES GESTION\`; W = \`OBSERVACIONES ASESOR\`; X = \`CONFIRMACION\`; R = \`F. PRÓXIMO PAGO\` | X es confirmación financiera, no resultado de gestión. F sigue teniendo contenido histórico. |
+| \`ZELLE/PAYPAL/TRANSF (NOV)\` | Estado financiero y conciliación por ciclo/identidad | \`COMPROBANTE_RECIBIDO\` ≠ \`CONFIRMADO JM\`; solo el gate financiero autoriza actualizar el ciclo. |
+| \`CONTROL (NOV) P1/P2/P3\` | E = \`USUARIO\`; H = \`FECHA\`; I = \`F.VENCIMIENTO\`; J = \`ORIGEN\`; K = \`CREDITO\` | Regla por encabezados. Leer historial no autoriza nuevo crédito. Hojas de octubre tienen posiciones distintas. |
+
+**Contrato de interacción deseado (aún NO IMPLEMENTADO E2E):**
+\`Etapa SOP → opción/desplegable o botón → mensaje/acción del asesor → resultado confirmado → EVENT_ID único → GESTION_CLIENTE → proyección en F del mes/BASE → indicadores del turno → auditoría\`.
+
+- En el manual de cobranza existente, la etapa empieza D−5 y atraviesa recordatorio, llamada, imagen, datos de pago por método, alerta y retención. Reutilizar los scripts del Markdown vigente: no duplicarlos en la interfaz.
+- Un selector de Google Sheets o un botón de intranet requiere **la misma semántica**, control de permisos, identidad verificada, idempotencia y relectura de la escritura. Cambiar un chip por sí solo **no registra** un evento.
+- **F como estado seleccionable** y **F como historial textual** son representaciones incompatibles si se sobrescriben. Resolver explícitamente la proyección \`último estado\` vs. \`eventos completos\` en \`GESTION_CLIENTE\`, preservando lo ya escrito antes de modificar F.
+- \`GESTION_CLIENTE\` ya tiene \`ID_GESTION\`, pero el motor P1 define \`CASE_ID\` y \`EVENT_ID\`; comprobar correspondencia en vez de crear nuevos identificadores inconexos. El modelo P1 en \`casos-model.ts\` es **puro, sin persistencia**. La escritura existente \`gestion-write.ts\` está protegida por \`TIVIPLAY_GESTION_WRITE\` y contempla **solo F mensual**; no demuestra sincronización en dos libros.
+- Para soporte técnico: diagnóstico, acción, resultado, seguimiento, escalamiento y evidencia deberán reflejarse como eventos del caso, diferenciados de las confirmaciones de pago y ejecuciones de CONTROL.
+
+### E. Roles, agentes y método de entrega
+
+**Agentes de Claude Code ya presentes, sin crear otros:** \`.claude/agents/tiviplay-datos.md\`, \`.claude/agents/tiviplay-atencion.md\`, \`.claude/agents/tiviplay-verificacion.md\`.
+
+- **Datos:** adapters de fuentes, lectura por encabezados, contrato de identidad, pruebas de persistencia. Sin contraseñas ni escrituras no autorizadas.
+- **Atención:** reutilizar \`ATENDER\`, Cola Operacional y dashboard para selectores, apertura/cierre y vistas del cliente, sin construir otro módulo.
+- **Verificación:** pruebas de regresión y paridad en hojas de ensayo, evidencia antes/después, roles ADMIN/OPERADOR y trazabilidad del evento.
+- **Dirección:** aprueba reglas operativas, confirma pagos por el flujo autorizado, resuelve ambigüedades y habilita cambios de producción por gates.
+
+**Secuencia controlada de futuras integraciones — no se adelanta aquí:**
+
+1. **GATE MAPA (este anexo):** inventario de fuentes, tabs, entidades y responsabilidades, sin alterar producción. VALIDADO **documentalmente**.
+2. **GATE CASOS/EVENTOS:** contrastar \`casos-model.ts\` con \`GESTION_CLIENTE\` y decidir reutilización de \`ID_GESTION\`, enlace \`CASE_ID\`, estados y campos faltantes. REQUIERE DECISIÓN de contrato, no crear otra hoja por defecto.
+3. **GATE ESCRITURA ENSAYO:** caso + dos eventos + cierre verificado; registrar exactamente una vez, preservar histórico, comprobar relectura y que un comprobante no confirme pago. NO IMPLEMENTADO E2E.
+4. **GATE ATENCIÓN:** botón/desplegable → evento → lectura inmediata comprobada en intranet y fuente; permisos por rol, sin doble registro. NO IMPLEMENTADO E2E.
+5. **GATE APERTURA/CIERRE:** captura de inventarios y eventos reales, indicadores derivados y conciliación de resultados de jornada; no contar reportes de WhatsApp como inventario técnico verificado. NO IMPLEMENTADO E2E.
+
+**CHECKPOINT:** mapa documental consolidado sobre la estructura real existente. No se crearon nuevas hojas ni sistemas. El siguiente trabajo va en el chat de \`Motor de Casos, Eventos y Gestión Operativa\`, sin mezclarlo con el gate activo de conciliación técnica y Panel 3. **NEXT ACTION:** verificar si \`GESTION_CLIENTE\` puede servir íntegramente como bitácora de eventos P1; definir contrato de \`CASE_ID\` y \`ID_GESTION\` antes de la primera escritura de ensayo.
