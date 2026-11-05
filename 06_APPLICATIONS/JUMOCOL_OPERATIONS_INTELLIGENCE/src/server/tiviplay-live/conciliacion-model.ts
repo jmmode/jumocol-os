@@ -1,7 +1,7 @@
 // Conciliación de servicio TiviPlay — modelo puro (sin E/S), probado en conciliacion-model.test.ts.
 //
 // Flujo: PANELES REALES → corrección automática de datos objetivos (ya aplicada en BASE) → excepciones →
-// decisión en intranet → actualización BASE (cola de sincronización) → tarea LIBERAR por línea residual →
+// decisión en intranet → propuesta BASE validada → LIBERAR solo líneas VIGENTES sobrantes →
 // Asesor ejecuta → línea DISPONIBLE → servicio consolidado.
 //
 // El dataset (data/private, fuera de Git) trae los casos y tareas del corte; las decisiones y ejecuciones
@@ -141,7 +141,8 @@ function currentDecision(history: ReconDecision[]) {
   return history.length ? history[history.length - 1] : null;
 }
 
-export function projectReconciliation(dataset: ReconDataset, decisions: ReconDecision[], events: TaskEvent[]): ReconProjection {
+export function projectReconciliation(dataset: ReconDataset, decisions: ReconDecision[], events: TaskEvent[], referenceDate = dataset.cut): ReconProjection {
+  // Usar fecha operativa actual cuando esté disponible. El snapshot no prueba estado en vivo del panel.
   const eventsByTask = new Map<string, TaskEvent[]>();
   for (const e of events) eventsByTask.set(e.taskId, [...(eventsByTask.get(e.taskId) ?? []), e]);
   const taskStatus = (id: string): TaskView["status"] => {
@@ -153,7 +154,7 @@ export function projectReconciliation(dataset: ReconDataset, decisions: ReconDec
   const generated: AdvisorTask[] = [];
   const baseSync: ReconProjection["baseSync"] = [];
   const cases: CaseView[] = dataset.cases.map((source) => {
-    const rule = source.kind === "MULTIPANEL" ? classifyMultipanel(source, dataset.cut) : null;
+    const rule = source.kind === "MULTIPANEL" ? classifyMultipanel(source, referenceDate) : null;
     const automatic = rule != null && rule.keep != null;
     // Las opciones visibles son solo las que la regla deja abiertas (una línea vencida nunca es candidata si hay vigentes).
     const c: ReconCase = rule ? { ...source, options: rule.options, proposal: rule.options.some((o) => o.id === source.proposal) ? source.proposal : null } : source;
@@ -165,7 +166,8 @@ export function projectReconciliation(dataset: ReconDataset, decisions: ReconDec
     const residualTasks: string[] = [];
     if (chosen) {
       if (c.kind === "MULTIPANEL" && chosen.keep) {
-        for (const line of c.lines.filter((l) => l.panel !== chosen.keep)) {
+        // Una línea expirada por fecha NO requiere tarea LIBERAR; se conserva en el caso como histórico.
+        for (const line of c.lines.filter((l) => l.panel !== chosen.keep && /^\d{4}-\d{2}-\d{2}$/.test(l.expiration) && l.expiration >= referenceDate)) {
           const id = residualTaskId(c.id, line);
           residualTasks.push(id);
           generated.push({
@@ -183,14 +185,20 @@ export function projectReconciliation(dataset: ReconDataset, decisions: ReconDec
         residualTasks.push(id);
         generated.push({ id, username: c.username, caseId: c.id, title: `${t.kind.replace("_", " ")} — ${c.username}`, ...t });
       });
-      for (const u of chosen.baseUpdates) baseSync.push({ ...u, caseId: c.id, username: c.username, decidedAt: decision!.at });
+      // No proponer sincronizar BASE con un panel que ya no tiene ninguna línea vigente.
+      if (c.kind !== "MULTIPANEL" || c.lines.some((line) => line.panel === chosen.keep && line.expiration >= referenceDate)) {
+        for (const u of chosen.baseUpdates) baseSync.push({ ...u, caseId: c.id, username: c.username, decidedAt: decision!.at });
+      }
     }
     const consolidated = chosen != null && residualTasks.every((id) => taskStatus(id) === "EJECUTADO");
     const status: CaseView["status"] = !chosen ? "PENDIENTE" : consolidated ? "CONSOLIDADO" : automatic ? "AUTOMATICO" : "DECIDIDO";
     return { ...c, status, mode: rule?.mode ?? null, decision, history, chosen, residualTasks };
   });
 
-  const tasks: TaskView[] = [...dataset.tasks, ...generated].map((t) => ({ ...t, status: taskStatus(t.id), events: eventsByTask.get(t.id) ?? [] }));
+  // Ocultar del trabajo pendiente las LIBERAR históricas del dataset; preservar las ejecutadas y los eventos append-only.
+  const tasks: TaskView[] = [...dataset.tasks, ...generated]
+    .filter((t) => t.kind !== "LIBERAR" || !t.line || t.line.expiration >= referenceDate || taskStatus(t.id) === "EJECUTADO")
+    .map((t) => ({ ...t, status: taskStatus(t.id), events: eventsByTask.get(t.id) ?? [] }));
   const available = tasks
     .filter((t) => t.kind === "LIBERAR" && t.status === "EJECUTADO" && t.line)
     .map((t) => {
@@ -203,7 +211,7 @@ export function projectReconciliation(dataset: ReconDataset, decisions: ReconDec
   for (const c of cases) {
     if (c.kind !== "MULTIPANEL" || !c.chosen?.keep) continue;
     const line = c.lines.find((l) => l.panel === c.chosen!.keep);
-    resolved.set(c.username, line && line.expiration >= dataset.cut ? "ACTIVO" : "INACTIVO");
+    resolved.set(c.username, line && line.expiration >= referenceDate ? "ACTIVO" : "INACTIVO");
   }
   const counts = { ACTIVO: 0, INACTIVO: 0, EXCEPCION: 0, total: 0 };
   for (const s of dataset.services) {
