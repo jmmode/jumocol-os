@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
-import { bloqueoEtapa, ETIQUETAS_PENDIENTES, GESTION_ESTADOS, GESTION_ETAPAS, GESTION_ETIQUETAS, type GestionEstado, type GestionEtapa } from "@/server/tiviplay-live/gestion-model";
+import { bloqueoEtapa, GESTION_ESTADOS, GESTION_ETAPAS, GESTION_ETIQUETAS, type GestionEstado, type GestionEtapa } from "@/server/tiviplay-live/gestion-model";
 
 type Props = {
   clientId: string; expectedHash: string | null; blocked: string | null;
@@ -58,7 +58,7 @@ export function GestionRegistro({ clientId, expectedHash, blocked, suggested, me
 
   return <form onSubmit={submit} className="mt-4 border-t border-brand-border pt-3">
     <h3 className="text-sm font-semibold">Confirmar y guardar gestión</h3>
-    <p className="mt-1 text-xs text-brand-muted">Etapa sugerida: {suggested ? GESTION_ETAPAS.find((item) => item.id === suggested)?.label : "sin fecha comercial verificable"}. Es una propuesta, no una gestión ejecutada. {ETIQUETAS_PENDIENTES.join(" / ")} siguen pendientes de definición.</p>
+    <p className="mt-1 text-xs text-brand-muted">Etapa sugerida: {suggested ? GESTION_ETAPAS.find((item) => item.id === suggested)?.label : "sin fecha comercial verificable"}. Es una propuesta, no una gestión ejecutada. A+30 AL DIA y A&lt;25 POR VENCER se seleccionan manualmente; no modifican el estado comercial de la columna E.</p>
     <div className="mt-3 grid gap-3 sm:grid-cols-2">
       <label className="text-sm">Etapa
         <select aria-label="Etapa SOP" className="mt-1 w-full rounded-lg border border-brand-border bg-white px-3 py-2" value={etapa} onChange={(e) => chooseStage(e.target.value as GestionEtapa)}>
