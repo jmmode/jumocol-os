@@ -158,6 +158,7 @@ export function locateRow(live: Map<number, BaseLiveRow> | null, username: strin
   // La pista del snapshot no resuelve una identidad duplicada: primero exigir unicidad en BASE viva.
   const rows = [...live.entries()].filter(([, r]) => r.username === u && !r.duplicate).map(([n]) => n);
   if (rows.length !== 1) return null;
+  if (hint && rows[0] === hint) return hint;
   return rows[0];
 }
 
