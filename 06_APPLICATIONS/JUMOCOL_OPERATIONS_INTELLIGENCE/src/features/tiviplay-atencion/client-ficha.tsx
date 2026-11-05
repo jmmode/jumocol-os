@@ -6,7 +6,7 @@ import { ServiceCredentials } from "@/features/tiviplay-atencion/service-credent
 import { technicalDue, type ClientHistory } from "@/server/tiviplay-live/client-history-model";
 import { getClientHistory } from "@/server/tiviplay-live/client-history";
 import { observationsHash } from "@/server/tiviplay-live/gestion-core";
-import { etapaSugerida, GESTION_ETAPAS, GESTION_ETIQUETAS, parseGestiones, type GestionEtapa } from "@/server/tiviplay-live/gestion-model";
+import { etapaSugerida, GESTION_ETAPAS, GESTION_ETIQUETAS, GESTION_F_ETIQUETAS, parseGestiones, type GestionEtapa } from "@/server/tiviplay-live/gestion-model";
 import { gestionWriteEnabled } from "@/server/tiviplay-live/gestion-write";
 import { getRuntimeValuesCached } from "@/server/tiviplay-live/runtime-source";
 import { headerKey } from "@/server/tiviplay-live/sheet-columns";
@@ -158,6 +158,7 @@ export async function ClientFicha({ client, queue, actor, admin, cobranza, today
           {queue?.confirmedMethodReference ? <Item name="Pago confirmado del mes" value={`CONFIRMADO JM · ${queue.confirmedMethodReference} · pendiente de sincronización con cartera`} wide /> : null}
           <Item name="Último pago" value={displayDate(client.lastPayment)} />
           <Item name="Observaciones asesor (W)" value={advisorNote || "SIN OBSERVACIÓN"} wide />
+          <Item name="Etapa SOP confirmada (BASE F)" value={Object.values(GESTION_F_ETIQUETAS).includes((client.baseGestionObservation ?? "").trim()) ? client.baseGestionObservation : "SIN ETAPA SOP REGISTRADA"} wide />
           <Item name="Última gestión" value={last ? `${last.at} · ${last.actor}` : queue?.lastManaged || "SIN GESTIÓN"} wide />
         </dl>
       </section>
