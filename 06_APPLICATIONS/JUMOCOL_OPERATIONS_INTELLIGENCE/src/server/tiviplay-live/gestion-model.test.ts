@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { appendGestion, bloqueoEtapa, cleanGestionDetail, etapaRegistradaEnDetalle, etapaSugerida, GESTION_ETAPAS, GESTION_F_ETIQUETAS, gestionEntry, isGestionEstado } from "./gestion-model";
 
 describe("registro de gestión (columna F)", () => {
-  it("mantiene un catálogo único de nueve etapas distintas de los resultados", () => {
-    expect(GESTION_ETAPAS.map((s) => s.id)).toEqual(["D-5", "D-4", "D-3", "D-2", "D-1", "D0", "S0", "S+2", "S+5"]);
+  it("mantiene un catálogo de 11 opciones F, sin mezclar las dos clasificaciones manuales con el SOP", () => {
+    expect(GESTION_ETAPAS.map((s) => s.id)).toEqual(["A+30", "A<25", "D-5", "D-4", "D-3", "D-2", "D-1", "D0", "S0", "S+2", "S+5"]);
     expect(GESTION_ETAPAS.find((s) => s.id === "D0")?.template).toBeNull();
     expect(GESTION_ETAPAS.find((s) => s.id === "S+5")?.template).toBeNull();
   });
@@ -35,7 +35,11 @@ describe("registro de gestión (columna F)", () => {
     expect(GESTION_F_ETIQUETAS["D-5"]).toBe("D−5: recordatorio");
     expect(GESTION_F_ETIQUETAS.D0).toBe("D0: verificar pago");
     expect(GESTION_F_ETIQUETAS["S+2"]).toBe("S+2: retención 2");
-    expect(Object.keys(GESTION_F_ETIQUETAS)).toHaveLength(9);
+    expect(Object.keys(GESTION_F_ETIQUETAS)).toHaveLength(11);
+    expect(GESTION_F_ETIQUETAS["A+30"]).toBe("A+30 AL DIA");
+    expect(GESTION_F_ETIQUETAS["A<25"]).toBe("A<25 POR VENCER");
+    expect(etapaRegistradaEnDetalle("SOP:A+30; CANAL:Registro; OBS:estado al día")).toBe("A+30");
+    expect(etapaRegistradaEnDetalle("SOP:A<25; CANAL:Registro; OBS:por vencer")).toBe("A<25");
     expect(etapaRegistradaEnDetalle("SOP:D-5; CANAL:WhatsApp; OBS:mensaje enviado")).toBe("D-5");
     expect(etapaRegistradaEnDetalle("SOP:D0; CANAL:Validación; OBS:verificó pago")).toBe("D0");
     expect(etapaRegistradaEnDetalle("SOP:S+5; CANAL:Revisión; OBS:pendiente")).toBe("S+5");
