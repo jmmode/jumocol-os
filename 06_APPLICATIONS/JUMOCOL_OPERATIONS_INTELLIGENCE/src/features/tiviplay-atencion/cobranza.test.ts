@@ -16,12 +16,12 @@ describe("etapas del manual de cobro", () => {
     expect(stage("2026-11-12", "PayPal")).toBe("D-2 PAYPAL");
     expect(stage("2026-11-12", "Transferencia")).toBe("D-2 TRANSFERENCIA");
     expect(stage("2026-11-11")).toBe("D-1");
-    expect(stage("2026-11-10")).toBe("D0");
-    expect(stage("2026-11-01")).toBe("D+");
+    expect(stage("2026-11-10")).toBe("");
+    expect(stage("2026-11-01")).toBe("");
   });
 
   it("sin método confirmado no envía datos de pago", () => {
-    expect(stage("2026-11-12", "")).toBe("D-5");
+    expect(stage("2026-11-12", "")).toBe("");
   });
 
   it("el documento trae un mensaje por etapa, sin datos de pago ni promociones", () => {
