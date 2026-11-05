@@ -25,26 +25,25 @@ const releases = (r: ReturnType<typeof project>) => r.tasks.filter((t) => t.kind
 const gerencia = (r: ReturnType<typeof project>) => r.cases.filter((c) => c.status === "PENDIENTE").length;
 
 describe("Motor multipanel: regla de vigencia contra el corte", () => {
-  it("PATRÓN VALIDADO: P1 vencido + P3 vigente → P3 canónico, P1 residual, cero decisión de Gerencia, tarea LIBERAR P1", () => {
+  it("P1 vencido + P3 vigente → P3 canónico, P1 histórico sin liberar", () => {
     const c = multipanel({ P1: VENCIDA, P3: VIGENTE }, "P1"); // aun con una propuesta contraria, manda la vigencia
     const r = project(c);
     expect(classifyMultipanel(c, CUT)).toMatchObject({ mode: "UNICA_VIGENTE", keep: "P3" });
     expect(gerencia(r)).toBe(0);
     expect(r.cases[0]).toMatchObject({ status: "AUTOMATICO", chosen: { keep: "P3" } });
     expect(r.cases[0].decision?.by).toMatch(/SISTEMA/);
-    expect(releases(r)).toEqual([`P1:${ID.P1}`]);
-    const task = r.tasks.find((t) => t.kind === "LIBERAR")!;
-    expect(task).toMatchObject({ id: residualTaskId("MP:SINTETICO", c.lines[0]), title: "LIBERAR PANEL 1 — SINTETICO", username: "SINTETICO", keepPanel: "P3", releasePanel: "P1" });
+    expect(releases(r)).toEqual([]);
+    expect(r.cases[0].lines).toHaveLength(2);
     expect(r.baseSync).toEqual([expect.objectContaining({ row: 9, field: "PANEL", to: "PANEL 3" })]);
     expect(r.services).toMatchObject({ ACTIVO: 1, EXCEPCION: 0 });
     expect(validateDecision(c, "KEEP_P1", "fp", null, null, null, false, CUT)).toMatch(/regla de vigencia/);
   });
 
-  it("P1 vigente + P3 vencido → P1 canónico, LIBERAR P3, sin Gerencia", () => {
+  it("P1 vigente + P3 vencido → P1 canónico, P3 histórico sin liberar", () => {
     const r = project(multipanel({ P1: VIGENTE, P3: VENCIDA }));
     expect(gerencia(r)).toBe(0);
     expect(r.cases[0].chosen?.keep).toBe("P1");
-    expect(releases(r)).toEqual([`P3:${ID.P3}`]);
+    expect(releases(r)).toEqual([]);
   });
 
   it("P1 y P3 vigentes → Gerencia, con solo los dos paneles vigentes como CONSERVAR y sin tareas", () => {
@@ -59,18 +58,18 @@ describe("Motor multipanel: regla de vigencia contra el corte", () => {
     const withEvidence = project(multipanel({ P1: VENCIDA, P3: "2026-09-01" }, "P3"));
     expect(gerencia(withEvidence)).toBe(0);
     expect(withEvidence.cases[0]).toMatchObject({ mode: "TODAS_VENCIDAS_EVIDENCIA", chosen: { keep: "P3" } });
-    expect(releases(withEvidence)).toEqual([`P1:${ID.P1}`]);
+    expect(releases(withEvidence)).toEqual([]);
     expect(withEvidence.services).toMatchObject({ INACTIVO: 1, EXCEPCION: 0 });
     const ambiguous = project(multipanel({ P1: VENCIDA, P3: "2026-09-01" }));
     expect(gerencia(ambiguous)).toBe(1);
     expect(ambiguous.cases[0].mode).toBe("TODAS_VENCIDAS_AMBIGUO");
   });
 
-  it("tres paneles con uno solo vigente → ese panel canónico y dos LIBERAR", () => {
+  it("tres paneles con uno solo vigente → ninguno de los históricos se libera", () => {
     const r = project(multipanel({ P1: VENCIDA, P2: VIGENTE, P3: "2026-08-14" }));
     expect(gerencia(r)).toBe(0);
     expect(r.cases[0].chosen?.keep).toBe("P2");
-    expect(releases(r).sort()).toEqual([`P1:${ID.P1}`, `P3:${ID.P3}`]);
+    expect(releases(r).sort()).toEqual([]);
   });
 
   it("tres paneles con dos vigentes → Gerencia solo entre los vigentes; la línea vencida no es opción CONSERVAR", () => {
@@ -80,9 +79,9 @@ describe("Motor multipanel: regla de vigencia contra el corte", () => {
     expect(r.cases[0].options.map((o) => o.keep)).toEqual(["P1", "P3"]);
     expect(validateDecision(c, "KEEP_P2", "fp", null, null, null, false, CUT)).toMatch(/vigente/);
     expect(validateDecision(c, "KEEP_P3", "fp", null, null, null, false, CUT)).toBeNull();
-    // Tras decidir P3: se liberan P1 (vigente descartada) y P2 (vencida).
+    // Tras decidir P3: solo P1, vigente descartada, requiere liberación; P2 es histórica.
     const decided = projectReconciliation({ cut: CUT, generatedAt: "x", cases: [c], tasks: [], services: [] }, [{ id: 1, caseId: c.id, fingerprint: "fp", option: "KEEP_P3", by: "julian", at: "t", supersedes: null, reason: null }], []);
-    expect(releases(decided).sort()).toEqual([`P1:${ID.P1}`, `P2:${ID.P2}`]);
+    expect(releases(decided).sort()).toEqual([`P1:${ID.P1}`]);
   });
 });
 
