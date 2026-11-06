@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node --test",
     "run": "node run.mjs",
-    "reconcile-sales": "node reconcile-sales.mjs"
+    "reconcile-sales": "node reconcile-sales.mjs",
+    "link-exceptions": "node link-exceptions.mjs"
   },
   "dependencies": {
     "google-auth-library": "^9.15.1"
