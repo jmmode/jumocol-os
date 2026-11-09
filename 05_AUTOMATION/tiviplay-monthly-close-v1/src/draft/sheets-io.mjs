@@ -14,6 +14,46 @@ const PAYMENT_LAST_ROW = 400;
 
 const quote = (title) => `'${String(title).replaceAll("'", "''")}'`;
 
+const canonHeader = (value) => String(value ?? "").trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleUpperCase("es").replace(/\s+/g, " ");
+const BASE_CANONICAL_HEADERS = Object.freeze([
+  "TC", "CLIENTE", "TELEFONO", "CORREO", "ESTADO", "OBSERVACIONES", "PLAN ACTIVO", "PANTALLAS", "CELULAR", "USD", "COP",
+  "MÉTODO DE PAGO", "USUARIO", "CONTRASEÑA", "PANEL", "F.VENCIMIENTO", "F.ULTIMO PAGO", "F. PRÓXIMO PAGO", "T", "REFERIDO",
+  "DISPOSITIVOS", "CUMPLEAÑOS", "TIPO_SERVICIO", "CODIGO_CANONICO",
+]);
+
+export function normalizeBaseRowsForDraft(rows) {
+  let headerIndex = -1;
+  for (let i = 0; i < Math.min(rows.length, 20); i += 1) {
+    const keys = (rows[i] ?? []).map(canonHeader);
+    if (keys.includes("TC") && keys.includes("CLIENTE") && keys.includes("USUARIO")) {
+      headerIndex = i;
+      break;
+    }
+  }
+  if (headerIndex < 0) throw new Error("BASE GENERAL: encabezado TC/CLIENTE/USUARIO no encontrado");
+  const sourceHeader = (rows[headerIndex] ?? []).map(canonHeader);
+  const index = (name, aliases = []) => {
+    for (const candidate of [name, ...aliases]) {
+      const i = sourceHeader.indexOf(canonHeader(candidate));
+      if (i >= 0) return i;
+    }
+    return -1;
+  };
+  const columns = BASE_CANONICAL_HEADERS.map((name) => {
+    if (name === "CONTRASEÑA") return -1;
+    if (name === "OBSERVACIONES") return index(name, ["OBSERVACIONES GESTION"]);
+    if (name === "F. PRÓXIMO PAGO") return index(name, ["F.PRÓXIMO PAGO"]);
+    if (name === "CODIGO_CANONICO") return index(name, ["CÓDIGO_CANÓNICO", "CODIGO CANONICO"]);
+    return index(name);
+  });
+  return rows.map((row, rowIndex) => {
+    if (rowIndex === headerIndex) return [...BASE_CANONICAL_HEADERS];
+    const projected = columns.map((i) => i < 0 ? "" : row?.[i] ?? "");
+    while (projected.length && projected[projected.length - 1] === "") projected.pop();
+    return projected;
+  });
+}
+
 export function googleTokenProvider(scope) {
   return async () => {
     const email = process.env.GOOGLE_SHEETS_CLIENT_EMAIL;
@@ -83,7 +123,8 @@ export function createSheetsIo({ spreadsheetId, targetMonth, readToken, writeTok
   return {
     async readSources() {
       const token = await readToken();
-      const baseRows = await readSheetValues({ spreadsheetId, sheetName: "BASE GENERAL", range: "A1:Z1500" }, { accessToken: token, fetchImpl });
+      const baseRaw = await readSheetValues({ spreadsheetId, sheetName: "BASE GENERAL", range: "A1:AJ4000" }, { accessToken: token, fetchImpl });
+      const baseRows = normalizeBaseRowsForDraft(baseRaw);
       const titles = await sheetTitles(token);
       const payments = [];
       const missingSheets = [];

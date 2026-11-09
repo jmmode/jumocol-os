@@ -1,8 +1,9 @@
 import { CARTERA_MASKED_COLUMNS, ID_COL, MANAGED_COLUMNS, MASKED_COLUMNS, META_SIGNATURE_COL, columnLetter } from "./contract.mjs";
 
 const cell = (value) => (value == null ? "" : String(value));
-// Fichas del universo: <PREFIJO>-B<fila> (no confundir con -BQ<fila>).
-export const isUniverseId = (id) => /^[A-Z0-9]+-B\d+$/.test(id);
+// Fichas del universo: identidad estable por USUARIO técnico normalizado (BU<hash>).
+// Fallback BB<fila> solo para identidad vacía/ambigua, que queda bloqueada.
+export const isUniverseId = (id) => /^[A-Z0-9]+-B(?:U[0-9A-F]{12}|B\d+)$/i.test(id);
 
 // Columnas cuyo cambio se reporta por tipo (el resto se agrupa como OTRO).
 const KIND_BY_COLUMN = new Map([

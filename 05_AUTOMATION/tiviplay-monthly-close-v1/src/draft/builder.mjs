@@ -16,6 +16,15 @@ import { isConfirmed, isUniquelyLinked, linkPaymentsByBaseRow, shortSource } fro
 
 const clean = (value) => String(value ?? "").trim();
 const canon = (value) => clean(value).toLocaleUpperCase("es").replace(/\s+/g, " ");
+export const normalizeTechnicalUser = (value) => {
+  let user = clean(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleUpperCase("es").replace(/\s+/g, "");
+  let previous;
+  do {
+    previous = user;
+    user = user.replace(/^(?:VENCIO|LIBERADO)\//, "");
+  } while (user !== previous);
+  return user;
+};
 const sha256 = (value) => crypto.createHash("sha256").update(value).digest("hex");
 const num = (value) => {
   const n = Number(clean(value).replace(/[$,\s]/g, ""));
@@ -131,12 +140,22 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
 
   const users = new Map();
   for (let n = headerIndex + 2; n <= baseRows.length; n++) {
-    const key = canon(R(n)[B.user]);
-    if (key && !sectionOf(n).historical) users.set(key, [...(users.get(key) ?? []), n]);
+    const key = normalizeTechnicalUser(R(n)[B.user]);
+    if (key && clean(R(n)[B.tc]) === "1" && !sectionOf(n).historical) users.set(key, [...(users.get(key) ?? []), n]);
   }
-  const othersWithUser = (n) => {
-    const key = canon(R(n)[B.user]);
-    return key ? (users.get(key) ?? []).filter((x) => x !== n) : [];
+  const identityOf = (n) => {
+    const key = normalizeTechnicalUser(R(n)[B.user]);
+    const rows = key ? (users.get(key) ?? []) : [];
+    return { key, rows, unique: !!key && rows.length === 1 };
+  };
+  const othersWithUser = (n) => identityOf(n).rows.filter((x) => x !== n);
+  const originOf = (n) => {
+    const identity = identityOf(n);
+    return identity.unique ? `BASE GENERAL!${identity.rows[0]}` : "";
+  };
+  const stableClientId = (kind, n) => {
+    const identity = identityOf(n);
+    return identity.unique ? `${P}-${kind}U${sha256(identity.key).slice(0, 12)}` : `${P}-${kind}B${n}`;
   };
 
   /* ------------------------------------------------------------ universo */
@@ -176,6 +195,9 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
       owner = "BO: propagar F. PRÓXIMO PAGO";
     } else {
       const reasons = p.reviewReasons.map((x) => REASON_TEXT[x] ?? x);
+      const identity = identityOf(n);
+      if (!identity.key) reasons.push("USUARIO vacío: ORIGEN BASE no se emite.");
+      else if (!identity.unique) reasons.push(`USUARIO técnico ambiguo tras normalización: filas ${identity.rows.join(", ")}. ORIGEN BASE no se emite.`);
       if (CONTINUITY_SIGNAL.test(canon(r[B.notes]))) reasons.push("Observación: señal de no continuidad (cancela / otro operador / no continúa).");
       if (tv.startsWith("DIFIERE")) reasons.push(`Tarifa ${tv}`);
       // MONEDA NO USD no es alerta en el universo: la ficha factura el COP registrado (ver tariffCheck).
@@ -364,8 +386,8 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
       Object.assign(v, {
         0: clean(r[B.tc]), 1: clean(r[B.client]), 4: clean(r[B.status]), 6: clean(r[B.plan]), 7: clean(r[B.screens]),
         9: clean(r[B.usd]), 10: clean(r[B.cop]), 11: clean(r[B.method]), 12: clean(r[B.user]), 14: clean(r[B.panel]),
-        15: clean(r[B.due]), 16: clean(r[B.last]), 17: p.nextPaymentDate, 18: clean(r[B.t]), 21: `BASE GENERAL!${u.n}`,
-        30: u.tv, 32: u.week, 33: u.cls, 34: u.cat, 35: u.cause, 36: u.owner, 37: `${P}-B${u.n}`,
+        15: clean(r[B.due]), 16: clean(r[B.last]), 17: p.nextPaymentDate, 18: clean(r[B.t]), 21: originOf(u.n),
+        30: u.tv, 32: u.week, 33: u.cls, 34: u.cat, 35: u.cause, 36: u.owner, 37: stableClientId("B", u.n),
         38: INITIAL_COLLECTION_STATE[u.cls],
       });
       if (lp) Object.assign(v, { 22: lp.confirmation, 24: lp.matches, 25: lp.source, 26: lp.row, 27: lp.paymentDate ?? "", 28: lp.currency, 29: lp.amount, 31: lp.confirmation });
@@ -388,7 +410,7 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
   sectionRow("AJUSTES POR PAGOS CONFIRMADOS NO PROPAGADOS A BASE (no cambian BASE; BO propaga)", `${P}-SEC-AJ`);
   row("ID", "FILA_BASE", "ORIGEN BASE", "FUENTE", "FILA_FUENTE", "FECHA_PAGO", "VALOR", "CONFIRMACION", "PROP_F_PROXIMO", "F. PRÓX BASE", "EFECTO EN EL MES");
   for (const a of adjustments) {
-    row(`${P}-AJ${a.n}`, a.n, `BASE GENERAL!${a.n}`, a.lp.source, a.lp.row, a.lp.paymentDate ?? "", a.lp.amount, a.lp.confirmation, a.lp.proposedNext, a.baseNext ?? "", a.effect);
+    row(stableClientId("AJ", a.n), a.n, originOf(a.n), a.lp.source, a.lp.row, a.lp.paymentDate ?? "", a.lp.amount, a.lp.confirmation, a.lp.proposedNext, a.baseNext ?? "", a.effect);
   }
   row();
 
@@ -407,14 +429,14 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
 
   sectionRow("BLOQUEADOS FUERA DEL UNIVERSO MENSUAL", `${P}-SEC-BQ`);
   row("ID", "FILA_BASE", "ORIGEN BASE", "CAUSA", "RESPONSABLE");
-  for (const b of blocked) row(`${P}-BQ${b.n}`, b.n, `BASE GENERAL!${b.n}`, b.cause, "BO (F. PRÓX) → DIRECCIÓN si cambia tarifa")[38] = INITIAL_COLLECTION_STATE.BLOQUEADO;
+  for (const b of blocked) row(stableClientId("BQ", b.n), b.n, originOf(b.n), b.cause, "BO (F. PRÓX) → DIRECCIÓN si cambia tarifa")[38] = INITIAL_COLLECTION_STATE.BLOQUEADO;
   row();
 
   sectionRow("CARTERA VENCIDA · SEPARADA DEL UNIVERSO MENSUAL", `${P}-SEC-CV`);
   row("ID", "FILA_BASE", "ORIGEN BASE", "SECCIÓN", "CLIENTE", "USUARIO", "ESTADO", "F. ÚLTIMO PAGO", "F. PRÓXIMO PAGO", "MES", "DÍAS VENCIDO AL CORTE", "SUBESTADO", "NOTA", "RESPONSABLE");
   for (const c of cartera) {
     const r = R(c.n);
-    const v = row(`${P}-CV${c.n}`, c.n, c.c.origin, c.section, clean(r[B.client]), clean(r[B.user]), clean(r[B.status]), clean(r[B.last]), c.c.nextPaymentDate, c.c.dueMonth, c.c.daysPastDue ?? "", c.sub, c.note,
+    const v = row(stableClientId("CV", c.n), c.n, originOf(c.n), c.section, clean(r[B.client]), clean(r[B.user]), clean(r[B.status]), clean(r[B.last]), c.c.nextPaymentDate, c.c.dueMonth, c.c.daysPastDue ?? "", c.sub, c.note,
       /PAGADO|SALE AL MES/.test(c.sub) ? "BO: propagar pago a BASE" : /BLOQUEADO|DUPLICADO/.test(c.sub) || decisionOf(c.n) ? "BO → DIRECCIÓN" : "EQUIPO COBROS (cartera)");
     v[38] = /PAGADO/.test(c.sub) ? INITIAL_COLLECTION_STATE.PAGADO_SIN_PROPAGAR : INITIAL_COLLECTION_STATE.CARTERA;
   }
@@ -422,7 +444,7 @@ export function buildDraft({ baseRows, close, payments = [], decisions = {}, cut
 
   sectionRow("EXCLUIDOS CON CAUSA VERIFICABLE · TC_0 = ficha no facturable · SECCION_HISTORICA_TC1 = TC 1 en sección de baja/excepción", `${P}-SEC-EX`);
   row("ID", "FILA_BASE", "ORIGEN BASE", "SECCIÓN", "TC", "F. PRÓXIMO PAGO", "CAUSA");
-  for (const e of excluded) row(`${P}-EX${e.n}`, e.n, `BASE GENERAL!${e.n}`, e.section, e.tc, e.next, e.cause);
+  for (const e of excluded) row(stableClientId("EX", e.n), e.n, originOf(e.n), e.section, e.tc, e.next, e.cause);
   for (const h of [...historical.values()].sort((a, b) => a.from - b.from)) {
     row(`${P}-EXH${h.from}`, `${h.from}–${h.to}`, `BASE GENERAL!${h.from}:${h.to}`, h.label, `TC=1 × ${h.count}`, "", "SECCION_HISTORICA_TC1: baja o venta en excepción; no se cobra en el ciclo");
   }

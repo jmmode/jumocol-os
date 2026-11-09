@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 
 import { buildMonthlyClose } from "../src/core.mjs";
 import { DRAFT_MAX_ROWS, assertAllowedDraftTitle } from "../src/draft/contract.mjs";
-import { buildDraft, contentSignature, storedSignature } from "../src/draft/builder.mjs";
+import { buildDraft, contentSignature, normalizeTechnicalUser, storedSignature } from "../src/draft/builder.mjs";
 import { diffDraft, isUniverseId } from "../src/draft/diff.mjs";
 import { locatePaymentColumns, normalizePayments } from "../src/draft/payments.mjs";
-import { createSheetsIo } from "../src/draft/sheets-io.mjs";
+import { createSheetsIo, normalizeBaseRowsForDraft } from "../src/draft/sheets-io.mjs";
 import { syncDraft } from "../src/draft/sync.mjs";
 
 // Datos 100 % ficticios con el contrato de columnas de BASE GENERAL (A..X).
@@ -87,7 +87,10 @@ function memoryIo(sources, { sheetExists = true, corruptNextWrite = false } = {}
 const run = (io, extra = {}) => syncDraft({ io, targetMonth: "2026-11", cutoffDate: "2026-10-29", decisions: DECISIONS, apply: true, ...extra });
 
 function universeRow(values, n) {
-  return values.find((r) => r[37] === `NOV26-B${n}`);
+  return values.find((r) => r[21] === `BASE GENERAL!${n}`);
+}
+function universeId(values, n) {
+  return universeRow(values, n)?.[37];
 }
 
 test("primera sincronización escribe la hoja y la relectura coincide con la firma", async () => {
@@ -127,7 +130,8 @@ test("columnas del equipo (AM:AP) se conservan por ID aunque la ficha cambie de 
   const sources = { baseRows: baseRows(), payments: [pay()], missingSheets: [] };
   const io = memoryIo(sources);
   await run(io);
-  const i = io.state.sheet.findIndex((r) => r[37] === "NOV26-B5");
+  const initialId = universeId(io.state.sheet, 5);
+  const i = io.state.sheet.findIndex((r) => r[37] === initialId);
   assert.equal(io.state.sheet[i][38], "PENDIENTE");
   io.state.sheet[i][38] = "CONTACTADO";
   io.state.sheet[i][41] = "Promete pagar el viernes";
@@ -168,10 +172,11 @@ test("confirmación nueva: solo cambia la ficha pagada; las demás quedan intact
   sources.payments.push(pay({ row: 9, baseRow: 7, amount: "70", paymentDate: "2026-10-27", proposedNext: "2027-05-27" }));
   const report = await run(io);
   assert.equal(report.status, "ACTUALIZADO");
-  assert.deepEqual(report.diff.classChanges, [{ id: "NOV26-B7", before: "FACTURABLE", after: "PAGADO_SIN_PROPAGAR" }]);
-  assert.ok(report.diff.added.includes("NOV26-AJ7"));
+  const id7 = universeId(before, 7);
+  assert.deepEqual(report.diff.classChanges, [{ id: id7, before: "FACTURABLE", after: "PAGADO_SIN_PROPAGAR" }]);
+  assert.ok(report.diff.added.some((id) => id.startsWith("NOV26-AJU")));
   const touchedUniverse = report.diff.modified.map((m) => m.id).filter(isUniverseId);
-  assert.deepEqual(touchedUniverse, ["NOV26-B7"]);
+  assert.deepEqual(touchedUniverse, [id7]);
   for (const n of [3, 4, 5, 6, 8]) assert.deepEqual(universeRow(io.state.sheet, n), universeRow(before, n));
 });
 
@@ -184,10 +189,11 @@ test("corrección de fecha: la ficha cambia de semana y no altera otras fichas",
   sources.baseRows[4][17] = "21-11-26"; // ficha 5: 13/11 (S3) → 21/11 (S4)
   const report = await run(io);
   assert.equal(report.status, "ACTUALIZADO");
-  const b5 = report.diff.modified.find((m) => m.id === "NOV26-B5");
+  const id5 = universeId(before, 5);
+  const b5 = report.diff.modified.find((m) => m.id === id5);
   assert.deepEqual(b5.changes.map((c) => c.kind).sort(), ["FECHA", "SEMANA"]);
   assert.equal(universeRow(io.state.sheet, 5)[32], 4);
-  assert.deepEqual(report.diff.modified.map((m) => m.id).filter(isUniverseId), ["NOV26-B5"]);
+  assert.deepEqual(report.diff.modified.map((m) => m.id).filter(isUniverseId), [id5]);
   for (const n of [3, 4, 6, 7, 8]) assert.deepEqual(universeRow(io.state.sheet, n), universeRow(before, n));
 
   const again = await run(io);
@@ -201,7 +207,7 @@ test("excepciones aisladas: una decisión o una fecha inválida no reclasifica f
   const plain = buildDraft({ baseRows: rows, close, payments: [pay()], decisions: { targetMonth: "2026-11", rows: {} }, cutoffDate: "2026-10-29" });
   const decided = buildDraft({ baseRows: rows, close, payments: [pay()], decisions: DECISIONS, cutoffDate: "2026-10-29" });
   const diff = diffDraft(plain.values, decided.values, "NOV26");
-  assert.deepEqual(diff.modified.map((m) => m.id).filter(isUniverseId), ["NOV26-B8"]);
+  assert.deepEqual(diff.modified.map((m) => m.id).filter(isUniverseId), [universeId(plain.values, 8)]);
   assert.equal(decided.classByRow[8], "BLOQUEADO");
   for (const n of [3, 4, 5, 7]) assert.equal(decided.classByRow[n], plain.classByRow[n]);
 });
@@ -258,6 +264,217 @@ test("guardas: fuente inestable, hoja inexistente, conflicto y relectura fallida
   const dry = memoryIo({ baseRows: baseRows(), payments: [], missingSheets: [] });
   assert.equal((await run(dry, { apply: false })).status, "PLAN");
   assert.equal(dry.state.writes, 0);
+});
+
+test("identidad técnica normaliza prefijos históricos VENCIO/ y LIBERADO/", () => {
+  assert.equal(normalizeTechnicalUser(" VENCIO/Pl3346540M "), "PL3346540M");
+  assert.equal(normalizeTechnicalUser("LIBERADO/LP1015675"), "LP1015675");
+  assert.equal(normalizeTechnicalUser("VENCIO/LIBERADO/User 01"), "USER01");
+});
+
+test("BASE GENERAL se proyecta por encabezado aunque ID desplace USUARIO", () => {
+  const raw = [
+    ["", "BASE"],
+    ["TC","CLIENTE","TELEFONO","CORREO","ESTADO","OBSERVACIONES GESTION","PLAN ACTIVO","PANTALLAS","CELULAR","USD","COP","MÉTODO DE PAGO","ID","USUARIO","CONTRASEÑA","PANEL","F.VENCIMIENTO","F.ULTIMO PAGO","F. PRÓXIMO PAGO","T","TIPO_SERVICIO","CODIGO_CANONICO"],
+    ["1","Cliente","555","x@example.test","Al dia","gestión","PLAN 1 MES","1","","15","","ZELLE","ID-1","VENCIO/User 01","SECRETO","PANEL 1","01-11-26","01-10-26","01-11-26","1","PLAN PRINCIPAL","PLN_01"],
+  ];
+  const projected = normalizeBaseRowsForDraft(raw);
+  assert.equal(projected[2][12], "VENCIO/User 01");
+  assert.equal(projected[2][13], "");
+  assert.equal(projected[2][14], "PANEL 1");
+  assert.equal(projected[2][17], "01-11-26");
+  assert.equal(JSON.stringify(projected).includes("SECRETO"), false);
+});
+
+test("ID histórico con USUARIO vacío y AM pobladas bloquea sin escritura", async () => {
+  const rows = baseRows();
+  rows[2][12] = "";
+  const sources = { baseRows: rows, payments: [], missingSheets: [] };
+  const noDecisions = { targetMonth: "2026-11", rows: {} };
+  const close = buildMonthlyClose(rows, "2026-11", { cutoffDate: "2026-10-29" });
+  const next = buildDraft({ baseRows: rows, close, payments: [], decisions: noDecisions, cutoffDate: "2026-10-29" });
+  const current = structuredClone(next.values);
+  const target = current.find((r) => r[1] === "Cliente Ficticio 3");
+  assert.ok(target);
+  target[37] = "NOV26-B3";
+  target[38] = "CONTACTADO";
+  target[39] = "2026-11-08";
+  target[40] = "ASESOR-01";
+  target[41] = "gestión sin identidad";
+
+  const io = memoryIo(sources);
+  io.state.sheet = current;
+  const report = await run(io, { decisions: noDecisions });
+
+  assert.equal(report.status, "BLOQUEADO_MIGRACION_IDENTIDAD");
+  assert.equal(report.written, false);
+  assert.equal(report.idMigration.migrated.length, 0);
+  assert.equal(report.idMigration.blocked.length, 1);
+  assert.equal(io.state.writes, 0);
+  assert.deepEqual(io.state.sheet, current);
+});
+
+test("reordenar dos fichas sin USUARIO y sin gestión no hereda AM por posición", async () => {
+  const rows = baseRows();
+  rows[2][12] = "";
+  rows[3][12] = "";
+  const sources = { baseRows: rows, payments: [], missingSheets: [] };
+  const io = memoryIo(sources);
+  const noDecisions = { targetMonth: "2026-11", rows: {} };
+
+  const first = await run(io, { decisions: noDecisions });
+  assert.equal(first.status, "ACTUALIZADO");
+
+  const beforeA = io.state.sheet.find((r) => r[1] === "Cliente Ficticio 3");
+  const beforeB = io.state.sheet.find((r) => r[1] === "Cliente Ficticio 4");
+  assert.ok(beforeA && beforeB);
+  assert.equal(beforeA[12], "");
+  assert.equal(beforeB[12], "");
+  assert.deepEqual([39, 40, 41].map((i) => beforeA[i] ?? ""), ["", "", ""]);
+  assert.deepEqual([39, 40, 41].map((i) => beforeB[i] ?? ""), ["", "", ""]);
+
+  const a = sources.baseRows[2];
+  sources.baseRows[2] = sources.baseRows[3];
+  sources.baseRows[3] = a;
+
+  const reordered = await run(io, { decisions: noDecisions });
+  assert.equal(reordered.status, "ACTUALIZADO");
+  assert.equal(reordered.idMigration.blocked.length, 0);
+
+  const afterA = io.state.sheet.find((r) => r[1] === "Cliente Ficticio 3");
+  const afterB = io.state.sheet.find((r) => r[1] === "Cliente Ficticio 4");
+  assert.ok(afterA && afterB);
+  assert.equal(afterA[33], "REQUIERE_REVISION");
+  assert.equal(afterB[33], "REQUIERE_REVISION");
+  assert.deepEqual([39, 40, 41].map((i) => afterA[i] ?? ""), ["", "", ""]);
+  assert.deepEqual([39, 40, 41].map((i) => afterB[i] ?? ""), ["", "", ""]);
+  assert.match(String(afterA[35]), /USUARIO vacío/i);
+  assert.match(String(afterB[35]), /USUARIO vacío/i);
+});
+
+test("migración ID_BORRADOR legado → estable conserva AM:AP y queda idempotente", async () => {
+  const sources = { baseRows: baseRows(), payments: [pay()], missingSheets: [] };
+  const io = memoryIo(sources);
+  const noDecisions = { targetMonth: "2026-11", rows: {} };
+
+  // Construye el estado nuevo una vez y luego simula el borrador productivo legado por fila.
+  await run(io, { decisions: noDecisions });
+  const row = universeRow(io.state.sheet, 5);
+  const stableId = row[37];
+  row[37] = "NOV26-B5";
+  row[38] = "CONTACTADO";
+  row[39] = "2026-11-08";
+  row[40] = "ASESOR-01";
+  row[41] = "historial legado";
+
+  const writesBeforeMigration = io.state.writes;
+  const migrated = await run(io, { decisions: noDecisions });
+  assert.equal(migrated.status, "ACTUALIZADO");
+  assert.equal(migrated.idMigration.migrated.length, 1);
+  assert.equal(migrated.idMigration.blocked.length, 0);
+  assert.equal(io.state.writes, writesBeforeMigration + 1);
+
+  const after = universeRow(io.state.sheet, 5);
+  assert.equal(after[37], stableId);
+  assert.deepEqual(
+    after.slice(38, 42),
+    ["CONTACTADO", "2026-11-08", "ASESOR-01", "historial legado"],
+    "ESTADO_COBRO, FECHA_GESTION, GESTIONADO_POR y NOTA_EQUIPO se preservan",
+  );
+
+  const writesBeforeSecond = io.state.writes;
+  const again = await run(io, { decisions: noDecisions });
+  assert.equal(again.status, "NO_CHANGES");
+  assert.equal(again.idMigration.migrated.length, 0);
+  assert.equal(again.idMigration.blocked.length, 0);
+  assert.equal(io.state.writes, writesBeforeSecond);
+});
+
+test("migración bloquea identidad técnica ambigua y no escribe", async () => {
+  const rows = baseRows();
+  rows[2][12] = "VENCIO/SharedUser";
+  rows[3][12] = "LIBERADO/SharedUser";
+  const sources = { baseRows: rows, payments: [], missingSheets: [] };
+  const noDecisions = { targetMonth: "2026-11", rows: {} };
+
+  const close = buildMonthlyClose(rows, "2026-11", { cutoffDate: "2026-10-29" });
+  const next = buildDraft({ baseRows: rows, close, payments: [], decisions: noDecisions, cutoffDate: "2026-10-29" });
+  const current = structuredClone(next.values);
+  const a = current.find((r) => r[12] === "VENCIO/SharedUser");
+  const b = current.find((r) => r[12] === "LIBERADO/SharedUser");
+  a[37] = "NOV26-B3";
+  b[37] = "NOV26-B4";
+  a[38] = "CONTACTADO";
+  a[39] = "2026-11-08";
+  a[40] = "ASESOR-A";
+  a[41] = "no migrar ambiguo";
+
+  const io = memoryIo(sources);
+  io.state.sheet = current;
+  const report = await run(io, { decisions: noDecisions });
+
+  assert.equal(report.status, "BLOQUEADO_MIGRACION_IDENTIDAD");
+  assert.equal(report.written, false);
+  assert.equal(report.idMigration.migrated.length, 0);
+  assert.equal(report.idMigration.blocked.length, 1);
+  assert.equal(io.state.writes, 0);
+  assert.deepEqual(io.state.sheet, current);
+});
+
+test("insertar o mover filas de BASE recalcula ORIGEN BASE sin perder ID ni gestión", async () => {
+  const sources = { baseRows: baseRows(), payments: [pay()], missingSheets: [] };
+  const io = memoryIo(sources);
+  const noDecisions = { targetMonth: "2026-11", rows: {} };
+  await run(io, { decisions: noDecisions });
+
+  const user = "usuario-ficticio-5";
+  const beforeRow = io.state.sheet.find((r) => r[12] === user);
+  assert.ok(beforeRow);
+  const stableId = beforeRow[37];
+  assert.equal(beforeRow[21], "BASE GENERAL!5");
+  beforeRow[38] = "CONTACTADO";
+  beforeRow[41] = "gestión preservada";
+
+  // Inserción física antes de la ficha: la identidad sigue siendo el USUARIO, no la fila anterior.
+  sources.baseRows.splice(4, 0, ["", "RÓTULO TEMPORAL"]);
+  const moved = await run(io, { decisions: noDecisions });
+  assert.equal(moved.status, "ACTUALIZADO");
+  const afterInsert = io.state.sheet.find((r) => r[12] === user);
+  assert.equal(afterInsert[37], stableId);
+  assert.equal(afterInsert[21], "BASE GENERAL!6");
+  assert.equal(afterInsert[38], "CONTACTADO");
+  assert.equal(afterInsert[41], "gestión preservada");
+
+  // Reordenar dos fichas obliga a recalcular la fila; nunca conserva la referencia del otro cliente.
+  const a = sources.baseRows[2];
+  sources.baseRows[2] = sources.baseRows[3];
+  sources.baseRows[3] = a;
+  const reordered = await run(io, { decisions: noDecisions });
+  assert.equal(reordered.status, "ACTUALIZADO");
+  const current = io.state.sheet.find((r) => r[12] === user);
+  const sourceRow = sources.baseRows.findIndex((r) => r?.[12] === user) + 1;
+  assert.equal(current[21], `BASE GENERAL!${sourceRow}`);
+  assert.equal(current[37], stableId);
+  assert.equal(current[38], "CONTACTADO");
+  assert.equal(current[41], "gestión preservada");
+
+  const again = await run(io, { decisions: noDecisions });
+  assert.equal(again.status, "NO_CHANGES");
+});
+
+test("usuarios ambiguos tras normalizar no reciben ORIGEN BASE", () => {
+  const rows = baseRows();
+  rows[2][12] = "VENCIO/SharedUser";
+  rows[3][12] = "LIBERADO/SharedUser";
+  const close = buildMonthlyClose(rows, "2026-11", { cutoffDate: "2026-10-29" });
+  const draft = buildDraft({ baseRows: rows, close, payments: [], decisions: { targetMonth: "2026-11", rows: {} }, cutoffDate: "2026-10-29" });
+  const ambiguous = draft.values.filter((r) => ["VENCIO/SharedUser", "LIBERADO/SharedUser"].includes(r[12]));
+  assert.equal(ambiguous.length, 2);
+  for (const row of ambiguous) {
+    assert.equal(row[21], "");
+    assert.equal(row[33], "REQUIERE_REVISION");
+    assert.match(String(row[35]), /ambiguo/i);
+  }
 });
 
 test("allowlist: ninguna otra hoja es escribible", () => {
