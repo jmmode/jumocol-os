@@ -160,6 +160,21 @@ Las excepciones de calidad de datos se separan en una cola explícita y nunca se
 - Las señales (`USUARIO_LIBERADO`, `DESACTIVADO`, `NO_RENUEVA`, `MES_GRATIS`, `EXCEPCION`, `MIGRACION`, `CUENTA_UNIFICADA`) marcan `REQUIERE_REVISION`, pero nunca excluyen la ficha.
 - `signature` se conserva para el ciclo mensual. `outputSignature` firma ciclo, cartera, excepciones y corte.
 
+## Identidad estable para ORIGEN BASE
+
+El generador mensual no debe tratar una fila física de `BASE GENERAL` como identidad. La fila es solo una ubicación calculada en el corte actual.
+
+Contrato:
+- Identidad técnica primaria para el borrador: `USUARIO` normalizado.
+- Normalización histórica: se eliminan prefijos iniciales `VENCIO/` y `LIBERADO/`, además de espacios y diferencias de mayúsculas/tildes.
+- `ORIGEN BASE` se emite únicamente cuando el USUARIO normalizado tiene una sola ficha `TC=1` operativa.
+- 0 o >1 coincidencias: `ORIGEN BASE` queda vacío y el caso pasa a revisión; nunca se elige por nombre.
+- `ID_BORRADOR` usa una huella estable del USUARIO normalizado, por lo que insertar, mover u ordenar filas de BASE no debe perder `ESTADO_COBRO` ni la gestión del equipo.
+- La lectura de BASE localiza columnas por encabezado y proyecta el esquema canónico; no depende de que USUARIO permanezca en una letra fija.
+- `ORIGEN BASE = BASE GENERAL!<fila>` sigue siendo evidencia legible de la ubicación vigente, no una clave persistente.
+
+Esto previene que una regeneración reutilice una referencia posicional que, después de reordenar BASE, apunte a otro cliente.
+
 ## Sincronización del borrador (`sync-draft.mjs`)
 
 Mantiene actualizada la hoja **PAGOS NOVIEMBRE 2026 - BORRADOR** a partir de las fuentes vivas, sin tocar nada más del libro.
