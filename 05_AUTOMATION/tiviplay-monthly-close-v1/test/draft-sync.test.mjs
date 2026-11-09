@@ -286,6 +286,67 @@ test("BASE GENERAL se proyecta por encabezado aunque ID desplace USUARIO", () =>
   assert.equal(JSON.stringify(projected).includes("SECRETO"), false);
 });
 
+test("migración ID_BORRADOR legado → estable conserva AM:AP y queda idempotente", async () => {
+  const sources = { baseRows: baseRows(), payments: [pay()], missingSheets: [] };
+  const io = memoryIo(sources);
+  const noDecisions = { targetMonth: "2026-11", rows: {} };
+
+  // Construye el estado nuevo una vez y luego simula el borrador productivo legado por fila.
+  await run(io, { decisions: noDecisions });
+  const row = universeRow(io.state.sheet, 5);
+  const stableId = row[37];
+  row[37] = "NOV26-B5";
+  row[38] = "CONTACTADO";
+  row[39] = "2026-11-08";
+  row[40] = "ASESOR-01";
+  row[41] = "historial legado";
+
+  const migrated = await run(io, { decisions: noDecisions });
+  assert.equal(migrated.status, "ACTUALIZADO");
+  assert.equal(migrated.idMigration.migrated.length, 1);
+  assert.equal(migrated.idMigration.blocked.length, 0);
+
+  const after = universeRow(io.state.sheet, 5);
+  assert.equal(after[37], stableId);
+  assert.deepEqual(after.slice(38, 42), ["CONTACTADO", "2026-11-08", "ASESOR-01", "historial legado"]);
+
+  const again = await run(io, { decisions: noDecisions });
+  assert.equal(again.status, "NO_CHANGES");
+  assert.equal(again.idMigration.migrated.length, 0);
+  assert.equal(again.idMigration.blocked.length, 0);
+});
+
+test("migración bloquea identidad técnica ambigua y no escribe", async () => {
+  const rows = baseRows();
+  rows[2][12] = "VENCIO/SharedUser";
+  rows[3][12] = "LIBERADO/SharedUser";
+  const sources = { baseRows: rows, payments: [], missingSheets: [] };
+  const noDecisions = { targetMonth: "2026-11", rows: {} };
+
+  const close = buildMonthlyClose(rows, "2026-11", { cutoffDate: "2026-10-29" });
+  const next = buildDraft({ baseRows: rows, close, payments: [], decisions: noDecisions, cutoffDate: "2026-10-29" });
+  const current = structuredClone(next.values);
+  const a = current.find((r) => r[12] === "VENCIO/SharedUser");
+  const b = current.find((r) => r[12] === "LIBERADO/SharedUser");
+  a[37] = "NOV26-B3";
+  b[37] = "NOV26-B4";
+  a[38] = "CONTACTADO";
+  a[39] = "2026-11-08";
+  a[40] = "ASESOR-A";
+  a[41] = "no migrar ambiguo";
+
+  const io = memoryIo(sources);
+  io.state.sheet = current;
+  const report = await run(io, { decisions: noDecisions });
+
+  assert.equal(report.status, "BLOQUEADO_MIGRACION_IDENTIDAD");
+  assert.equal(report.written, false);
+  assert.equal(report.idMigration.migrated.length, 0);
+  assert.equal(report.idMigration.blocked.length, 1);
+  assert.equal(io.state.writes, 0);
+  assert.deepEqual(io.state.sheet, current);
+});
+
 test("insertar o mover filas de BASE recalcula ORIGEN BASE sin perder ID ni gestión", async () => {
   const sources = { baseRows: baseRows(), payments: [pay()], missingSheets: [] };
   const io = memoryIo(sources);
