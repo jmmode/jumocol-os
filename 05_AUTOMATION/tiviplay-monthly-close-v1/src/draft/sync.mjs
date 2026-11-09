@@ -54,21 +54,22 @@ export function mergeTeamColumns(current, values, prefix) {
 
   const merged = values.map((row) => {
     const id = rowId(row, prefix);
+    const identity = teamIdentity(row, prefix);
     const direct = id ? beforeById.get(id)?.row : null;
-    if (direct && hasTeamData(direct)) {
+
+    if (!identity) {
+      if (!direct || !hasTeamData(direct)) return row;
       const copy = [...row];
       for (const column of TEAM_COLUMNS) copy[column] = direct[column] ?? "";
       return copy;
     }
-
-    const identity = teamIdentity(row, prefix);
-    if (!identity) return row;
 
     const previousRows = currentByIdentity.get(identity) ?? [];
     const nextRows = nextByIdentity.get(identity) ?? [];
     const previousWithTeam = previousRows.filter(hasTeamData);
     if (!previousWithTeam.length) return row;
 
+    // Incluso con el mismo ID, una identidad repetida no puede heredar gestión por posición.
     if (previousRows.length !== 1 || nextRows.length !== 1) {
       blocked.add(sha256(identity).slice(0, 12));
       return row;
@@ -76,11 +77,14 @@ export function mergeTeamColumns(current, values, prefix) {
 
     const previous = previousRows[0];
     const previousId = rowId(previous, prefix);
-    if (!previousId || previousId === id) return row;
+    const source = direct && hasTeamData(direct) ? direct : previous;
+    if (!source || !hasTeamData(source)) return row;
 
     const copy = [...row];
-    for (const column of TEAM_COLUMNS) copy[column] = previous[column] ?? "";
-    migrated.push({ from: previousId, to: id, identity: sha256(identity).slice(0, 12) });
+    for (const column of TEAM_COLUMNS) copy[column] = source[column] ?? "";
+    if (previousId && previousId !== id) {
+      migrated.push({ from: previousId, to: id, identity: sha256(identity).slice(0, 12) });
+    }
     return copy;
   });
 
