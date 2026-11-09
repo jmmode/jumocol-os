@@ -2,25 +2,110 @@ import crypto from "node:crypto";
 
 import { buildMonthlyClose } from "../core.mjs";
 import { DRAFT_MAX_ROWS, TEAM_COLUMNS, assertAllowedDraftTitle, draftTarget } from "./contract.mjs";
-import { buildDraft, contentSignature, fullSignature, storedSignature } from "./builder.mjs";
+import { buildDraft, contentSignature, fullSignature, normalizeTechnicalUser, storedSignature } from "./builder.mjs";
 import { diffDraft, indexById } from "./diff.mjs";
 
 const sha256 = (value) => crypto.createHash("sha256").update(value).digest("hex");
 
 /**
- * Conserva las columnas del equipo (AM:AP) por ID_BORRADOR: si la fila ya existía y el equipo
- * escribió algo, su valor gana sobre el valor inicial. Filas nuevas reciben el valor inicial del motor.
+ * Conserva AM:AP por ID_BORRADOR y migra de IDs históricos posicionales a IDs estables.
+ *
+ * Regla de migración:
+ * 1) si el ID ya coincide, se conserva directamente;
+ * 2) si cambió el ID, solo se migra mediante USUARIO técnico normalizado y único;
+ * 3) si el USUARIO es ambiguo en el borrador actual o en el nuevo, se bloquea la sincronización.
+ *
+ * Nunca usa CLIENTE/nombre para asociar historial.
  */
+const rowId = (row, prefix) =>
+  String(row?.[37] ?? "") || (String(row?.[0] ?? "").startsWith(`${prefix}-`) ? String(row[0]) : "");
+
+const hasTeamData = (row) => TEAM_COLUMNS.some((column) => String(row?.[column] ?? "") !== "");
+
+const teamIdentity = (row, prefix) => {
+  const id = rowId(row, prefix);
+  if (!id) return "";
+  if (new RegExp(`^${prefix}-B(?:\\d+|U[0-9A-F]{12}|B\\d+)import crypto from "node:crypto";
+
+import { buildMonthlyClose } from "../core.mjs";
+import { DRAFT_MAX_ROWS, TEAM_COLUMNS, assertAllowedDraftTitle, draftTarget } from "./contract.mjs";
+import { buildDraft, contentSignature, fullSignature, normalizeTechnicalUser, storedSignature } from "./builder.mjs";
+import { diffDraft, indexById } from "./diff.mjs";
+
+const sha256 = (value) => crypto.createHash("sha256").update(value).digest("hex");
+
+, "i").test(id)) {
+    return normalizeTechnicalUser(row?.[12]);
+  }
+  if (new RegExp(`^${prefix}-CV(?:\\d+|U[0-9A-F]{12}|B\\d+)import crypto from "node:crypto";
+
+import { buildMonthlyClose } from "../core.mjs";
+import { DRAFT_MAX_ROWS, TEAM_COLUMNS, assertAllowedDraftTitle, draftTarget } from "./contract.mjs";
+import { buildDraft, contentSignature, fullSignature, normalizeTechnicalUser, storedSignature } from "./builder.mjs";
+import { diffDraft, indexById } from "./diff.mjs";
+
+const sha256 = (value) => crypto.createHash("sha256").update(value).digest("hex");
+
+, "i").test(id)) {
+    return normalizeTechnicalUser(row?.[5]);
+  }
+  return "";
+};
+
+const indexByTechnicalIdentity = (rows, prefix) => {
+  const index = new Map();
+  for (const row of rows ?? []) {
+    const identity = teamIdentity(row, prefix);
+    if (!identity) continue;
+    index.set(identity, [...(index.get(identity) ?? []), row]);
+  }
+  return index;
+};
+
 export function mergeTeamColumns(current, values, prefix) {
-  const before = indexById(current, prefix);
-  return values.map((row) => {
-    const id = String(row[37] ?? "") || (String(row[0] ?? "").startsWith(`${prefix}-`) ? String(row[0]) : "");
-    const prev = id ? before.get(id)?.row : null;
-    if (!prev || !TEAM_COLUMNS.some((c) => String(prev[c] ?? "") !== "")) return row;
+  const beforeById = indexById(current, prefix);
+  const currentByIdentity = indexByTechnicalIdentity(current, prefix);
+  const nextByIdentity = indexByTechnicalIdentity(values, prefix);
+  const blocked = new Set();
+  const migrated = [];
+
+  const merged = values.map((row) => {
+    const id = rowId(row, prefix);
+    const direct = id ? beforeById.get(id)?.row : null;
+    if (direct && hasTeamData(direct)) {
+      const copy = [...row];
+      for (const column of TEAM_COLUMNS) copy[column] = direct[column] ?? "";
+      return copy;
+    }
+
+    const identity = teamIdentity(row, prefix);
+    if (!identity) return row;
+
+    const previousRows = currentByIdentity.get(identity) ?? [];
+    const nextRows = nextByIdentity.get(identity) ?? [];
+    const previousWithTeam = previousRows.filter(hasTeamData);
+    if (!previousWithTeam.length) return row;
+
+    if (previousRows.length !== 1 || nextRows.length !== 1) {
+      blocked.add(sha256(identity).slice(0, 12));
+      return row;
+    }
+
+    const previous = previousRows[0];
+    const previousId = rowId(previous, prefix);
+    if (!previousId || previousId === id) return row;
+
     const copy = [...row];
-    for (const c of TEAM_COLUMNS) copy[c] = prev[c] ?? "";
+    for (const column of TEAM_COLUMNS) copy[column] = previous[column] ?? "";
+    migrated.push({ from: previousId, to: id, identity: sha256(identity).slice(0, 12) });
     return copy;
   });
+
+  return {
+    values: merged,
+    blocked: [...blocked].sort(),
+    migrated,
+  };
 }
 
 /**
@@ -69,10 +154,17 @@ export async function syncDraft({ io, targetMonth, cutoffDate, decisions = {}, a
   if (current == null) return { ...report, status: "BLOQUEADO_HOJA_NO_EXISTE" };
   const currentSignature = contentSignature(current);
   const currentFull = fullSignature(current);
-  const values = mergeTeamColumns(current, draft.values, target.prefix);
+  const migration = mergeTeamColumns(current, draft.values, target.prefix);
+  const values = migration.values;
+  report.idMigration = { migrated: migration.migrated, blocked: migration.blocked };
+  step("migracion-id", { migrated: migration.migrated.length, blocked: migration.blocked.length });
   report.previousSignature = storedSignature(current);
   report.diff = diffDraft(current, draft.values, target.prefix);
   step("diff", { added: report.diff.added.length, removed: report.diff.removed.length, modified: report.diff.modified.length, byKind: report.diff.byKind });
+
+  if (migration.blocked.length) {
+    return { ...report, status: "BLOQUEADO_MIGRACION_IDENTIDAD", written: false };
+  }
 
   if (currentSignature === draft.signature && report.previousSignature === draft.signature) {
     return { ...report, status: "NO_CHANGES", written: false };
