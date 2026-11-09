@@ -286,6 +286,72 @@ test("BASE GENERAL se proyecta por encabezado aunque ID desplace USUARIO", () =>
   assert.equal(JSON.stringify(projected).includes("SECRETO"), false);
 });
 
+test("ID histórico con USUARIO vacío y AM pobladas bloquea sin escritura", async () => {
+  const rows = baseRows();
+  rows[2][12] = "";
+  const sources = { baseRows: rows, payments: [], missingSheets: [] };
+  const noDecisions = { targetMonth: "2026-11", rows: {} };
+  const close = buildMonthlyClose(rows, "2026-11", { cutoffDate: "2026-10-29" });
+  const next = buildDraft({ baseRows: rows, close, payments: [], decisions: noDecisions, cutoffDate: "2026-10-29" });
+  const current = structuredClone(next.values);
+  const target = current.find((r) => r[1] === "Cliente Ficticio 3");
+  assert.ok(target);
+  target[37] = "NOV26-B3";
+  target[38] = "CONTACTADO";
+  target[39] = "2026-11-08";
+  target[40] = "ASESOR-01";
+  target[41] = "gestión sin identidad";
+
+  const io = memoryIo(sources);
+  io.state.sheet = current;
+  const report = await run(io, { decisions: noDecisions });
+
+  assert.equal(report.status, "BLOQUEADO_MIGRACION_IDENTIDAD");
+  assert.equal(report.written, false);
+  assert.equal(report.idMigration.migrated.length, 0);
+  assert.equal(report.idMigration.blocked.length, 1);
+  assert.equal(io.state.writes, 0);
+  assert.deepEqual(io.state.sheet, current);
+});
+
+test("reordenar dos fichas sin USUARIO y sin gestión no hereda AM por posición", async () => {
+  const rows = baseRows();
+  rows[2][12] = "";
+  rows[3][12] = "";
+  const sources = { baseRows: rows, payments: [], missingSheets: [] };
+  const io = memoryIo(sources);
+  const noDecisions = { targetMonth: "2026-11", rows: {} };
+
+  const first = await run(io, { decisions: noDecisions });
+  assert.equal(first.status, "ACTUALIZADO");
+
+  const beforeA = io.state.sheet.find((r) => r[1] === "Cliente Ficticio 3");
+  const beforeB = io.state.sheet.find((r) => r[1] === "Cliente Ficticio 4");
+  assert.ok(beforeA && beforeB);
+  assert.equal(beforeA[12], "");
+  assert.equal(beforeB[12], "");
+  assert.deepEqual(beforeA.slice(39, 42), ["", "", ""]);
+  assert.deepEqual(beforeB.slice(39, 42), ["", "", ""]);
+
+  const a = sources.baseRows[2];
+  sources.baseRows[2] = sources.baseRows[3];
+  sources.baseRows[3] = a;
+
+  const reordered = await run(io, { decisions: noDecisions });
+  assert.equal(reordered.status, "ACTUALIZADO");
+  assert.equal(reordered.idMigration.blocked.length, 0);
+
+  const afterA = io.state.sheet.find((r) => r[1] === "Cliente Ficticio 3");
+  const afterB = io.state.sheet.find((r) => r[1] === "Cliente Ficticio 4");
+  assert.ok(afterA && afterB);
+  assert.equal(afterA[33], "REQUIERE_REVISION");
+  assert.equal(afterB[33], "REQUIERE_REVISION");
+  assert.deepEqual(afterA.slice(39, 42), ["", "", ""]);
+  assert.deepEqual(afterB.slice(39, 42), ["", "", ""]);
+  assert.match(String(afterA[35]), /USUARIO vacío/i);
+  assert.match(String(afterB[35]), /USUARIO vacío/i);
+});
+
 test("migración ID_BORRADOR legado → estable conserva AM:AP y queda idempotente", async () => {
   const sources = { baseRows: baseRows(), payments: [pay()], missingSheets: [] };
   const io = memoryIo(sources);
@@ -301,19 +367,27 @@ test("migración ID_BORRADOR legado → estable conserva AM:AP y queda idempoten
   row[40] = "ASESOR-01";
   row[41] = "historial legado";
 
+  const writesBeforeMigration = io.state.writes;
   const migrated = await run(io, { decisions: noDecisions });
   assert.equal(migrated.status, "ACTUALIZADO");
   assert.equal(migrated.idMigration.migrated.length, 1);
   assert.equal(migrated.idMigration.blocked.length, 0);
+  assert.equal(io.state.writes, writesBeforeMigration + 1);
 
   const after = universeRow(io.state.sheet, 5);
   assert.equal(after[37], stableId);
-  assert.deepEqual(after.slice(38, 42), ["CONTACTADO", "2026-11-08", "ASESOR-01", "historial legado"]);
+  assert.deepEqual(
+    after.slice(38, 42),
+    ["CONTACTADO", "2026-11-08", "ASESOR-01", "historial legado"],
+    "ESTADO_COBRO, FECHA_GESTION, GESTIONADO_POR y NOTA_EQUIPO se preservan",
+  );
 
+  const writesBeforeSecond = io.state.writes;
   const again = await run(io, { decisions: noDecisions });
   assert.equal(again.status, "NO_CHANGES");
   assert.equal(again.idMigration.migrated.length, 0);
   assert.equal(again.idMigration.blocked.length, 0);
+  assert.equal(io.state.writes, writesBeforeSecond);
 });
 
 test("migración bloquea identidad técnica ambigua y no escribe", async () => {
