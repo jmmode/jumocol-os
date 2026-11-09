@@ -20,6 +20,9 @@ jobs:
         with:
           node-version: "20"
       - run: npm install --no-audit --no-fund
+      - run: node --check src/draft/builder.mjs
+      - run: node --check src/draft/diff.mjs
       - run: node --check src/draft/sheets-io.mjs
+      - run: node --check src/draft/sync.mjs
       - run: node --check test/draft-sync.test.mjs
       - run: npm test
