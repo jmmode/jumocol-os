@@ -24,29 +24,12 @@ const hasTeamData = (row) => TEAM_COLUMNS.some((column) => String(row?.[column] 
 
 const teamIdentity = (row, prefix) => {
   const id = rowId(row, prefix);
-  if (!id) return "";
-  if (new RegExp(`^${prefix}-B(?:\\d+|U[0-9A-F]{12}|B\\d+)import crypto from "node:crypto";
-
-import { buildMonthlyClose } from "../core.mjs";
-import { DRAFT_MAX_ROWS, TEAM_COLUMNS, assertAllowedDraftTitle, draftTarget } from "./contract.mjs";
-import { buildDraft, contentSignature, fullSignature, normalizeTechnicalUser, storedSignature } from "./builder.mjs";
-import { diffDraft, indexById } from "./diff.mjs";
-
-const sha256 = (value) => crypto.createHash("sha256").update(value).digest("hex");
-
-, "i").test(id)) {
+  if (!id || !id.startsWith(`${prefix}-`)) return "";
+  const suffix = id.slice(prefix.length + 1);
+  if (/^B(?:\d+|U[0-9A-F]{12}|B\d+)$/i.test(suffix)) {
     return normalizeTechnicalUser(row?.[12]);
   }
-  if (new RegExp(`^${prefix}-CV(?:\\d+|U[0-9A-F]{12}|B\\d+)import crypto from "node:crypto";
-
-import { buildMonthlyClose } from "../core.mjs";
-import { DRAFT_MAX_ROWS, TEAM_COLUMNS, assertAllowedDraftTitle, draftTarget } from "./contract.mjs";
-import { buildDraft, contentSignature, fullSignature, normalizeTechnicalUser, storedSignature } from "./builder.mjs";
-import { diffDraft, indexById } from "./diff.mjs";
-
-const sha256 = (value) => crypto.createHash("sha256").update(value).digest("hex");
-
-, "i").test(id)) {
+  if (/^CV(?:\d+|U[0-9A-F]{12}|B\d+)$/i.test(suffix)) {
     return normalizeTechnicalUser(row?.[5]);
   }
   return "";
