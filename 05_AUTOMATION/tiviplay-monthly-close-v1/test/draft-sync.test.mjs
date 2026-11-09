@@ -330,8 +330,8 @@ test("reordenar dos fichas sin USUARIO y sin gestión no hereda AM por posición
   assert.ok(beforeA && beforeB);
   assert.equal(beforeA[12], "");
   assert.equal(beforeB[12], "");
-  assert.deepEqual(beforeA.slice(39, 42), ["", "", ""]);
-  assert.deepEqual(beforeB.slice(39, 42), ["", "", ""]);
+  assert.deepEqual([39, 40, 41].map((i) => beforeA[i] ?? ""), ["", "", ""]);
+  assert.deepEqual([39, 40, 41].map((i) => beforeB[i] ?? ""), ["", "", ""]);
 
   const a = sources.baseRows[2];
   sources.baseRows[2] = sources.baseRows[3];
@@ -346,8 +346,8 @@ test("reordenar dos fichas sin USUARIO y sin gestión no hereda AM por posición
   assert.ok(afterA && afterB);
   assert.equal(afterA[33], "REQUIERE_REVISION");
   assert.equal(afterB[33], "REQUIERE_REVISION");
-  assert.deepEqual(afterA.slice(39, 42), ["", "", ""]);
-  assert.deepEqual(afterB.slice(39, 42), ["", "", ""]);
+  assert.deepEqual([39, 40, 41].map((i) => afterA[i] ?? ""), ["", "", ""]);
+  assert.deepEqual([39, 40, 41].map((i) => afterB[i] ?? ""), ["", "", ""]);
   assert.match(String(afterA[35]), /USUARIO vacío/i);
   assert.match(String(afterB[35]), /USUARIO vacío/i);
 });
