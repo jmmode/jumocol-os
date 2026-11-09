@@ -22,6 +22,12 @@ const rowId = (row, prefix) =>
 
 const hasTeamData = (row) => TEAM_COLUMNS.some((column) => String(row?.[column] ?? "") !== "");
 
+const isTeamManagedId = (id, prefix) => {
+  if (!id || !id.startsWith(`${prefix}-`)) return false;
+  const suffix = id.slice(prefix.length + 1);
+  return /^(?:B|CV)(?:\d+|U[0-9A-F]{12}|B\d+)$/i.test(suffix);
+};
+
 const teamIdentity = (row, prefix) => {
   const id = rowId(row, prefix);
   if (!id || !id.startsWith(`${prefix}-`)) return "";
@@ -52,16 +58,24 @@ export function mergeTeamColumns(current, values, prefix) {
   const blocked = new Set();
   const migrated = [];
 
+  // Guarda final: una gestión histórica sin identidad técnica demostrable nunca se
+  // hereda por ID posicional. Bloquea toda escritura antes de tocar el borrador.
+  for (const row of current ?? []) {
+    const id = rowId(row, prefix);
+    if (!isTeamManagedId(id, prefix) || !hasTeamData(row)) continue;
+    const identity = teamIdentity(row, prefix);
+    if (!identity) blocked.add(`SIN_IDENTIDAD:${sha256(id).slice(0, 12)}`);
+  }
+
   const merged = values.map((row) => {
     const id = rowId(row, prefix);
     const identity = teamIdentity(row, prefix);
     const direct = id ? beforeById.get(id)?.row : null;
 
     if (!identity) {
-      if (!direct || !hasTeamData(direct)) return row;
-      const copy = [...row];
-      for (const column of TEAM_COLUMNS) copy[column] = direct[column] ?? "";
-      return copy;
+      // Sin USUARIO no existe base segura para migrar historial. El motor deja la
+      // fila sin vinculación de equipo; buildDraft la clasifica para revisión.
+      return row;
     }
 
     const previousRows = currentByIdentity.get(identity) ?? [];
