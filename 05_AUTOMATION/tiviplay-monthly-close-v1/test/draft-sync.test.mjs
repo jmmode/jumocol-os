@@ -130,7 +130,8 @@ test("columnas del equipo (AM:AP) se conservan por ID aunque la ficha cambie de 
   const sources = { baseRows: baseRows(), payments: [pay()], missingSheets: [] };
   const io = memoryIo(sources);
   await run(io);
-  const initialId = universeId(io.state.sheet, 5);\n  const i = io.state.sheet.findIndex((r) => r[37] === initialId);
+  const initialId = universeId(io.state.sheet, 5);
+  const i = io.state.sheet.findIndex((r) => r[37] === initialId);
   assert.equal(io.state.sheet[i][38], "PENDIENTE");
   io.state.sheet[i][38] = "CONTACTADO";
   io.state.sheet[i][41] = "Promete pagar el viernes";
@@ -171,7 +172,8 @@ test("confirmación nueva: solo cambia la ficha pagada; las demás quedan intact
   sources.payments.push(pay({ row: 9, baseRow: 7, amount: "70", paymentDate: "2026-10-27", proposedNext: "2027-05-27" }));
   const report = await run(io);
   assert.equal(report.status, "ACTUALIZADO");
-  const id7 = universeId(before, 7);\n  assert.deepEqual(report.diff.classChanges, [{ id: id7, before: "FACTURABLE", after: "PAGADO_SIN_PROPAGAR" }]);
+  const id7 = universeId(before, 7);
+  assert.deepEqual(report.diff.classChanges, [{ id: id7, before: "FACTURABLE", after: "PAGADO_SIN_PROPAGAR" }]);
   assert.ok(report.diff.added.some((id) => id.startsWith("NOV26-AJU")));
   const touchedUniverse = report.diff.modified.map((m) => m.id).filter(isUniverseId);
   assert.deepEqual(touchedUniverse, [id7]);
@@ -187,7 +189,8 @@ test("corrección de fecha: la ficha cambia de semana y no altera otras fichas",
   sources.baseRows[4][17] = "21-11-26"; // ficha 5: 13/11 (S3) → 21/11 (S4)
   const report = await run(io);
   assert.equal(report.status, "ACTUALIZADO");
-  const id5 = universeId(before, 5);\n  const b5 = report.diff.modified.find((m) => m.id === id5);
+  const id5 = universeId(before, 5);
+  const b5 = report.diff.modified.find((m) => m.id === id5);
   assert.deepEqual(b5.changes.map((c) => c.kind).sort(), ["FECHA", "SEMANA"]);
   assert.equal(universeRow(io.state.sheet, 5)[32], 4);
   assert.deepEqual(report.diff.modified.map((m) => m.id).filter(isUniverseId), [id5]);
