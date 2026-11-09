@@ -123,7 +123,8 @@ export function createSheetsIo({ spreadsheetId, targetMonth, readToken, writeTok
   return {
     async readSources() {
       const token = await readToken();
-      const baseRaw = await readSheetValues({ spreadsheetId, sheetName: "BASE GENERAL", range: "A1:AJ4000" }, { accessToken: token, fetchImpl });\n      const baseRows = normalizeBaseRowsForDraft(baseRaw);
+      const baseRaw = await readSheetValues({ spreadsheetId, sheetName: "BASE GENERAL", range: "A1:AJ4000" }, { accessToken: token, fetchImpl });
+      const baseRows = normalizeBaseRowsForDraft(baseRaw);
       const titles = await sheetTitles(token);
       const payments = [];
       const missingSheets = [];
