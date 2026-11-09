@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 
 import { buildMonthlyClose } from "../core.mjs";
-import { DRAFT_MAX_ROWS, TEAM_COLUMNS, assertAllowedDraftTitle, draftTarget } from "./contract.mjs";
+import { DRAFT_MAX_ROWS, INITIAL_COLLECTION_STATE, TEAM_COLUMNS, assertAllowedDraftTitle, draftTarget } from "./contract.mjs";
 import { buildDraft, contentSignature, fullSignature, normalizeTechnicalUser, storedSignature } from "./builder.mjs";
 import { diffDraft, indexById } from "./diff.mjs";
 
@@ -25,7 +25,26 @@ const hasTeamData = (row) => TEAM_COLUMNS.some((column) => String(row?.[column] 
 const isTeamManagedId = (id, prefix) => {
   if (!id || !id.startsWith(`${prefix}-`)) return false;
   const suffix = id.slice(prefix.length + 1);
-  return /^(?:B|CV)(?:\d+|U[0-9A-F]{12}|B\d+)$/i.test(suffix);
+  return /^(?:B|CV|BQ)(?:\d+|U[0-9A-F]{12}|B\d+)$/i.test(suffix);
+};
+
+const hasHistoricalTeamData = (row, prefix) => {
+  if (TEAM_COLUMNS.slice(1).some((column) => String(row?.[column] ?? "") !== "")) return true;
+  const state = String(row?.[TEAM_COLUMNS[0]] ?? "");
+  if (!state) return false;
+
+  const id = rowId(row, prefix);
+  const suffix = id.startsWith(`${prefix}-`) ? id.slice(prefix.length + 1) : "";
+  if (/^B(?:\d+|U[0-9A-F]{12}|B\d+)$/i.test(suffix)) {
+    return state !== (INITIAL_COLLECTION_STATE[String(row?.[33] ?? "")] ?? "");
+  }
+  if (/^CV(?:\d+|U[0-9A-F]{12}|B\d+)$/i.test(suffix)) {
+    return ![INITIAL_COLLECTION_STATE.CARTERA, INITIAL_COLLECTION_STATE.PAGADO_SIN_PROPAGAR].includes(state);
+  }
+  if (/^BQ(?:\d+|U[0-9A-F]{12}|B\d+)$/i.test(suffix)) {
+    return state !== INITIAL_COLLECTION_STATE.BLOQUEADO;
+  }
+  return true;
 };
 
 const teamIdentity = (row, prefix) => {
@@ -62,7 +81,7 @@ export function mergeTeamColumns(current, values, prefix) {
   // hereda por ID posicional. Bloquea toda escritura antes de tocar el borrador.
   for (const row of current ?? []) {
     const id = rowId(row, prefix);
-    if (!isTeamManagedId(id, prefix) || !hasTeamData(row)) continue;
+    if (!isTeamManagedId(id, prefix) || !hasHistoricalTeamData(row, prefix)) continue;
     const identity = teamIdentity(row, prefix);
     if (!identity) blocked.add(`SIN_IDENTIDAD:${sha256(id).slice(0, 12)}`);
   }
