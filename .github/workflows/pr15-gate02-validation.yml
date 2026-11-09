@@ -5,6 +5,9 @@ on:
     branches:
       - fix/tiviplay-stable-origin-base-20261108
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
