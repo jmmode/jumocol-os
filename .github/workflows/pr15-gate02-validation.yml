@@ -1,0 +1,22 @@
+name: PR15 Gate02 validation
+
+on:
+  push:
+    branches:
+      - fix/tiviplay-stable-origin-base-20261108
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 05_AUTOMATION/tiviplay-monthly-close-v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install --no-audit --no-fund
+      - run: node --check src/draft/sheets-io.mjs
+      - run: node --check test/draft-sync.test.mjs
+      - run: npm test
