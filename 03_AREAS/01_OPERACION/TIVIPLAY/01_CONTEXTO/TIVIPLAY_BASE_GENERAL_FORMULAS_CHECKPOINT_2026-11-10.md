@@ -6,7 +6,7 @@
 **Fuente viva:** Google Sheet `GESTION_DIA_PAGOS_2026_TIVIPLAY`  
 **Spreadsheet ID:** `1bOgUMrHoAyAm-aoRhXgylWfbHph7tsvJYz1mIujdi-4`  
 **Hoja:** `BASE GENERAL`  
-**Estado del gate:** **VALIDADO**  
+**Estado del gate:** **VALIDADO — motor noviembre implementado y prueba E2E aprobada**  
 **Tipo de evidencia:** lectura directa de la hoja viva + confirmación manual de Dirección para la excepción documentada de fila 737.
 
 ---
@@ -263,35 +263,99 @@ El archivo estructural se usa para entender nombres, roles, columnas y relacione
 
 ---
 
-## 5. Estado actual de la fila 737
+## 5. Prueba E2E — José Orozco
 
-Relectura directa de la hoja viva realizada el 2026-11-10.
+Caso utilizado para validar el motor de noviembre de extremo a extremo.
 
-La fila que en este corte corresponde a José Orozco se encuentra actualmente en la coordenada temporal `737`.
+Identidad operacional observada en el corte del 2026-11-10:
 
-Estado observado:
+- cliente: José Orozco;
+- coordenada temporal en BASE GENERAL: fila 737;
+- usuario técnico: `Jose10021`;
+- fuente financiera: `ZELLE (NOV)`, fila 4;
+- pago: USD 70;
+- confirmación: `CONFIRMADO JM`;
+- enlace: `ENLAZADO`.
 
-- `Q737`: fórmula presente.
-- `R737`: fórmula presente.
-- `S737`: fórmula presente.
-- `T737`: fórmula presente.
-- `Y737:AG737`: fórmulas presentes.
-- `AL737:AQ737`: fórmulas presentes.
-- `AJ737` y `AK737`: sin valores históricos.
-- `AN737`: sin `CONFIRMADO JM` efectivo para alimentar `AO/AP`.
+### 5.1 Cambio de plan resuelto
 
-Consecuencia funcional observada en la lectura:
+El tarifario vigente identificó USD 70 como:
 
-- `R737` y `S737` evalúan vacío porque no tienen fuente histórica ni confirmación financiera aplicable;
-- `T737 = S737-TODAY()` produce `-46336` al operar sobre una fecha vacía;
-- `E737` deriva `Vencido` a partir de ese resultado.
+- `PLAN PRINCIPAL`;
+- `PLAN 6 MESES`;
+- 1 pantalla.
 
-Por tanto:
+Se actualizó el contrato comercial del cliente en BASE GENERAL:
 
-- **propagación de fórmulas de la fila 737: VALIDADO**;
-- **resultado operacional de la fila 737: REQUIERE DECISIÓN / corrección de dato fuente o guardia de fórmula antes de certificar integridad funcional total**.
+- `G737 = PLAN 6 MESES`;
+- `H737 = 1`.
 
-La coordenada `737` no debe persistir como identidad en el motor; se conserva únicamente como evidencia de este corte.
+Resultado en `ZELLE (NOV)`:
+
+- `VALIDACION_TARIFA = COINCIDE PLAN`;
+- `ESTADO_PROPUESTA = VALIDADO`;
+- `TIPO_CAMBIO = SIN CAMBIO`;
+- `GATE_CAMBIO_PLAN = VALIDADO`.
+
+### 5.2 Puente mensual NOV implementado
+
+Las columnas auxiliares `AL:AQ` de BASE GENERAL fueron migradas de referencias rígidas de OCT a NOV y propagadas hasta la fila 2545.
+
+Contrato implementado:
+
+- `AL`: crédito observado en `CONTROL (NOV) P1/P2/P3`, cruzando por `USUARIO`;
+- `AM`: nueva F.VENCIMIENTO técnica tomada de columna H de CONTROL NOV cuando `CREDITO >= 1`;
+- `AN`: `CONFIRMADO JM` únicamente cuando una fuente NOV está enlazada y validada;
+- `AO`: fecha de último pago propuesta desde la fuente financiera NOV validada;
+- `AP`: próxima fecha de pago propuesta desde la fuente financiera NOV validada;
+- `AQ`: estado de habilitación para actualizar BASE.
+
+Fuentes admitidas por el puente financiero:
+
+- `ZELLE (NOV)`;
+- `PAYPAL (NOV)`;
+- `TRANSF (NOV)`.
+
+El enlace usa `FILA_BASE = ROW()` como coordenada contextual del corte, pero las hojas financieras recalculan FILA_BASE mediante identidad normalizada y TC; por tanto, la fila no se trata como identidad canónica.
+
+### 5.3 Hallazgo de CONTROL NOV
+
+La estructura visible de CONTROL NOV presenta encabezados `FECHA` y `F.VENCIMIENTO`, pero la evidencia operacional muestra que:
+
+- columna H contiene la **nueva fecha técnica de vencimiento**;
+- columna I contiene la **fecha/hora de ejecución**.
+
+Caso José Orozco en `CONTROL (NOV) P3`:
+
+- usuario: `Jose10021`;
+- crédito: 1;
+- H = `2026-12-03`;
+- I = `2026-11-03 20:10:18`.
+
+Por esta evidencia, `AM` fue corregida para leer columna H.
+
+### 5.4 Resultado final E2E
+
+BASE GENERAL después de la implementación:
+
+- `Q737 = 2026-12-03`;
+- `R737 = 2026-11-01`;
+- `S737 = 2027-05-01`;
+- `T737 = 172`;
+- `E737 = Al dia`;
+- `AN737 = CONFIRMADO JM`;
+- `AQ737 = HABILITADO PARA ACTUALIZAR BASE`.
+
+Interpretación del motor:
+
+`pago confirmado + identidad enlazada + tarifa validada + ejecución técnica observada = BASE GENERAL actualizada por fórmula`
+
+La diferencia entre `Q` y `S` es intencional:
+
+- `Q / F.VENCIMIENTO` = horizonte técnico de servicio;
+- `S / F.PRÓXIMO PAGO` = horizonte comercial de cobertura.
+
+Para un plan multimes, el servicio puede renovarse técnicamente por períodos parciales mientras la cobertura comercial permanece pagada por más meses.
 
 ---
 
@@ -307,7 +371,7 @@ Lectura directa de la hoja viva realizada el 2026-11-10:
 - `AP`: 0 faltantes
 - `AQ`: 0 faltantes
 - pasada global en `E, Q:T, Y:AG, AL:AQ`: sin huecos de fórmula en el universo contractual.
-- fila temporal 737: fórmulas completas, pero resultado funcional inconsistente por fuentes históricas vacías; documentado como `REQUIERE DECISIÓN`.
+- caso E2E José Orozco: `VALIDADO` en ZELLE NOV, BASE GENERAL actualizada por fórmula y CONTROL NOV reconocido correctamente.
 
 ---
 
@@ -323,7 +387,7 @@ El gate `BASE GENERAL · propagación de fórmulas` se considera satisfecho cuan
 6. no se modifica otra hoja antes de registrar este checkpoint.
 
 **Resultado de propagación:** **VALIDADO**  
-**Resultado de integridad funcional total:** **PARCIAL** hasta resolver la anomalía de datos/fórmula observada en la fila temporal 737.
+**Resultado de integridad funcional total:** **VALIDADO** — caso E2E José Orozco ejecutado correctamente contra ZELLE (NOV) + CONTROL (NOV) + BASE GENERAL.
 
 ---
 
@@ -336,13 +400,13 @@ BASE GENERAL de TiviPlay auditada y documentada antes de avanzar al siguiente ta
 1.612 filas reales de cliente auditadas; propagación íntegra en columnas contractuales. La fila temporal 737 ya tiene fórmulas completas; queda una anomalía funcional por ausencia de fuentes históricas en AJ/AK y resultado derivado en T/E.
 
 **DECISION LOG**  
-Las filas físicas son coordenadas temporales, no identidad. La fila temporal 737 ya no es excepción de propagación: R/S tienen fórmula. Antes de cerrar integridad funcional debe resolverse su dato fuente o la guardia de cálculo cuando S esté vacío.
+Las filas físicas son coordenadas temporales, no identidad. El caso temporal 737 demostró que el motor debe resolver identidad, tarifa, fuente financiera y CONTROL antes de actualizar BASE GENERAL.
 
 **BLOQUEOS**  
-Ninguno para cerrar el gate de propagación. Existe una brecha funcional puntual en la fila temporal 737 que debe resolverse antes de declarar BASE GENERAL completamente validada a nivel de datos/resultados.
+Ninguno para cerrar el gate de propagación. Ninguno para este gate. La brecha funcional observada en la fila temporal 737 fue resuelta mediante el puente NOV y la validación del cambio de plan.
 
 **NEXT ACTION**  
-Resolver/validar la anomalía funcional de la fila temporal 737 y volver a verificar sus resultados. Solo entonces declarar BASE GENERAL `VALIDADO` integral y abrir la auditoría de `PAGOS NOVIEMBRE 2026`.
+Abrir la auditoría de `PAGOS NOVIEMBRE 2026` usando el motor NOV ya implementado y el caso José Orozco como evidencia E2E de referencia.
 
 ---
 
