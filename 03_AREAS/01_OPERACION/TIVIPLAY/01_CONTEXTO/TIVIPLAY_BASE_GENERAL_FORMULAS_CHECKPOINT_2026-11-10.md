@@ -359,6 +359,31 @@ Para un plan multimes, el servicio puede renovarse técnicamente por períodos p
 
 ---
 
+## 5.5 Verificación global post-implementación
+
+Después de activar el puente NOV se volvió a auditar `AL:AQ` sobre las 1.612 filas reales de cliente:
+
+- `AL`: 0 fórmulas faltantes;
+- `AM`: 0 fórmulas faltantes;
+- `AN`: 0 fórmulas faltantes;
+- `AO`: 0 fórmulas faltantes;
+- `AP`: 0 fórmulas faltantes;
+- `AQ`: 0 fórmulas faltantes.
+
+Se detectaron 15 coordenadas temporales con `CREDITO >= 1` en CONTROL NOV pero sin fecha técnica utilizable en columna H:
+
+`197, 262, 270, 335, 405, 411, 440, 607, 673, 680, 703, 710, 714, 716, 890`.
+
+Clasificación:
+
+- motor/fórmulas: **VALIDADO**;
+- caso E2E José Orozco: **VALIDADO**;
+- esos 15 registros: **REQUIERE DECISIÓN / dato operativo incompleto**.
+
+Las coordenadas son evidencia temporal y no identificadores persistentes.
+
+---
+
 ## 6. Evidencia del cierre
 
 Lectura directa de la hoja viva realizada el 2026-11-10:
