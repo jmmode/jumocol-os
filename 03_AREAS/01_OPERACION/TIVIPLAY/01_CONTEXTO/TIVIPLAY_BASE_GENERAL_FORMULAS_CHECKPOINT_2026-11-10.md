@@ -186,24 +186,116 @@ Patrón estándar:
 
 ---
 
-## 4. Excepción explícita — fila 737
+## 4. Arquitectura del motor GESTION_DIA_PAGOS
 
-Dirección confirmó manualmente la fila 737 el 2026-11-10.
+Este checkpoint no describe una hoja aislada. `BASE GENERAL` es una pieza del motor operacional definido por el archivo estructural `ESTRUCTURA_GESTION_DIA_PAGOS` (Spreadsheet ID `1tmlOnHACnw5bM0g-vWwecdfeU9U7ETmeE8fwHI3P7uA`).
 
-En la evidencia viva:
+La estructura observada del motor es:
 
-- `R737` es valor fijo, no fórmula.
-- `S737` es valor fijo, no fórmula.
-- `AJ737` y `AK737` no contienen respaldo histórico.
-- `Q737`, `T737`, `Y737:AG737` y `AL737:AQ737` sí contienen sus fórmulas correspondientes.
+| Componente estructural | Rol dentro del motor | Relación principal |
+|---|---|---|
+| `BASE GENERAL` | Estado maestro operativo/comercial del cliente | identidad, plan, fechas, estado y habilitación |
+| `PAGOS_MES` | Cartera mensual derivada del corte de BASE GENERAL | clientes con F.PRÓXIMO PAGO dentro del período |
+| `ZELLE_MES` | Registro de pagos por Zelle | pago → validación → enlace |
+| `PAYPAL_MES` | Registro de pagos por PayPal | pago → validación → enlace |
+| `TRANSFERENCIAS` | Registro de transferencias/otros medios | pago → validación → enlace |
+| `CONTROL (NOV) P1` | Evidencia de ejecución técnica Panel 1 | usuario → recarga/crédito → F.VENCIMIENTO |
+| `CONTROL (NOV) P2` | Evidencia de ejecución técnica Panel 2 | usuario → recarga/crédito → F.VENCIMIENTO |
+| `CONTROL (NOV) P3` | Evidencia de ejecución técnica Panel 3 | usuario → recarga/crédito → F.VENCIMIENTO |
 
-Por decisión explícita de Dirección, `R737/S737` se registran como **excepción manual validada** y no como hueco de propagación. No se reemplazan automáticamente.
+Flujo conceptual:
 
-Esta excepción no autoriza nuevas excepciones silenciosas. Cualquier nueva fila sin fórmula en una columna calculada debe clasificarse `REQUIERE DECISIÓN` antes de ser aceptada.
+`BASE GENERAL → PAGOS_MES → FUENTE DE PAGO → CONFIRMACIÓN → CONTROL DE PANEL → ACTUALIZACIÓN BASE GENERAL`
+
+Separaciones obligatorias del motor:
+
+- `PAGO REGISTRADO ≠ PAGO CONFIRMADO`
+- `PAGO CONFIRMADO ≠ SERVICIO RENOVADO`
+- `SERVICIO RENOVADO ≠ BASE GENERAL ACTUALIZADA`
+- `FILA FÍSICA ≠ IDENTIDAD DEL CLIENTE`
+
+### 4.1 Naturaleza dinámica de las filas
+
+Las referencias de fila (`737`, `1503`, etc.) son **coordenadas temporales de auditoría**, no identificadores persistentes.
+
+Las filas pueden desplazarse por:
+
+- ingreso de nuevos clientes;
+- inserciones o eliminación de filas;
+- reordenamientos por fecha o estado;
+- cortes mensuales;
+- reconstrucciones del flujo;
+- movimientos entre bloques operativos.
+
+Por tanto:
+
+1. ningún componente del motor debe depender de que un cliente permanezca en una fila específica;
+2. los checkpoints pueden citar una fila como evidencia temporal, pero deben registrar también la identidad operacional asociada;
+3. las automatizaciones futuras deben localizar registros mediante claves de negocio/identidad y contratos de columnas, no por número de fila fijo;
+4. `FILA_BASE` u `ORIGEN BASE`, cuando se utilicen como trazabilidad, representan una referencia de ejecución/corte y deben revalidarse contra identidad antes de una escritura;
+5. cualquier fórmula o script que use `ROW()` debe entenderse como vínculo contextual dentro del corte actual, no como identificador canónico del cliente.
+
+### 4.2 Claves y contratos de identidad
+
+El motor debe resolver un cliente mediante identidad inequívoca. En el diseño vigente, los campos relevantes incluyen:
+
+- `USUARIO` como identificador operacional principal en cruces con CONTROL;
+- `ID`, cuando exista;
+- `CLIENTE`, `TELEFONO` y `CORREO` como atributos de contraste;
+- `PANEL` para desambiguación técnica;
+- `ORIGEN BASE` / referencia de enlace como trazabilidad del corte;
+- `CONFIRMACION = CONFIRMADO JM` como autorización financiera, no como identidad.
+
+Una coincidencia por fila física sin validación de identidad no satisface el contrato del motor.
+
+### 4.3 Estructura versus runtime
+
+`ESTRUCTURA_GESTION_DIA_PAGOS` define la **forma canónica** esperada del motor.
+
+`GESTION_DIA_PAGOS_2026_TIVIPLAY` es el **runtime vivo**.
+
+Por tanto:
+
+`ESTRUCTURA ≠ RUNTIME ≠ EVIDENCIA`
+
+El archivo estructural se usa para entender nombres, roles, columnas y relaciones. El runtime vivo debe leerse para validar estado, fórmulas, datos y excepciones reales.
+
 
 ---
 
-## 5. Evidencia del cierre
+## 5. Estado actual de la fila 737
+
+Relectura directa de la hoja viva realizada el 2026-11-10.
+
+La fila que en este corte corresponde a José Orozco se encuentra actualmente en la coordenada temporal `737`.
+
+Estado observado:
+
+- `Q737`: fórmula presente.
+- `R737`: fórmula presente.
+- `S737`: fórmula presente.
+- `T737`: fórmula presente.
+- `Y737:AG737`: fórmulas presentes.
+- `AL737:AQ737`: fórmulas presentes.
+- `AJ737` y `AK737`: sin valores históricos.
+- `AN737`: sin `CONFIRMADO JM` efectivo para alimentar `AO/AP`.
+
+Consecuencia funcional observada en la lectura:
+
+- `R737` y `S737` evalúan vacío porque no tienen fuente histórica ni confirmación financiera aplicable;
+- `T737 = S737-TODAY()` produce `-46336` al operar sobre una fecha vacía;
+- `E737` deriva `Vencido` a partir de ese resultado.
+
+Por tanto:
+
+- **propagación de fórmulas de la fila 737: VALIDADO**;
+- **resultado operacional de la fila 737: REQUIERE DECISIÓN / corrección de dato fuente o guardia de fórmula antes de certificar integridad funcional total**.
+
+La coordenada `737` no debe persistir como identidad en el motor; se conserva únicamente como evidencia de este corte.
+
+---
+
+## 6. Evidencia del cierre
 
 Lectura directa de la hoja viva realizada el 2026-11-10:
 
@@ -214,11 +306,12 @@ Lectura directa de la hoja viva realizada el 2026-11-10:
 - `AO`: 0 faltantes
 - `AP`: 0 faltantes
 - `AQ`: 0 faltantes
-- pasada global en `E, Q:T, Y:AG, AL:AQ`: sin huecos de fórmula en el universo contractual, salvo la excepción manual `R737/S737` documentada arriba.
+- pasada global en `E, Q:T, Y:AG, AL:AQ`: sin huecos de fórmula en el universo contractual.
+- fila temporal 737: fórmulas completas, pero resultado funcional inconsistente por fuentes históricas vacías; documentado como `REQUIERE DECISIÓN`.
 
 ---
 
-## 6. Definition of Done
+## 7. Definition of Done
 
 El gate `BASE GENERAL · propagación de fórmulas` se considera satisfecho cuando:
 
@@ -229,30 +322,31 @@ El gate `BASE GENERAL · propagación de fórmulas` se considera satisfecho cuan
 5. existe evidencia de lectura de la hoja viva;
 6. no se modifica otra hoja antes de registrar este checkpoint.
 
-**Resultado:** **VALIDADO**
+**Resultado de propagación:** **VALIDADO**  
+**Resultado de integridad funcional total:** **PARCIAL** hasta resolver la anomalía de datos/fórmula observada en la fila temporal 737.
 
 ---
 
-## 7. CHECKPOINT
+## 8. CHECKPOINT
 
 **ACTIVE CONTEXT**  
 BASE GENERAL de TiviPlay auditada y documentada antes de avanzar al siguiente tab.
 
 **EVIDENCIAS**  
-1.612 filas reales de cliente auditadas; fórmula íntegra en columnas contractuales; excepción R737/S737 confirmada manualmente por Dirección.
+1.612 filas reales de cliente auditadas; propagación íntegra en columnas contractuales. La fila temporal 737 ya tiene fórmulas completas; queda una anomalía funcional por ausencia de fuentes históricas en AJ/AK y resultado derivado en T/E.
 
 **DECISION LOG**  
-La fila 737 mantiene R/S como valores manuales explícitos. No se infiere ni reemplaza fórmula de manera automática.
+Las filas físicas son coordenadas temporales, no identidad. La fila temporal 737 ya no es excepción de propagación: R/S tienen fórmula. Antes de cerrar integridad funcional debe resolverse su dato fuente o la guardia de cálculo cuando S esté vacío.
 
 **BLOQUEOS**  
-Ninguno para cerrar este gate de propagación.
+Ninguno para cerrar el gate de propagación. Existe una brecha funcional puntual en la fila temporal 737 que debe resolverse antes de declarar BASE GENERAL completamente validada a nivel de datos/resultados.
 
 **NEXT ACTION**  
-Abrir auditoría de la siguiente hoja únicamente después de este checkpoint: `PAGOS NOVIEMBRE 2026`.
+Resolver/validar la anomalía funcional de la fila temporal 737 y volver a verificar sus resultados. Solo entonces declarar BASE GENERAL `VALIDADO` integral y abrir la auditoría de `PAGOS NOVIEMBRE 2026`.
 
 ---
 
-## 8. Regla de continuidad
+## 9. Regla de continuidad
 
 `DOCUMENTACIÓN ≠ ESTADO ACTUAL ≠ DATO VIVO ≠ EVIDENCIA`
 
