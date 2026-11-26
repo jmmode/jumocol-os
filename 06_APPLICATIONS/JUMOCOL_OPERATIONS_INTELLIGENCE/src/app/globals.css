@@ -2,17 +2,95 @@
 
 :root {
   color-scheme: light;
-  font-family: Arial, Helvetica, sans-serif;
+  --brand-background: #ffffff;
+  --brand-surface: #f3f7f9;
+  --brand-text: #111821;
+  --brand-muted: #5c6b78;
+  --brand-primary: #0069b5;
+  --brand-primary-dark: #073f68;
+  --brand-blue: #0069b5;
+  --brand-cyan: #9ed9ff;
+  --brand-green: #65b32e;
+  --brand-yellow: #f9bd16;
+  --brand-red: #ce1236;
+  --status-success: #2f7110;
+  --status-warning: #a66f00;
+  --status-error: #ce1236;
+  --status-info: #0069b5;
+  --brand-graphite: #26313d;
+  --brand-border: #dfe7ec;
+  --brand-blue-soft: #e8f4fb;
+  --brand-shadow: 0 24px 70px rgba(18, 52, 74, 0.12);
 }
 
-html,
-body {
-  margin: 0;
-  min-height: 100%;
-  background: #f8fafc;
-  color: #0f172a;
+@theme inline {
+  --color-brand-background: var(--brand-background);
+  --color-brand-surface: var(--brand-surface);
+  --color-brand-text: var(--brand-text);
+  --color-brand-muted: var(--brand-muted);
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-primary-dark: var(--brand-primary-dark);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-cyan: var(--brand-cyan);
+  --color-brand-green: var(--brand-green);
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-red: var(--brand-red);
+  --color-status-success: var(--status-success);
+  --color-status-warning: var(--status-warning);
+  --color-status-error: var(--status-error);
+  --color-status-info: var(--status-info);
+  --color-brand-graphite: var(--brand-graphite);
+  --color-brand-border: var(--brand-border);
+  --color-brand-blue-soft: var(--brand-blue-soft);
 }
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--brand-surface);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--brand-cyan) 20%, transparent), transparent 32rem),
+    var(--brand-surface);
+  color: var(--brand-text);
+  font-family: "Segoe UI Variable", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  color: var(--brand-background);
+  background: var(--brand-primary);
+}
+
+:focus-visible {
+  outline: 3px solid rgba(0, 105, 181, 0.36);
+  outline-offset: 3px;
+}
+
+.brand-accent-rule {
+  background: linear-gradient(
+    90deg,
+    var(--brand-blue) 0 46%,
+    var(--brand-yellow) 46% 64%,
+    var(--brand-green) 64% 82%,
+    var(--brand-red) 82%
+  );
 }

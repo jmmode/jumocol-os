@@ -1,0 +1,93 @@
+import type { MarketingCommercialSnapshot } from "@/features/marketing-commercial/types";
+
+// DEMO ONLY: estos valores son fixtures visuales, no datos operacionales ni persistentes.
+export const MARKETING_COMMERCIAL_DEMO_FIXTURE: MarketingCommercialSnapshot = {
+  source: {
+    kind: "fixture",
+    label: "Datos de demostración",
+    disclosure: "Fixtures locales · No representan resultados reales · Sin persistencia",
+  },
+  kpis: [
+    {
+      id: "leads",
+      label: "Leads",
+      value: "128",
+      context: "Nuevos contactos · demo",
+      tone: "blue",
+    },
+    {
+      id: "conversations",
+      label: "Conversaciones",
+      value: "74",
+      context: "Contactos atendidos · demo",
+      tone: "cyan",
+    },
+    {
+      id: "proposals",
+      label: "Propuestas",
+      value: "21",
+      context: "Ofertas enviadas · demo",
+      tone: "yellow",
+    },
+    {
+      id: "sales",
+      label: "Ventas",
+      value: "9",
+      context: "Cierres del periodo · demo",
+      tone: "green",
+    },
+    {
+      id: "collections",
+      label: "Recaudo",
+      value: "$12,4 M",
+      context: "COP · valor demostrativo",
+      tone: "navy",
+    },
+  ],
+  workstreams: [
+    {
+      id: "tiviplay-marketing",
+      title: "TiviPlay Marketing",
+      objective: "Ventas / recaudo",
+      status: "active",
+      statusLabel: "Activo",
+      currentActivity: "Publicidad diaria",
+      nextAction: "Medir respuesta",
+      futureHref: "/marketing-comercial/tiviplay",
+      routeStatus: "available",
+    },
+    {
+      id: "landing-page",
+      title: "Landing Page",
+      objective: "Captar clientes",
+      status: "active",
+      statusLabel: "Activo",
+      currentActivity: "Preparar campaña",
+      nextAction: "Activar Google Ads",
+      futureHref: "/marketing-comercial/landing-page",
+      routeStatus: "available",
+    },
+    {
+      id: "commercial-pipeline",
+      title: "Pipeline Comercial",
+      objective: "Convertir leads",
+      status: "building",
+      statusLabel: "En construcción",
+      currentActivity: "Definir flujo",
+      nextAction: "Registrar oportunidades",
+      futureHref: "/marketing-comercial/pipeline-comercial",
+      routeStatus: "planned",
+    },
+    {
+      id: "web-clients",
+      title: "Clientes Web",
+      objective: "Entregar producto",
+      status: "building",
+      statusLabel: "En construcción",
+      currentActivity: "Crear onboarding",
+      nextAction: "Estandarizar entrega",
+      futureHref: "/marketing-comercial/clientes-web",
+      routeStatus: "planned",
+    },
+  ],
+};
