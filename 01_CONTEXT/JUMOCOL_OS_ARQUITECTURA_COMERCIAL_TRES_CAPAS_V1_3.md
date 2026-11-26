@@ -11,11 +11,11 @@
 
 ## 1. Propósito
 
-Definir una arquitectura modular de suministro y distribución de servicios tecnológicos que permita a terceros iniciar, diferenciar, administrar y escalar sus negocios bajo sus propias marcas. JUMOCOL es la identidad empresarial y tecnológica; JUMOCOL OS es la arquitectura de integración, sistematización y autonomía operacional. HumoCall y TiviPlay conservan su distinción empresarial, sin prejuzgar qué sociedad será la contratante de cada oferta; TiviPlay constituye el primer caso de referencia operacional, no una marca obligatoria ni el límite del portafolio.
+Definir una arquitectura modular de suministro y distribución de servicios tecnológicos que permita a terceros iniciar, diferenciar, administrar y escalar sus negocios bajo sus propias marcas. JUMOCOL es la identidad empresarial y tecnológica; JUMOCOL OS es la arquitectura de integración, sistematización y autonomía operacional. JUMOCOL y TiviPlay conservan su distinción empresarial, sin prejuzgar qué sociedad será la contratante de cada oferta; TiviPlay constituye el primer caso de referencia operacional, no una marca obligatoria ni el límite del portafolio.
 
 La arquitectura distingue tres capas de oferta y una jerarquía comercial independiente. No constituye todavía un plan de compensación, contrato, catálogo aprobado ni autorización de lanzamiento.
 
-HumoCall y TiviPlay son conceptos distintos: TiviPlay es una unidad de negocio y el primer caso de validación, no la totalidad del portafolio empresarial. La independencia de marca se mantiene.
+JUMOCOL y TiviPlay son conceptos distintos: TiviPlay es una unidad de negocio y el primer caso de validación, no la totalidad del portafolio empresarial. La independencia de marca se mantiene.
 
 ## 2. Principios fundacionales
 
