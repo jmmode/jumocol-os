@@ -1,5 +1,5 @@
 # JUMOCOL · Modular Business Architecture (MBA)
-Versión 1.5 (revisión en ruta histórica V1_0 para conservar enlaces) | Checkpoint: 2026-11-26 | Estado: investigación independiente entregada; ejecución correctiva limitada al diagnóstico AS-IS y sinergia; integración y propuestas bloqueadas hasta aprobación de Dirección.
+Versión 1.6 (revisión en ruta histórica V1_0 para conservar enlaces) | Checkpoint: 2026-11-26 | Estado: investigación independiente entregada; orientación estratégica de Dirección registrada; ejecución correctiva limitada al diagnóstico AS-IS y sinergia; integración y propuestas sujetas a gates de Dirección.
 
 ## Identidad y propósito
 MBA es un dominio estratégico de JUMOCOL OS, no una empresa ni repositorio independiente.
@@ -77,6 +77,21 @@ Entregables autorizados ahora: matriz AS-IS y de complementariedad (Excel, con f
 
 ## Registro de decisión — 2026-11-26 (revisión 1.5)
 Dirección confirma incorporar una etapa independiente de valor agregado de JUMOCOL, ubicada después de la integración estratégica y antes de las tres propuestas internas. La secuencia vigente tiene seis etapas y mantiene los controles de aprobación de revisión 1.4. La Orden N.º 05 conserva su alcance exclusivo de diagnóstico AS-IS y sinergia (etapas 1 y 2); esta actualización no autoriza ejecutar etapas posteriores. Se mantienen intactas la arquitectura fundacional, la investigación previa y las decisiones sobre tres alternativas internas y una propuesta externa.
+
+## Registro de Dirección — 2026-11-26 (revisión 1.6): orientación estratégica y valor agregado
+
+**Naturaleza del checkpoint:** conclusiones estratégicas de Dirección; no constituye aprobación de un diseño TO-BE, cierre formal de los entregables AS-IS, autorización de implementación, lanzamiento ni acuerdo con el partner.
+
+### Conclusiones de continuidad
+- Dirección identifica tres insumos disponibles para la siguiente evaluación: investigación independiente de las capas 1, 2 y 3 (distribución/multinivel, suscripciones, aplicaciones y sistemas empresariales); conocimiento del contexto y oferta del partner y del estado de JUMOCOL/TiviPlay; y definición cualitativa del valor que JUMOCOL desea aportar. Se mantiene la necesidad de verificar la matriz AS-IS, las brechas y la trazabilidad de las fuentes antes de dar por cerradas las etapas correspondientes.
+- Prioridad empresarial: orientar el crecimiento de JUMOCOL principalmente a Capa 2 — Application Systems y Capa 3 — Business Systems, con modelos económicos propios e independientes del crecimiento de la red multinivel. Capa 1 — Service Distribution conserva su relevancia comercial, su estudio y sus controles jurídicos, sin convertirse en requisito de contratación ni en el único motor de crecimiento.
+- Alianza: buscar complementariedad e interdependencia estratégica entre capacidades, aprovechar las soluciones existentes del partner y evitar duplicar desarrollos. El grado de integración, intercambio de datos, responsabilidades, seguridad y continuidad se definirá y validará conjuntamente; no se presupone cesión de datos, derechos ni compromisos contractuales.
+- Valor agregado propuesto de JUMOCOL: visión estratégica, diagnóstico, arquitectura empresarial modular, estructuración de cadena de suministro, distribución comercial masiva y escalable, integración tecnológica y operacional, automatización y capacidad de ejecución. Contrastar estos aportes con las capacidades reales de ambas partes, identificar brechas y definir indicadores verificables.
+- Capa 2: explorar aplicaciones, reproductores y dispositivos como puntos de acceso a servicios digitales interoperables, más allá del entretenimiento. Evaluar como líneas conceptuales la creación y monetización de contenido, educación, comercio digital e IA para el hogar, con servicios autorizados y modelos económicos independientes. Capa 3 podrá habilitar la administración, pagos, CRM, ERP y automatización de los participantes. No se presupone que dichas capacidades estén implementadas ni que su viabilidad esté demostrada.
+- TiviPlay conserva su función de primer caso de validación operacional; la expansión multisectorial se mantiene condicionada a evidencia técnica, comercial, económica y jurídica.
+
+### Gobierno y próximos pasos
+Conservar íntegra la arquitectura fundacional V1.3, sus tres capas independientes, la investigación previa y la secuencia de seis etapas con sus gates de Dirección. La orientación anterior es un insumo para integración estratégica y valor agregado (etapas 3 y 4), no reemplaza sus entregables ni autoriza saltar gates. El próximo paso sujeto a revisión es consolidar la evidencia y confirmar el cierre de diagnóstico y sinergia; después, formalizar la integración y la matriz de aportes, y únicamente con las aprobaciones correspondientes diseñar tres alternativas internas y una propuesta externa. Mantener nombres comerciales provisionales, detalles reservados de la alianza y condiciones de negociación en espacios privados autorizados. Antes de cualquier lanzamiento validar propiedad intelectual, derechos de suministro, tratamiento de datos, seguridad, capacidades técnicas, viabilidad económica y requisitos jurídicos aplicables.
 
 ## Estado de investigación
 Inventario preliminar de Capa 1: Amway, Herbalife, Avon, Nu Skin, Mary Kay, USANA, ACN, Utility Warehouse, inCruises, Microsoft CSP, Pax8 y GoDaddy. Son referencias candidatas, no modelos aprobados. Se propusieron 25 variables agrupadas en dimensiones comercial, económica, humana, tecnológica y de gobierno. El informe maestro documenta los resultados, las fuentes y los vacíos de evidencia; su revisión de Dirección no implica una auditoría exhaustiva.
